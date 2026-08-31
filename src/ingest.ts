@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createReadStream, existsSync } from 'node:fs'
 import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
-import { basename, dirname, extname, join, relative, sep } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
 import { CATEGORY_WARN_DEPTH, TEXT_EXTS } from './identity.ts'
 import { requireBase } from './bases.ts'
 import { readCatalog, rememberLastDest } from './catalog.ts'
@@ -73,6 +73,18 @@ function uniqueName(dir: string, name: string): string {
   return next
 }
 
+function looksBareName(sourcePath: string): boolean {
+  const value = sourcePath.trim()
+  return Boolean(value) && !value.includes('/') && !value.includes('\\') && !value.startsWith('~') && !isAbsolute(value)
+}
+
+function missingSourceMessage(sourcePath: string): string {
+  if (looksBareName(sourcePath)) {
+    return `源路径不存在：${sourcePath}。浏览器只给出了文件名，请点「选择文件」打开系统对话框，或粘贴完整本机路径`
+  }
+  return `源路径不存在：${sourcePath}`
+}
+
 function sourceRel(sourceRoot: string, file: string, preserveTree: boolean): string {
   if (!preserveTree) return basename(file)
   return relative(sourceRoot, file).split(sep).join('/')
@@ -82,7 +94,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
   await requireBase(dataRoot, input.baseId)
   const catalog = await readCatalog(dataRoot)
   const source = expandUserPath(input.sourcePath)
-  if (!existsSync(source)) throw new KbError('not_found', `源路径不存在：${input.sourcePath}`)
+  if (!existsSync(source)) throw new KbError('not_found', missingSourceMessage(input.sourcePath))
   const dest = resolveDest(dataRoot, input.baseId, input.destCategory)
   const root = baseDir(dataRoot, input.baseId)
   assertInside(root, dest.absolute)

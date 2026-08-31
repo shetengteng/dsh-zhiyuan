@@ -9,32 +9,29 @@ function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormEl
   return new FormData(event.currentTarget)
 }
 
-type Picked = File & { path?: string; webkitRelativePath?: string }
-
-function pickedPath(file: Picked): string {
-  if (file.path) return file.path
-  const rel = file.webkitRelativePath
-  if (rel) return `${rel.split('/')[0]}/`
-  return file.name
-}
-
 export function ImportDialog(props: {
   baseId: string
   error: string
   busy: boolean
   onClose: () => void
+  onPick: (kind: 'file' | 'dir') => Promise<string>
   onSubmit: (input: { sourcePath: string; destCategory: string; preserveTree: boolean; createMissing: boolean }) => void
 }) {
   const form = useRef<HTMLFormElement>(null)
   const pathRef = useRef<HTMLInputElement>(null)
-  const dirRef = useRef<HTMLInputElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
   const [createMissing, setCreateMissing] = useState(true)
   const [preserveTree, setPreserveTree] = useState(false)
+  const [picking, setPicking] = useState(false)
 
-  const fillPath = (file?: File | null) => {
-    if (!file || !pathRef.current) return
-    pathRef.current.value = pickedPath(file)
+  const pick = async (kind: 'file' | 'dir') => {
+    if (picking || props.busy) return
+    setPicking(true)
+    try {
+      const path = await props.onPick(kind)
+      if (path && pathRef.current) pathRef.current.value = path
+    } finally {
+      setPicking(false)
+    }
   }
 
   return (
@@ -64,24 +61,17 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="点按钮选本机目录或文件。浏览器若只给出文件名，请改成完整路径。目前 md/txt。"
+          help="点按钮打开系统对话框选本机目录或文件。也可以粘贴完整路径。目前 md/txt。"
         >
           <div className="zy-source">
-            <button
-              className="zy-btn"
-              type="button"
-              onClick={() => {
-                dirRef.current?.setAttribute('webkitdirectory', '')
-                dirRef.current?.click()
-              }}
-            >
+            <button className="zy-btn" type="button" disabled={picking || props.busy} onClick={() => void pick('dir')}>
               选择文件夹
             </button>
-            <button className="zy-btn" type="button" onClick={() => fileRef.current?.click()}>选择文件</button>
+            <button className="zy-btn" type="button" disabled={picking || props.busy} onClick={() => void pick('file')}>
+              选择文件
+            </button>
           </div>
           <input ref={pathRef} className="zy-box" name="sourcePath" placeholder="~/notes/合同" required />
-          <input ref={dirRef} type="file" hidden multiple onChange={(event: { currentTarget: HTMLInputElement }) => fillPath(event.currentTarget.files?.[0])} />
-          <input ref={fileRef} type="file" hidden accept=".md,.txt,.markdown,text/markdown,text/plain" onChange={(event: { currentTarget: HTMLInputElement }) => fillPath(event.currentTarget.files?.[0])} />
         </Field>
         <Field label="类目" help="空 = 库根。可输入新路径，不会因此新建知识库。">
           <input className="zy-box" name="destCategory" placeholder="合同/2024" />

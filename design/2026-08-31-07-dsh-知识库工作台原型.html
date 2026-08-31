@@ -517,9 +517,7 @@ body{
 
     .cabinet { display: flex; flex-direction: column; padding: 0; min-height: 0; height: 100%; }
     .cab-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px 6px; }
-    .cab-head > div:first-child { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-    .cab-head h2 { margin: 0; font-size: 15px; font-weight: 500; line-height: 22px; }
-    .cab-head .sub { margin: 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); font-weight: 400; }
+    .cab-head .sub { margin: 0; flex: 1; min-width: 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); font-weight: 400; }
     .cab-head .actions { margin-left: auto; display: flex; gap: 8px; flex: none; }
     .btn {
       height: 32px;
@@ -884,7 +882,7 @@ body{
                 <div class="section-head">
                   <h1 class="heading" style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>知源</h1>
                   <div class="tabs" role="tablist">
-                    <button class="tab" role="tab" aria-selected="true" data-tab="lib" type="button">库</button>
+                    <button class="tab" role="tab" aria-selected="true" data-tab="lib" type="button">知识库</button>
                     <button class="tab" role="tab" aria-selected="false" data-tab="prefs" type="button">偏好</button>
                     <button class="tab" role="tab" aria-selected="false" data-tab="about" type="button">关于</button>
                   </div>
@@ -908,10 +906,7 @@ body{
                     <div id="cab-col">
                       <div class="cabinet" id="cab-work">
                         <div class="cab-head">
-                          <div>
-                            <h2>工作库</h2>
-                            <p class="sub"><code>bases/work/</code> · 18 篇 · 上次用</p>
-                          </div>
+                          <p class="sub">18 篇 · 4 个类目 · 上次用</p>
                           <div class="actions">
                             <button class="btn" type="button" data-edit="work">编辑</button>
                             <button class="btn btn-primary" type="button" id="openImport">导入</button>
@@ -976,10 +971,7 @@ body{
                       </div>
                       <div class="cabinet" id="cab-life" hidden>
                         <div class="cab-head">
-                          <div>
-                            <h2>生活库</h2>
-                            <p class="sub"><code>bases/life/</code> · 3 篇</p>
-                          </div>
+                          <p class="sub">3 篇 · 1 个类目</p>
                           <div class="actions">
                             <button class="btn" type="button" data-edit="life">编辑</button>
                             <button class="btn btn-primary" type="button" id="openImportLife">导入</button>
@@ -1058,7 +1050,7 @@ body{
                     <p>知识库把你指定的 md/txt 复制到本机文件夹里。提问时一次只查一个库。导入不会自动建库，也不会把文件默默塞进某个库。</p>
 
                     <h3>1. 建库</h3>
-                    <p>「库」页左下角或空态里的「新建知识库」。填 id、标题、描述、别名。id 创建后不能改。</p>
+                    <p>「知识库」页左下角或空态里的「新建知识库」。填 id、标题、描述、别名。id 创建后不能改。</p>
                     <p>描述和别名是给选库用的：对话里没说查哪个库时，会拿各库的描述、别名对问题。两个都像就会问你，不会把所有库扫一遍。</p>
                     <div class="demo">
                       <div class="q">工作库 · 别名：工作, 公司, 合同库</div>

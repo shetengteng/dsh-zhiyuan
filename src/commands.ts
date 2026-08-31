@@ -4,6 +4,7 @@ import { lastDestCategory, readCatalog, writeCatalog } from './catalog.ts'
 import { ingest } from './ingest.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
+import { pickSource } from './pick-source.ts'
 import { searchBase } from './search.ts'
 import { flagBool, flagString, parseFlags, splitAliases, tokenize } from './command-parse.ts'
 import { KbError } from './types.ts'
@@ -51,6 +52,8 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
     case 'deleteEntry':
       await deleteEntry(root, String(data.id ?? ''), String(data.path ?? ''), Boolean(data.confirm))
       return { ok: true }
+    case 'pick':
+      return pickSource(data.kind === 'dir' ? 'dir' : 'file')
     case 'ingest':
       return jobs.enqueue('ingest', () => ingest(root, {
         baseId: String(data.baseId ?? ''),

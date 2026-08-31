@@ -31,7 +31,7 @@ export function LibPage(props: {
     )
   }
   const current = props.current
-  const lead = current?.description.split('。')[0] || '没有描述'
+  const { lead, rest } = doorParts(current?.description ?? '')
   return (
     <div className="zy-lib">
       <div className="zy-list">
@@ -51,25 +51,13 @@ export function LibPage(props: {
         {current ? (
           <>
             <div className="zy-cab-head">
-              <div>
-                <h2>{current.title}</h2>
-                <p className="zy-sub"><code>bases/{current.id}/</code> · {current.approxDocs} 篇</p>
-              </div>
+              <p className="zy-sub">{headMeta(current)}</p>
               <div className="zy-actions">
                 <button className="zy-btn" type="button" onClick={props.onEdit}>编辑</button>
                 <button className="zy-btn zy-primary" type="button" onClick={props.onImport}>导入</button>
               </div>
             </div>
-            <details className="zy-door">
-              <summary>
-                <TwistIcon />
-                {lead}
-              </summary>
-              <div className="zy-door-body">
-                {current.description}
-                {current.aliases.length ? <div className="zy-help">别名：{current.aliases.join(', ')}</div> : null}
-              </div>
-            </details>
+            <Door lead={lead} rest={rest} aliases={current.aliases} />
             <div className="zy-tree">
               {props.pending ? <p className="zy-help">加载中…</p> : null}
               {props.tree.map((node) => <TreeItem key={node.path} node={node} onOpen={props.onOpenFile} onDelete={props.onDeleteEntry} />)}
@@ -85,6 +73,47 @@ export function LibPage(props: {
         ) : null}
       </div>
     </div>
+  )
+}
+
+function headMeta(base: BaseSummary): string {
+  const parts = [`${base.approxDocs} 篇`, `${base.categories.length} 个类目`]
+  if (base.lastUsed) parts.push('上次用')
+  return parts.join(' · ')
+}
+
+function doorParts(description: string): { lead: string; rest: string } {
+  const text = description.trim()
+  if (!text) return { lead: '没有描述', rest: '' }
+  const cut = text.indexOf('。')
+  if (cut === -1 || cut >= text.length - 1) return { lead: text.replace(/。$/, ''), rest: '' }
+  return { lead: text.slice(0, cut), rest: text.slice(cut + 1).trim() }
+}
+
+function Door(props: { lead: string; rest: string; aliases: string[] }) {
+  const alias = props.aliases.length ? `别名：${props.aliases.join(', ')}` : ''
+  const extra = Boolean(props.rest || alias)
+  const body = extra ? (
+    <div className="zy-door-body">
+      {props.rest || null}
+      {alias ? <div className="zy-help">{alias}</div> : null}
+    </div>
+  ) : null
+  if (!extra) {
+    return (
+      <div className="zy-door zy-door-shut">
+        <span className="zy-lead">{props.lead}</span>
+      </div>
+    )
+  }
+  return (
+    <details className="zy-door">
+      <summary>
+        <TwistIcon />
+        <span className="zy-lead">{props.lead}</span>
+      </summary>
+      {body}
+    </details>
   )
 }
 

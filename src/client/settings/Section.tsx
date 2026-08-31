@@ -95,7 +95,7 @@ export function createSettingsSection(
                 className={tab === id ? 'zy-tab is-on' : 'zy-tab'}
                 onClick={() => setTab(id)}
               >
-                {id === 'lib' ? '库' : id === 'prefs' ? '偏好' : '关于'}
+                {id === 'lib' ? '知识库' : id === 'prefs' ? '偏好' : '关于'}
               </button>
             ))}
           </div>
@@ -172,6 +172,16 @@ export function createSettingsSection(
             error={error}
             busy={pending}
             onClose={() => setDialog(null)}
+            onPick={async (kind) => {
+              setError('')
+              try {
+                const rec = await call({ op: 'pick', kind }) as { path?: string }
+                return rec.path ?? ''
+              } catch (err) {
+                setError(err instanceof Error ? err.message : String(err))
+                return ''
+              }
+            }}
             onSubmit={(input) => void run(() => call({ op: 'ingest', ...input, baseId: current.id }).then(() => undefined))}
           />
         ) : null}

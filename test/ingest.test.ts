@@ -88,6 +88,11 @@ test('非白名单后缀失败；源路径不存在失败', async () => {
     sourcePath: join(root, 'missing.md'),
     destCategory: '',
   }), /源路径不存在/)
+  await assert.rejects(() => ingest(root, {
+    baseId: 'work',
+    sourcePath: '20260607-02-Memex-popup转桌面-TODO.md',
+    destCategory: '',
+  }), /完整本机路径/)
   await rm(root, { recursive: true, force: true })
 })
 
