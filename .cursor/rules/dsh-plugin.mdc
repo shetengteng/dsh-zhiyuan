@@ -1,0 +1,44 @@
+---
+description: DeepSeek Harness 双面插件契约。改 Host/Client、package.json、cordis.patch.yml 或构建脚本时必须遵守。
+alwaysApply: true
+---
+
+# DeepSeek Harness plugin
+
+改插件代码前，完整阅读 https://dsh.pub/develop-plugin.md。本仓库规则优先；官方文档管运行时契约。
+
+## 身份
+
+这是独立 Git 仓库里的 **Host + Web UI** 双面插件，不是 Harness 单体内的 `packages/*`。
+
+- 同一 npm 包、一次 `dsh plugin add`：Host（`exports["."]` → `lib/index.js`）+ Client（`exports["./client"]` → `lib/client.js`）。
+- `cordis.patch.yml` 只 insert **一行** Host，`id: lumina-tarot`，`name` 必须等于 `package.json` 的 `name`。
+- Client 由 `dsh.client.platform: "web"` 自动加载；不要第二条安装命令，不要自建 HTTP。
+- 禁止 `workspace:` 依赖；禁止冒充 `@deepseek-ai` 官方包。
+
+## 座椅与数据
+
+- UI 只能 `ctx.slots.inject` 已有座椅（overlay / settings.section / toolview）。座椅是类型化契约，不是 DOM 选择器。先核对目标 DSH 版本，禁止猜测 slot 名，禁止改壳的私有 DOM。
+- 持久状态的主人在 Host（settings / commands / tools）。Client 只持短暂展示态；经 `remote.commands` / `settingsScope` 回头调 Host。
+- 浏览器没有 `ctx.agents` / `ctx.tools.execute`。抽牌与 followup 只能走 Host。禁止模型编造牌 id。
+- 乐观更新未获 Host 确认前，不得当成已落盘。必须展示 pending / error / 断连。
+- 每个 `ctx` 注册、订阅、timer、slot 必须能卸载。进程级副作用不要写在模块顶层；Host 资源用 `ctx.effect()` 返回 disposer。
+
+## 构建
+
+- Host：ESM `lib/index.js`。Client：lazy-CJS，必须含 `window.__ModuleLoader__.load({ id: 'dsh-lumina-tarot', factory })`。
+- Client **不打包 React**。展示层写 JSX；构建 `jsx: 'automatic'`，运行时 `require('react')` / `react/jsx-runtime`。
+- `main` / `exports` / `files` / `dsh.bundle.patch` 指向的路径，干净构建后必须存在。
+- 不要把 `src/` 当运行入口。Git 安装会跑 `prepare`；交付优先可复现的 `lib/`。
+
+## 验收边界
+
+分开声明：实现、安装、激活、运行时验证。没跑过的检查不要声称通过。
+
+```sh
+dsh plugin --profile web add .
+dsh --profile web --dump-config
+dsh web
+```
+
+`dump-config` 必须出现本包层。headless profile 没有 UI 不代表 Client 已加载。
