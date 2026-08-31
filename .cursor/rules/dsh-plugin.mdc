@@ -12,21 +12,23 @@ alwaysApply: true
 这是独立 Git 仓库里的 **Host + Web UI** 双面插件，不是 Harness 单体内的 `packages/*`。
 
 - 同一 npm 包、一次 `dsh plugin add`：Host（`exports["."]` → `lib/index.js`）+ Client（`exports["./client"]` → `lib/client.js`）。
-- `cordis.patch.yml` 只 insert **一行** Host，`id: lumina-tarot`，`name` 必须等于 `package.json` 的 `name`。
+- `cordis.patch.yml` 只 insert **一行** Host，`id: zhiyuan`，`name` 必须等于 `package.json` 的 `name`（`dsh-zhiyuan`）。
 - Client 由 `dsh.client.platform: "web"` 自动加载；不要第二条安装命令，不要自建 HTTP。
 - 禁止 `workspace:` 依赖；禁止冒充 `@deepseek-ai` 官方包。
+- 品牌名：知源。设置入口：知源。包名：`dsh-zhiyuan`。不要写 `dsh-knowledge`。产品对象仍称知识库 / 类目。
 
 ## 座椅与数据
 
-- UI 只能 `ctx.slots.inject` 已有座椅（overlay / settings.section / toolview）。座椅是类型化契约，不是 DOM 选择器。先核对目标 DSH 版本，禁止猜测 slot 名，禁止改壳的私有 DOM。
-- 持久状态的主人在 Host（settings / commands / tools）。Client 只持短暂展示态；经 `remote.commands` / `settingsScope` 回头调 Host。
-- 浏览器没有 `ctx.agents` / `ctx.tools.execute`。抽牌与 followup 只能走 Host。禁止模型编造牌 id。
+- UI 只能 `ctx.slots.inject` 已有座椅（overlay / settings.section / toolview）。座椅是类型化契约，不是 DOM 选择器。目标 DSH：`0.1.1-rc.2`。禁止猜测 slot 名，禁止改壳的私有 DOM。
+- 工作台挂 `settings.section`，`id: knowledge`，`label: 知源`。插件配置窄卡不再做一份工作台。
+- 持久状态的主人在 Host（catalog / 文件夹 / commands / tools）。Client 只持短暂展示态；经 `remote.commands` / `settingsScope` 回头调 Host。
+- 浏览器没有 `ctx.agents` / `ctx.tools.execute`。建库、导入、检索只能走 Host。禁止模型编造库 id。
 - 乐观更新未获 Host 确认前，不得当成已落盘。必须展示 pending / error / 断连。
 - 每个 `ctx` 注册、订阅、timer、slot 必须能卸载。进程级副作用不要写在模块顶层；Host 资源用 `ctx.effect()` 返回 disposer。
 
 ## 构建
 
-- Host：ESM `lib/index.js`。Client：lazy-CJS，必须含 `window.__ModuleLoader__.load({ id: 'dsh-lumina-tarot', factory })`。
+- Host：ESM `lib/index.js`。Client：lazy-CJS，必须含 `window.__ModuleLoader__.load({ id: 'dsh-zhiyuan', factory })`。
 - Client **不打包 React**。展示层写 JSX；构建 `jsx: 'automatic'`，运行时 `require('react')` / `react/jsx-runtime`。
 - `main` / `exports` / `files` / `dsh.bundle.patch` 指向的路径，干净构建后必须存在。
 - 不要把 `src/` 当运行入口。Git 安装会跑 `prepare`；交付优先可复现的 `lib/`。

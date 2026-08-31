@@ -1,0 +1,5 @@
+# Dual-face bundle: one Host row. The Web client is discovered from
+# package.json dsh.client and served at /plugins/dsh-zhiyuan/client.js.
+- insert:
+    - id: zhiyuan
+      name: dsh-zhiyuan

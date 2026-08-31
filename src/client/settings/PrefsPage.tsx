@@ -1,0 +1,104 @@
+import { useEffect, useState } from 'react'
+import { Button, Input, Menu, IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { BaseSummary, Prefs } from '../models.ts'
+import { ToggleRow } from './controls.tsx'
+import { Note } from './dialogs.tsx'
+
+export function PrefsPage(props: {
+  prefs: Prefs
+  bases: BaseSummary[]
+  busy: boolean
+  error: string
+  onSave: (prefs: Prefs) => void
+}) {
+  const [draft, setDraft] = useState(props.prefs)
+  const [menuOpen, setMenuOpen] = useState(false)
+  useEffect(() => { setDraft(props.prefs) }, [props.prefs])
+
+  const current = props.bases.find((base) => base.id === draft.defaultBaseId)
+  const label = current ? `${current.id}（${current.title}）` : '（无）'
+
+  return (
+    <form
+      onSubmit={(event: { preventDefault: () => void }) => {
+        event.preventDefault()
+        props.onSave(draft)
+      }}
+    >
+      <div className="zy-set-row">
+        <div className="zy-set-text">
+          <div className="zy-set-title">默认打开的库</div>
+          <p className="zy-set-desc">未指定知识库时，工作台搜索使用这个默认库。</p>
+        </div>
+        <Menu
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          selectedId={draft.defaultBaseId || 'none'}
+          items={[
+            { id: 'none', label: '（无）' },
+            ...props.bases.map((base) => ({ id: base.id, label: `${base.id}（${base.title}）` })),
+          ]}
+          onSelect={(id: string) => {
+            setDraft({ ...draft, defaultBaseId: id === 'none' ? '' : id })
+            setMenuOpen(false)
+          }}
+          align="end"
+          portal
+          anchor={(
+            <button
+              type="button"
+              className="zy-selector"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              {label}
+              <IconChevronDownOutline14 className="zy-chevron" />
+            </button>
+          )}
+        />
+      </div>
+      <div className="zy-set-row">
+        <div className="zy-set-text">
+          <div className="zy-set-title">单文件上限</div>
+          <p className="zy-set-desc">超过则该文件导入失败。</p>
+        </div>
+        <Input
+          className="zy-num"
+          type="number"
+          min={1}
+          value={Math.round(draft.maxFileBytes / 1024 / 1024)}
+          onChange={(event: { target: { value: string } }) => {
+            setDraft({ ...draft, maxFileBytes: Number(event.target.value || 5) * 1024 * 1024 })
+          }}
+        />
+        <span className="zy-unit">MB</span>
+      </div>
+      <div className="zy-set-row">
+        <div className="zy-set-text">
+          <div className="zy-set-title">单库文字上限</div>
+          <p className="zy-set-desc">超过拒绝本批导入。</p>
+        </div>
+        <Input
+          className="zy-num"
+          type="number"
+          min={1}
+          value={Math.round(draft.maxBaseBytes / 1024 / 1024 / 1024)}
+          onChange={(event: { target: { value: string } }) => {
+            setDraft({ ...draft, maxBaseBytes: Number(event.target.value || 10) * 1024 * 1024 * 1024 })
+          }}
+        />
+        <span className="zy-unit">GB</span>
+      </div>
+      <ToggleRow title="Markdown / txt" desc="第一版只导入这类文件。" on disabled />
+      <ToggleRow title="PDF" desc="尚未支持。" on={false} disabled />
+      <ToggleRow title="DOCX" desc="尚未支持。" on={false} disabled />
+      <ToggleRow title="自定义命令" desc="尚未支持。" on={false} disabled />
+      <Note text={props.error} />
+      <div className="zy-set-row">
+        <div className="zy-set-text" />
+        <Button variant="primary" type="submit" disabled={props.busy}>保存偏好</Button>
+      </div>
+    </form>
+  )
+}

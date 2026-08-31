@@ -1,5 +1,5 @@
 ---
-description: 优秀前端工程师角色。编写或改动 Client UI（悬浮牌背、洗牌、结果面板、设置页、对话卡）时启用。
+description: 优秀前端工程师角色。编写或改动 Client UI（知识库工作台、命中卡、预览）时启用。
 globs: src/client/**/*.{ts,tsx,js,css}
 alwaysApply: false
 ---
@@ -12,41 +12,38 @@ Client 跑在 DSH Web 壳里：函数组件 + hooks，展示层写 JSX（`.tsx`�
 
 ## 产品气质
 
-这是任务型 overlay，不是营销页。熟悉感是优点；陌生而无目的的装饰是缺陷。
+这是设置里的知识库工作台，不是营销页。熟悉感是优点；陌生而无目的的装饰是缺陷。
 
-- 牌背比例固定 **5 : 8.6**。入口是塔罗**牌背**，不是图标、不是桌宠。
-- 主题只作用插件自己的牌背 / 面板 / 牌面，不覆盖 DSH Appearance。
-- 颜色用 `--lumina-*` token。不要纯黑纯白；状态色（hover / focus / disabled / loading / error）成套出现。
-- 动效只表达状态：洗牌 loading、翻开展示、呼吸阴影。时长约 150–400ms；禁止 GSAP、粒子、Three.js、长按仪式。
-- 半透明结果面板必须可读：对比度、圆角随 `theme`、不挡住对话输入的关键路径。
+- 设置 section 标签与页标题：知源。产品对象仍称知识库、类目。不写开柜、落柜、柜门。
+- 颜色用 DSH `--dsw-alias-*` token。不要纯黑纯白；状态色（hover / focus / disabled / loading / error）成套出现。
+- 动效只表达状态：打开弹框、任务进行中。时长约 150–400ms；禁止 GSAP、粒子、Three.js。
+- 工作台占满 `settings.section`，不要做成插件窄卡的第二份。
 
 ## 交互契约
 
-- **拖**：位移过阈值只改 `floatX`/`floatY`，松手落盘，不抽牌。
-- **单击**：按当前默认牌阵抽牌，进入洗牌 loading。
-- **右击**：阻止浏览器菜单，打开贴牌的扇形快捷菜单（牌阵 / 上次结果 / 查看历史）。
-- 拖、点、右键必须互斥，触控与鼠标同一套 pointer 逻辑。
-- 明确展示 idle / loading / result / error。失败可重试，文案说人话。
-- 可键盘到达的控件要有可见 focus；装饰 SVG `pointer-events: none`。
+- 建库、导入、删库、删文件都要等人确认或填完必填项；id 创建后只读。
+- 明确展示 idle / pending / error / 断连。失败可重试，文案说人话。
+- 乐观更新未获 Host 确认前，不得当成已落盘。
+- 可键盘到达的控件要有可见 focus。
+- 网页不自己扫磁盘、不当网盘拖大文件。导入把本机路径交给 Host。
 
 ## 组件与状态
 
-- 组件单一职责。展示与编排拆开：dock / shuffle / panel / settings。
-- 本地 UI 态用 `useState`/`useRef`；配置以 Host settings 为唯一真相，Client 只订阅与 patch。
-- `useEffect` 必须清理监听与 timer。列表与牌阵用稳定 `key`（牌 id + 位置）。
-- 派生值用计算，不要在 render 里做重活。洗牌动画是 CSS loading，不是抽牌算法。
+- 组件单一职责。展示与编排拆开：库列表 / 树 / 弹框 / 偏好 / 命中卡。
+- 本地 UI 态用 `useState`/`useRef`；库与文件以 Host 为唯一真相，Client 只订阅与发命令。
+- `useEffect` 必须清理监听与 timer。列表与树用稳定 `key`。
 
 ## 禁止
 
 ```ts
 // ❌ 当成本地成功
-setConfig(next); localStorage.setItem('lumina', JSON.stringify(next))
+setBases(next); localStorage.setItem('zhiyuan', JSON.stringify(next))
 
-// ✅ 展示态可先 patch，落盘走 Host
-patchLuminaConfig(next)
-void persistLuminaField(scope, 'floatX', next.floatX)
+// ✅ 展示态可先标 pending，落盘走 Host
+setPending(true)
+void runKb(remote, sessions, '/kb call list')
 ```
 
 - 不改 DSH 壳私有 DOM，不自建路由。
-- 不把 78 张牌 JSON 或抽牌逻辑复制进 Client；Client 只渲染 Host 返回的 `ReadingPayload`。
-- 不为“好看”增加新交互模式。先对齐 `design/2026-08-19-01-系统设计.md`。
+- 不把建库 / 拷贝 / grep 复制进 Client；Client 只渲染 Host 返回的结果。
+- 不为“好看”增加新交互模式。先对齐 `design/2026-08-31-05-dsh-知识库交互布局.md` 与工作台原型。
