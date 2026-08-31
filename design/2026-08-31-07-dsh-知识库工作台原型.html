@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>知识库工作台原型 · 对照 DSH 0.1.1-rc.2</title>
+  <style>
+body{--dsw-static-amber-100:#fef5e7;--dsw-static-amber-400:#f7ad31;--dsw-static-amber-500:#f59e0b;--dsw-static-amber-600:#dd8629;--dsw-static-amber-900:#27241f;--dsw-static-blue-100:#dbeafe;--dsw-static-blue-300:#93c5fd;--dsw-static-blue-400:#60a5fa;--dsw-static-blue-450:#4d93f8;--dsw-static-blue-500:#3b82f6;--dsw-static-blue-50:#eff6ff;--dsw-static-blue-50p:#eaf3ff;--dsw-static-blue-600:#2563eb;--dsw-static-blue-75:#e5f0ff;--dsw-static-blue-800:#1e40af;--dsw-static-blue-900:#0e3074;--dsw-static-blue-950:#172554;--dsw-static-deepseek-100:#e4edfd;--dsw-static-deepseek-200:#d3e2ff;--dsw-static-deepseek-300:#b7c8fe;--dsw-static-deepseek-400:#679efe;--dsw-static-deepseek-450:#5686fe;--dsw-static-deepseek-500:#4176e6;--dsw-static-deepseek-50:#edf3fe;--dsw-static-deepseek-600:#4868b2;--dsw-static-deepseek-700-delete:#2f4c8f;--dsw-static-deepseek-800:#34415b;--dsw-static-deepseek-900:#283142;--dsw-static-green-100:#e6faed;--dsw-static-green-400:#4ed17e;--dsw-static-green-500:#22c55e;--dsw-static-green-900:#233c2c;--dsw-static-neutral-00:#fff;--dsw-static-neutral-1000:#000;--dsw-static-neutral-100:#f5f5f5;--dsw-static-neutral-150:#ededed;--dsw-static-neutral-200:#e5e5e5;--dsw-static-neutral-250:#dcdcdc;--dsw-static-neutral-300:#d4d4d4;--dsw-static-neutral-400:#a2a4a6;--dsw-static-neutral-500:#7f8287;--dsw-static-neutral-50:#fafafa;--dsw-static-neutral-550:#65676b;--dsw-static-neutral-600:#545557;--dsw-static-neutral-700:#3c3c3d;--dsw-static-neutral-800:#292929;--dsw-static-neutral-850:#212123;--dsw-static-neutral-900:#0f0f0f;--dsw-static-neutral-bluish-00:#fff;--dsw-static-neutral-bluish-1000:#0f1115;--dsw-static-neutral-bluish-100:#ebeef2;--dsw-static-neutral-bluish-150:#e9ecf2;--dsw-static-neutral-bluish-200:#e1e5ee;--dsw-static-neutral-bluish-300:#cfd3d6;--dsw-static-neutral-bluish-400:#adb2b8;--dsw-static-neutral-bluish-500:#979da6;--dsw-static-neutral-bluish-50:#f9fafb;--dsw-static-neutral-bluish-600:#81858c;--dsw-static-neutral-bluish-60:#f5f6f7;--dsw-static-neutral-bluish-700:#61666b;--dsw-static-neutral-bluish-750:#43454a;--dsw-static-neutral-bluish-75:#f1f3f5;--dsw-static-neutral-bluish-800:#353638;--dsw-static-neutral-bluish-850:#2c2c2e;--dsw-static-neutral-bluish-875:#232324;--dsw-static-neutral-bluish-900:#1b1b1c;--dsw-static-neutral-bluish-950:#151517;--dsw-static-red-100:#fee2e2;--dsw-static-red-400:#f25a5a;--dsw-static-red-500:#ef4444;--dsw-static-red-50:#fef2f2;--dsw-static-red-600:#ec1313;--dsw-static-red-900:#570c0c}
+body[data-ds-dark-theme]{--dsw-static-amber-100:#fef5e7;--dsw-static-amber-400:#f7ad31;--dsw-static-amber-500:#f59e0b;--dsw-static-amber-600:#dd8629;--dsw-static-amber-900:#27241f;--dsw-static-blue-100:#dbeafe;--dsw-static-blue-300:#93c5fd;--dsw-static-blue-400:#60a5fa;--dsw-static-blue-450:#4d93f8;--dsw-static-blue-500:#3b82f6;--dsw-static-blue-50:#eff6ff;--dsw-static-blue-50p:#eaf3ff;--dsw-static-blue-600:#2563eb;--dsw-static-blue-75:#e5f0ff;--dsw-static-blue-800:#1e40af;--dsw-static-blue-900:#0e3074;--dsw-static-blue-950:#172554;--dsw-static-deepseek-100:#e4edfd;--dsw-static-deepseek-200:#d3e2ff;--dsw-static-deepseek-300:#b7c8fe;--dsw-static-deepseek-400:#679efe;--dsw-static-deepseek-450:#5686fe;--dsw-static-deepseek-500:#4176e6;--dsw-static-deepseek-50:#edf3fe;--dsw-static-deepseek-600:#4868b2;--dsw-static-deepseek-700-delete:#2f4c8f;--dsw-static-deepseek-800:#34415b;--dsw-static-deepseek-900:#283142;--dsw-static-green-100:#e6faed;--dsw-static-green-400:#4ed17e;--dsw-static-green-500:#22c55e;--dsw-static-green-900:#233c2c;--dsw-static-neutral-00:#fff;--dsw-static-neutral-1000:#000;--dsw-static-neutral-100:#f5f5f5;--dsw-static-neutral-150:#ededed;--dsw-static-neutral-200:#e5e5e5;--dsw-static-neutral-250:#dcdcdc;--dsw-static-neutral-300:#d4d4d4;--dsw-static-neutral-400:#a2a4a6;--dsw-static-neutral-500:#7f8287;--dsw-static-neutral-50:#fafafa;--dsw-static-neutral-550:#65676b;--dsw-static-neutral-600:#545557;--dsw-static-neutral-700:#3c3c3d;--dsw-static-neutral-800:#292929;--dsw-static-neutral-850:#212123;--dsw-static-neutral-900:#0f0f0f;--dsw-static-neutral-bluish-00:#fff;--dsw-static-neutral-bluish-1000:#0f1115;--dsw-static-neutral-bluish-100:#ebeef2;--dsw-static-neutral-bluish-150:#e9ecf2;--dsw-static-neutral-bluish-200:#e1e5ee;--dsw-static-neutral-bluish-300:#cfd3d6;--dsw-static-neutral-bluish-400:#adb2b8;--dsw-static-neutral-bluish-500:#979da6;--dsw-static-neutral-bluish-50:#f9fafb;--dsw-static-neutral-bluish-600:#81858c;--dsw-static-neutral-bluish-60:#f9fafb;--dsw-static-neutral-bluish-700:#61666b;--dsw-static-neutral-bluish-750:#43454a;--dsw-static-neutral-bluish-75:#f1f3f5;--dsw-static-neutral-bluish-800:#353638;--dsw-static-neutral-bluish-850:#2c2c2e;--dsw-static-neutral-bluish-875:#232324;--dsw-static-neutral-bluish-900:#1b1b1c;--dsw-static-neutral-bluish-950:#151517;--dsw-static-red-100:#fee2e2;--dsw-static-red-400:#f25a5a;--dsw-static-red-500:#ef4444;--dsw-static-red-50:#fef2f2;--dsw-static-red-600:#ec1313;--dsw-static-red-900:#570c0c}
+body{--dsw-alias-bg-base:var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-layer-1:var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-layer-2:var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-layer-3:var(--dsw-static-neutral-bluish-00);--dsw-alias-bg-mask-1:#0000003d;--dsw-alias-bg-mask-2:#0000001f;--dsw-alias-bg-mask-3:#0000007a;--dsw-alias-bg-mask-photo:#000000e0;--dsw-alias-bg-mask-drop:#ffffffb3;--dsw-alias-bg-module-platform:var(--dsw-static-neutral-bluish-60);--dsw-alias-bg-multi-select:var(--dsw-static-neutral-bluish-60);--dsw-alias-bg-overlay:var(--dsw-static-neutral-bluish-150);--dsw-alias-bg-skeleton:#0000000a;--dsw-alias-border-inverted2:#0000;--dsw-alias-border-inverted:#0000;--dsw-alias-border-l1:#0000000a;--dsw-alias-border-l2-darkmode-thin:#0000001a;--dsw-alias-border-l2:#0000001a;--dsw-alias-border-l3:#0000001f;--dsw-alias-border-l4:#00000029;--dsw-alias-brand-primary-invert:var(--dsw-static-neutral-bluish-1000);--dsw-alias-brand-primary-new-colorprimary-new-color:#4176e6;--dsw-alias-brand-primary:var(--dsw-static-neutral-bluish-1000);--dsw-alias-brand-text:var(--dsw-static-neutral-bluish-1000);--dsw-alias-button-contrast-fill:var(--dsw-static-neutral-bluish-700);--dsw-alias-button-elevated-fill:var(--dsw-static-neutral-bluish-00);--dsw-alias-button-floating-fill:var(--dsw-static-neutral-bluish-00);--dsw-alias-button-floating-hover:var(--dsw-static-neutral-bluish-75);--dsw-alias-button-ghost-active-border:var(--dsw-static-neutral-bluish-500);--dsw-alias-button-ghost-active-fill:var(--dsw-static-neutral-bluish-100);--dsw-alias-button-ghost-active-hover:var(--dsw-static-neutral-bluish-150);--dsw-alias-button-info-fill:var(--dsw-static-deepseek-500);--dsw-alias-button-info-hover:var(--dsw-static-deepseek-400);--dsw-alias-button-primary-dimmed:var(--dsw-static-neutral-bluish-100);--dsw-alias-button-primary-fill:var(--dsw-alias-brand-primary);--dsw-alias-button-primary-hover:var(--dsw-static-neutral-bluish-750);--dsw-alias-button-tool-bar-fill-invisible:#1f1f1f5c;--dsw-alias-button-tool-bar-fill:#54555780;--dsw-alias-button-tool-bar-hover:#54555799;--dsw-alias-interactive-bg-active:#2631481a;--dsw-alias-interactive-bg-hover-accent:#26314824;--dsw-alias-interactive-bg-hover-danger:#ec13130d;--dsw-alias-interactive-bg-hover-solid:var(--dsw-static-neutral-bluish-75);--dsw-alias-interactive-bg-hover:#2631480f;--dsw-alias-label-caption:var(--dsw-static-neutral-bluish-400);--dsw-alias-label-dimmed:var(--dsw-static-neutral-bluish-200);--dsw-alias-label-primary-bluish:var(--dsw-static-blue-900);--dsw-alias-label-primary-dimmed:var(--dsw-static-neutral-bluish-950);--dsw-alias-label-primary-foreground:var(--dsw-static-neutral-bluish-00);--dsw-alias-label-primary-inverted:var(--dsw-static-neutral-bluish-00);--dsw-alias-label-primary:var(--dsw-static-neutral-bluish-1000);--dsw-alias-label-secondary:var(--dsw-static-neutral-bluish-700);--dsw-alias-label-tertiary:var(--dsw-static-neutral-bluish-600);--dsw-alias-markdown-citation:var(--dsw-static-neutral-bluish-100);--dsw-alias-markdown-code-block-banner:var(--dsw-static-neutral-bluish-50);--dsw-alias-markdown-code-block:var(--dsw-static-neutral-bluish-50);--dsw-alias-markdown-code-segment-selected:var(--dsw-static-neutral-bluish-00);--dsw-alias-markdown-code-segment-unselected:var(--dsw-static-neutral-bluish-75);--dsw-alias-markdown-inline-code:var(--dsw-static-neutral-bluish-100);--dsw-alias-markdown-placeholder:var(--dsw-static-neutral-bluish-60);--dsw-alias-markdown-tag:var(--dsw-static-neutral-bluish-75);--dsw-alias-scrollbar-bg-l1:var(--dsw-static-neutral-200);--dsw-alias-scrollbar-bg-l2:var(--dsw-static-neutral-200);--dsw-alias-scrollbar-hover-l1:var(--dsw-static-neutral-300);--dsw-alias-scrollbar-hover-l2:var(--dsw-static-neutral-300);--dsw-alias-state-business-primary:var(--dsw-static-deepseek-500);--dsw-alias-state-business-tertiary:var(--dsw-static-deepseek-100);--dsw-alias-state-error-primary:var(--dsw-static-red-600);--dsw-alias-state-error-secondary:var(--dsw-static-red-400);--dsw-alias-state-success-primary:var(--dsw-static-green-500);--dsw-alias-state-success-secondary:var(--dsw-static-green-400);--dsw-alias-state-success-tertiary:var(--dsw-static-green-100);--dsw-alias-state-warn-label:var(--dsw-static-amber-600);--dsw-alias-state-warn-primary:var(--dsw-static-amber-500);--dsw-alias-state-warn-secondary:var(--dsw-static-amber-400);--dsw-alias-state-warn-tertiary:var(--dsw-static-amber-100);--dsw-alias-toast-bg:var(--dsw-static-neutral-bluish-800);--dsw-alias-tooltip-bg:var(--dsw-static-neutral-bluish-850);--dsw-specific-bubble-highlight:var(--dsw-static-deepseek-200);--dsw-specific-bubble:var(--dsw-static-deepseek-50);--dsw-specific-input-major:var(--dsw-static-neutral-bluish-00);--dsw-specific-login-input:var(--dsw-static-neutral-bluish-50);--dsw-specific-menu:var(--dsw-alias-bg-layer-3);--dsw-specific-selector:var(--dsw-static-neutral-bluish-60);--dsw-specific-sidebar-fill:var(--dsw-static-neutral-bluish-50);--dsw-specific-sidebar-nav-item-active-accent:var(--dsw-static-deepseek-100);--dsw-specific-sidebar-nav-item-active:var(--dsw-static-neutral-bluish-100);--dsw-specific-sidebar-nav-item-hover:var(--dsw-static-neutral-bluish-75);--dsw-specific-tip:var(--dsw-static-neutral-bluish-60)}
+body[data-ds-dark-theme]{--dsw-alias-bg-base:var(--dsw-static-neutral-bluish-950);--dsw-alias-bg-layer-1:var(--dsw-static-neutral-bluish-875);--dsw-alias-bg-layer-2:var(--dsw-static-neutral-bluish-850);--dsw-alias-bg-layer-3:var(--dsw-static-neutral-bluish-800);--dsw-alias-bg-mask-1:#00000080;--dsw-alias-bg-mask-2:#0003;--dsw-alias-bg-mask-3:#0000007a;--dsw-alias-bg-mask-photo:#000000e0;--dsw-alias-bg-mask-drop:#272730b3;--dsw-alias-bg-module-platform:var(--dsw-static-neutral-bluish-800);--dsw-alias-bg-multi-select:var(--dsw-static-neutral-850);--dsw-alias-bg-overlay:var(--dsw-static-neutral-bluish-700);--dsw-alias-bg-skeleton:#ffffff14;--dsw-alias-border-inverted2:#ffffff14;--dsw-alias-border-inverted:#ffffff0f;--dsw-alias-border-l1:#ffffff0f;--dsw-alias-border-l2-darkmode-thin:#ffffff0f;--dsw-alias-border-l2:#ffffff1f;--dsw-alias-border-l3:#ffffff29;--dsw-alias-border-l4:#fff3;--dsw-alias-brand-primary-invert:var(--dsw-static-neutral-bluish-50);--dsw-alias-brand-primary-new-colorprimary-new-color:var(--dsw-static-deepseek-450);--dsw-alias-brand-primary:var(--dsw-static-neutral-bluish-50);--dsw-alias-brand-text:var(--dsw-static-neutral-bluish-50);--dsw-alias-button-contrast-fill:var(--dsw-static-neutral-bluish-50);--dsw-alias-button-elevated-fill:var(--dsw-static-neutral-bluish-750);--dsw-alias-button-floating-fill:var(--dsw-static-neutral-bluish-850);--dsw-alias-button-floating-hover:var(--dsw-static-neutral-bluish-800);--dsw-alias-button-ghost-active-border:var(--dsw-static-neutral-bluish-600);--dsw-alias-button-ghost-active-fill:var(--dsw-static-neutral-bluish-750);--dsw-alias-button-ghost-active-hover:var(--dsw-static-neutral-bluish-700);--dsw-alias-button-info-fill:var(--dsw-static-deepseek-400);--dsw-alias-button-info-hover:var(--dsw-static-deepseek-500);--dsw-alias-button-primary-dimmed:var(--dsw-static-neutral-bluish-750);--dsw-alias-button-primary-fill:var(--dsw-alias-brand-primary);--dsw-alias-button-primary-hover:var(--dsw-static-neutral-bluish-100);--dsw-alias-button-tool-bar-fill-invisible:#1f1f1f5c;--dsw-alias-button-tool-bar-fill:#54555780;--dsw-alias-button-tool-bar-hover:#54555799;--dsw-alias-interactive-bg-active:#ffffff24;--dsw-alias-interactive-bg-hover-accent:#ffffff3d;--dsw-alias-interactive-bg-hover-danger:#f25a5a26;--dsw-alias-interactive-bg-hover-solid:var(--dsw-static-neutral-bluish-800);--dsw-alias-interactive-bg-hover:#ffffff14;--dsw-alias-label-caption:var(--dsw-static-neutral-bluish-600);--dsw-alias-label-dimmed:var(--dsw-static-neutral-bluish-750);--dsw-alias-label-primary-bluish:var(--dsw-static-neutral-bluish-50);--dsw-alias-label-primary-dimmed:var(--dsw-static-neutral-bluish-100);--dsw-alias-label-primary-foreground:var(--dsw-static-neutral-bluish-1000);--dsw-alias-label-primary-inverted:var(--dsw-static-neutral-bluish-800);--dsw-alias-label-primary:var(--dsw-static-neutral-bluish-50);--dsw-alias-label-secondary:var(--dsw-static-neutral-bluish-300);--dsw-alias-label-tertiary:var(--dsw-static-neutral-bluish-400);--dsw-alias-markdown-citation:var(--dsw-static-neutral-bluish-800);--dsw-alias-markdown-code-block-banner:var(--dsw-static-neutral-bluish-850);--dsw-alias-markdown-code-block:var(--dsw-static-neutral-bluish-900);--dsw-alias-markdown-code-segment-selected:var(--dsw-static-neutral-bluish-800);--dsw-alias-markdown-code-segment-unselected:var(--dsw-static-neutral-bluish-900);--dsw-alias-markdown-inline-code:var(--dsw-static-neutral-bluish-850);--dsw-alias-markdown-placeholder:var(--dsw-static-neutral-bluish-850);--dsw-alias-markdown-tag:var(--dsw-static-neutral-bluish-850);--dsw-alias-scrollbar-bg-l1:var(--dsw-static-neutral-700);--dsw-alias-scrollbar-bg-l2:var(--dsw-static-neutral-600);--dsw-alias-scrollbar-hover-l1:var(--dsw-static-neutral-600);--dsw-alias-scrollbar-hover-l2:var(--dsw-static-neutral-550);--dsw-alias-state-business-primary:var(--dsw-static-deepseek-400);--dsw-alias-state-business-tertiary:var(--dsw-static-deepseek-800);--dsw-alias-state-error-primary:var(--dsw-static-red-400);--dsw-alias-state-error-secondary:var(--dsw-static-red-400);--dsw-alias-state-success-primary:var(--dsw-static-green-500);--dsw-alias-state-success-secondary:var(--dsw-static-green-400);--dsw-alias-state-success-tertiary:var(--dsw-static-green-900);--dsw-alias-state-warn-label:var(--dsw-static-amber-600);--dsw-alias-state-warn-primary:var(--dsw-static-amber-500);--dsw-alias-state-warn-secondary:var(--dsw-static-amber-400);--dsw-alias-state-warn-tertiary:var(--dsw-static-amber-900);--dsw-alias-toast-bg:var(--dsw-static-neutral-bluish-750);--dsw-alias-tooltip-bg:var(--dsw-static-neutral-bluish-750);--dsw-specific-bubble-highlight:var(--dsw-static-neutral-bluish-750);--dsw-specific-bubble:var(--dsw-static-neutral-bluish-850);--dsw-specific-input-major:var(--dsw-static-neutral-bluish-850);--dsw-specific-login-input:var(--dsw-static-neutral-bluish-900);--dsw-specific-menu:var(--dsw-alias-bg-layer-3);--dsw-specific-selector:var(--dsw-static-neutral-bluish-800);--dsw-specific-sidebar-fill:var(--dsw-static-neutral-bluish-900);--dsw-specific-sidebar-nav-item-active-accent:var(--dsw-static-neutral-bluish-800);--dsw-specific-sidebar-nav-item-active:var(--dsw-static-neutral-bluish-750);--dsw-specific-sidebar-nav-item-hover:var(--dsw-static-neutral-bluish-850);--dsw-specific-tip:var(--dsw-static-neutral-bluish-800)}
+:root{
+  --dsw-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --ds-font-family-code:"SF Mono","JetBrains Mono","Fira Code",Consolas,"Liberation Mono",Menlo,Courier,"PingFang SC","Microsoft YaHei";
+  --ds-ease-in-out:cubic-bezier(.4,0,.2,1);
+  --ds-transition-duration:.2s;
+}
+body{
+  --dsw-shadow-lv1:0 2px 4px 0 #0000000d;
+  --dsw-shadow-lv2:0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a;
+  --dsw-shadow-lv3:0 0 1px 0 #0003, 0 0 4px 0 #00000005, 0 12px 32px 0 #00000014;
+  --dsw-mask-blur:blur(2px);
+}
+
+    html, body { height: 100%; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--dsw-font-family);
+      background: var(--dsw-alias-bg-base);
+      color: var(--dsw-alias-label-primary);
+      font-size: 14px;
+      line-height: 22px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+
+    .proto-bar {
+      position: relative;
+      z-index: 2000;
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--dsw-static-blue-900);
+      color: var(--dsw-static-blue-100);
+      font-size: 12px;
+      line-height: 18px;
+      white-space: nowrap;
+      overflow-x: auto;
+    }
+    .proto-bar strong { color: #fff; font-weight: 600; }
+    .proto-bar .grow { margin-left: auto; }
+    .chip-btn {
+      border: 1px solid rgba(255, 255, 255, .22);
+      background: transparent;
+      color: var(--dsw-static-blue-100);
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .chip-btn:hover {
+      background: rgba(255, 255, 255, .12);
+      color: #fff;
+    }
+    .chip-btn[aria-pressed="true"] {
+      background: var(--dsw-static-deepseek-500);
+      border-color: var(--dsw-static-deepseek-500);
+      color: #fff;
+    }
+    .tag { font-size: 10px; padding: 0 5px; border-radius: 4px; line-height: 16px; }
+    .tag-mvp { background: rgba(255, 255, 255, .22); color: #fff; }
+
+    .stage { flex: 1; min-height: 0; position: relative; }
+    .scene { display: none; height: 100%; position: relative; }
+    .scene.is-on { display: block; }
+
+    /* App chrome — ui-layout + ui-sidebar */
+    .app {
+      height: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      background: var(--dsw-alias-bg-base);
+    }
+    .rail {
+      background: var(--dsw-specific-sidebar-fill);
+      border-right: 1px solid var(--dsw-alias-border-l1);
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-row {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 8px 0 8px 4px;
+      margin-bottom: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .new-session {
+      box-sizing: border-box;
+      height: 38px;
+      margin: 0 2px 8px;
+      padding: 8px 16px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-button-elevated-fill);
+      border-radius: 12px;
+      color: var(--dsw-alias-label-primary);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .new-session:hover { background: var(--dsw-alias-button-floating-hover); }
+    .ws-label {
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 12px;
+      padding: 8px 8px 4px;
+    }
+    .ws-item {
+      height: 36px;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      padding: 0 10px;
+      text-align: left;
+      color: var(--dsw-alias-label-primary);
+      width: 100%;
+    }
+    .ws-item:hover { background: var(--dsw-specific-sidebar-nav-item-hover); }
+    .rail-foot { margin-top: auto; }
+    .set-trigger {
+      width: calc(100% + 4px);
+      height: 42px;
+      margin: 4px -2px;
+      padding: 0 10px 0 8px;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--dsw-alias-label-primary);
+      font-size: 14px;
+    }
+    .set-trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .set-trigger.is-on { background: var(--dsw-specific-sidebar-nav-item-active); }
+
+    .center { display: flex; flex-direction: column; min-width: 0; background: var(--dsw-alias-bg-base); }
+    .chat-head {
+      height: 48px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+    }
+    .chat-head .side { margin-left: auto; color: var(--dsw-alias-label-tertiary); font-weight: 400; font-size: 13px; }
+    .thread { flex: 1; overflow: auto; padding: 24px 0 12px; }
+    .thread-inner { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    .user-row { display: flex; justify-content: flex-end; margin: 8px 0; }
+    .bubble {
+      background: var(--dsw-specific-bubble);
+      max-width: min(525px, 82%);
+      border-radius: 22px;
+      padding: 10px 16px;
+      font-size: 16px;
+      line-height: 24px;
+    }
+    .bot { color: var(--dsw-alias-label-primary); font-size: 16px; line-height: 24px; margin: 12px 0; max-width: 640px; }
+    .bot code {
+      font-family: var(--ds-font-family-code);
+      font-size: 13px;
+      background: var(--dsw-alias-markdown-inline-code);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+    .hit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 8px 0 12px;
+      max-width: 520px;
+    }
+    .hit-card {
+      cursor: pointer;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: var(--dsw-alias-bg-layer-1);
+    }
+    .hit-card:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .hit-card .src {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 12px;
+      line-height: 18px;
+      margin-bottom: 2px;
+    }
+    .hit-card .src .path {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .hit-card .quote {
+      font-size: 13px;
+      line-height: 20px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .n-tag {
+      font-family: var(--ds-font-family-code);
+      font-size: 12px;
+      line-height: 18px;
+      background: var(--dsw-alias-markdown-citation);
+      padding: 0 5px;
+      border-radius: 4px;
+      flex: none;
+    }
+
+    .composer-wrap { padding: 0 24px 16px; display: flex; flex-direction: column; align-items: center; }
+    .composer {
+      width: 100%;
+      max-width: 720px;
+      border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+      background: var(--dsw-specific-input-major);
+      box-shadow: var(--dsw-shadow-lv2);
+      border-radius: 22px;
+      padding: 10px 12px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+    .composer input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      line-height: 24px;
+      padding: 6px 4px;
+    }
+    .composer input:focus { outline: none; }
+    .icon-round {
+      width: 28px; height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 50%;
+      color: var(--dsw-alias-label-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-round:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .send {
+      height: 32px;
+      padding: 0 12px;
+      border: none;
+      border-radius: 16px;
+      background: var(--dsw-alias-button-primary-fill);
+      color: var(--dsw-alias-label-primary-foreground);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .send:hover { background: var(--dsw-alias-button-primary-hover); }
+    .slash {
+      display: none;
+      position: absolute;
+      bottom: 56px;
+      left: 12px;
+      width: 280px;
+      background: var(--dsw-specific-menu);
+      border: 1px solid var(--dsw-alias-border-l2);
+      box-shadow: var(--dsw-shadow-lv2);
+      border-radius: 12px;
+      padding: 6px;
+      z-index: 5;
+    }
+    .slash.is-on { display: block; }
+    .slash button {
+      display: block; width: 100%; text-align: left;
+      border: none; background: transparent;
+      padding: 8px 10px; border-radius: 8px;
+    }
+    .slash button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .slash small { color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+    .dock { width: 100%; max-width: 720px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 20px; padding: 4px 8px 0; }
+    .chip {
+      height: 28px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-specific-selector);
+      border-radius: 14px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .later-banner {
+      background: var(--dsw-alias-state-warn-tertiary);
+      color: var(--dsw-alias-state-warn-label);
+      font-size: 12px;
+      padding: 8px 16px;
+    }
+
+    /* Settings overlay — SettingsRoot.module.css */
+    .overlay {
+      z-index: 1000;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .mask {
+      position: absolute;
+      inset: 0;
+      background: var(--dsw-alias-bg-mask-1);
+      backdrop-filter: var(--dsw-mask-blur);
+    }
+    .panel {
+      z-index: 1;
+      position: relative;
+      width: min(960px, calc(100% - 48px));
+      height: min(720px, calc(100% - 48px));
+      background: var(--dsw-alias-bg-layer-2);
+      box-shadow: var(--dsw-shadow-lv3);
+      border-radius: 24px;
+      display: flex;
+      overflow: hidden;
+    }
+    .nav {
+      width: 188px;
+      flex: none;
+      padding: 22px 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .nav-title { padding: 0 12px; font-size: 16px; font-weight: 500; line-height: 24px; }
+    .nav-list { display: flex; flex-direction: column; gap: 4px; }
+    .nav-cell {
+      height: 40px;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      padding: 9px 16px 9px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 22px;
+      text-align: left;
+      color: var(--dsw-alias-label-primary);
+    }
+    .nav-cell:hover { background: var(--dsw-specific-sidebar-nav-item-hover); }
+    .nav-cell.active { background: var(--dsw-specific-sidebar-nav-item-active); }
+    .nav-cell svg { flex: none; width: 16px; height: 16px; }
+    .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .header {
+      height: 54px;
+      padding: 20px 14px 8px 10px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+    }
+    .close {
+      width: 28px; height: 28px;
+      border: none; background: transparent;
+      border-radius: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--dsw-alias-label-primary);
+    }
+    .close:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .options {
+      flex: 1;
+      min-height: 0;
+      padding: 0 20px 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Plugins section chrome */
+    .section {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--dsw-alias-label-primary);
+    }
+    .heading { margin: 0; font-size: 18px; font-weight: 600; flex: none; }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: none;
+      min-height: 36px;
+    }
+    .section-head .heading { flex: 1; }
+    .tabs {
+      display: flex;
+      gap: 16px;
+      margin: 0;
+      align-items: center;
+      flex: none;
+      border: 0;
+    }
+    .tab {
+      border: 0; background: transparent;
+      color: var(--dsw-alias-label-tertiary);
+      padding: 6px 1px 8px;
+      font-size: 13px;
+      line-height: 20px;
+      position: relative;
+      box-shadow: inset 0 -2px 0 transparent;
+    }
+    .tab:hover, .tab[aria-selected="true"] { color: var(--dsw-alias-label-primary); }
+    .tab[aria-selected="true"] {
+      box-shadow: inset 0 -2px 0 var(--dsw-alias-label-primary);
+    }
+    .intro { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 13px; }
+    .panel-body { display: none; padding-top: 4px; min-height: 0; }
+    .panel-body.is-on { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    #panel-prefs.is-on, #panel-about.is-on { display: block; overflow: auto; }
+
+    #cab-col {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #cab-col .cabinet { flex: 1; width: 100%; min-height: 0; }
+    .lib {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      gap: 0;
+    }
+    .lib.is-empty { grid-template-columns: 1fr; }
+    .lib.is-empty .cabinet {
+      border-radius: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+    .lib-list, .cabinet {
+      border: 1px solid var(--dsw-alias-border-l2);
+      padding: 8px;
+      min-height: 0;
+    }
+    .lib-list {
+      border-radius: 12px 0 0 12px;
+      border-right: none;
+    }
+    .cabinet { border-radius: 0 12px 12px 0; }
+    .lib-list { display: flex; flex-direction: column; padding: 4px 4px 6px; height: 100%; }
+    .base-row {
+      display: block;
+      position: relative;
+      border-radius: 12px;
+    }
+    .base-row:hover {
+      background: var(--dsw-specific-sidebar-nav-item-hover);
+    }
+    .base-row:has(.is-on),
+    .base-row:has(.is-on):hover {
+      background: var(--dsw-specific-sidebar-nav-item-active);
+    }
+    .base-row:hover .icon-del { opacity: 1; }
+    .base-row .icon-del {
+      position: absolute;
+      right: 6px;
+      top: 8px;
+      margin: 0;
+    }
+    .base {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      border-radius: 12px;
+      padding: 8px 28px 8px 10px;
+    }
+    .base .id { font-weight: 500; font-size: 14px; }
+    .base .meta { display: block; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+    .ghost {
+      margin-top: auto;
+      border: 1px dashed var(--dsw-alias-border-l2);
+      background: transparent;
+      border-radius: 12px;
+      padding: 8px;
+      color: var(--dsw-alias-label-secondary);
+    }
+    .ghost:hover { background: var(--dsw-alias-interactive-bg-hover); }
+
+    .cabinet { display: flex; flex-direction: column; padding: 0; min-height: 0; height: 100%; }
+    .cab-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px 6px; }
+    .cab-head > div:first-child { min-width: 0; flex: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .cab-head h2 { margin: 0; font-size: 15px; font-weight: 500; line-height: 22px; }
+    .cab-head .sub { margin: 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); font-weight: 400; }
+    .cab-head .actions { margin-left: auto; display: flex; gap: 8px; flex: none; }
+    .btn {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-button-elevated-fill);
+      border-radius: 16px;
+      font-size: 13px;
+    }
+    .btn:hover { background: var(--dsw-alias-button-floating-hover); }
+    .btn-primary {
+      background: var(--dsw-alias-button-primary-fill);
+      border-color: transparent;
+      color: var(--dsw-alias-label-primary-foreground);
+    }
+    .btn-primary:hover { background: var(--dsw-alias-button-primary-hover); }
+    .door {
+      margin: 0 10px 4px;
+      padding: 0;
+      background: var(--dsw-alias-bg-module-platform);
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 18px;
+      flex: none;
+    }
+    .door > summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 6px 10px;
+      color: var(--dsw-alias-label-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .door > summary::-webkit-details-marker,
+    .tree summary::-webkit-details-marker { display: none; }
+    .door > summary::marker,
+    .tree summary::marker { content: none; }
+    .door > summary:hover { color: var(--dsw-alias-label-primary); }
+    .door[open] > summary { white-space: normal; align-items: flex-start; }
+    .door .door-body { padding: 0 10px 8px; font-size: 12px; line-height: 18px; }
+    .door .aliases { margin-top: 4px; color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+    .twist {
+      width: 14px;
+      height: 14px;
+      flex: none;
+      color: var(--dsw-alias-label-tertiary);
+      transition: transform .15s var(--ds-ease-in-out);
+    }
+    details[open] > summary > .twist { transform: rotate(90deg); }
+    .tree { flex: 1; min-height: 0; overflow: auto; padding: 2px 8px 8px; }
+    .tree details { padding-left: 10px; }
+    .tree > details { padding-left: 0; }
+    .tree summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tree summary:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .tree summary > span { flex: 1; min-width: 0; }
+    .file {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto 22px;
+      gap: 12px;
+      padding: 3px 8px 3px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      align-items: center;
+    }
+    .file > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .file .sz, .file .when { color: var(--dsw-alias-label-tertiary); }
+    .icon-del {
+      width: 22px; height: 22px;
+      border: none; background: transparent;
+      border-radius: 6px;
+      padding: 0;
+      color: var(--dsw-alias-label-tertiary);
+      display: inline-flex; align-items: center; justify-content: center;
+      opacity: 0;
+      flex: none;
+    }
+    .file:hover .icon-del, .tree summary:hover .icon-del, .icon-del:focus { opacity: 1; }
+    .icon-del:hover { color: var(--dsw-alias-state-error-primary); background: var(--dsw-alias-interactive-bg-hover-danger); }
+    .inbox { padding: 4px 8px; color: var(--dsw-alias-label-tertiary); font-size: 13px; }
+    .footbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 6px 12px;
+      border-top: 1px solid var(--dsw-alias-border-l2);
+      font-size: 12px;
+      color: var(--dsw-alias-label-tertiary);
+      flex: none;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dsw-alias-state-warn-primary); display: inline-block; margin-right: 6px; }
+    .search-box { margin-left: auto; display: flex; align-items: center; flex: none; }
+    .search-box .icon-round { width: 32px; height: 32px; color: var(--dsw-alias-label-secondary); }
+    dialog.search-dlg { width: min(480px, 92vw); }
+    .search-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .search-row input {
+      flex: 1;
+      height: 32px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-bg-layer-1);
+      border-radius: 16px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+    .search-hits {
+      max-height: 280px;
+      overflow: auto;
+      background: var(--dsw-alias-markdown-code-block);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      line-height: 20px;
+      color: var(--dsw-alias-label-tertiary);
+    }
+    .search-hits[hidden] { display: none !important; }
+    .search-hits mark { background: var(--dsw-specific-bubble-highlight); color: inherit; }
+    .empty {
+      text-align: center;
+      padding: 24px 16px;
+      max-width: 36ch;
+      color: var(--dsw-alias-label-tertiary);
+    }
+    .empty h2 { margin: 0; color: var(--dsw-alias-label-primary); font-size: 16px; font-weight: 500; }
+    .empty p { margin: 8px 0 0; font-size: 13px; line-height: 20px; }
+    .empty .btn { margin-top: 16px; }
+    .about { max-width: 62ch; padding-bottom: 24px; }
+    .about h3 {
+      margin: 20px 0 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--dsw-alias-label-primary);
+    }
+    .about h3:first-child { margin-top: 8px; }
+    .about p, .about li {
+      margin: 0 0 8px;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--dsw-alias-label-secondary);
+    }
+    .about ol, .about ul { margin: 0 0 8px; padding-left: 1.2em; }
+    .about code {
+      font-family: var(--ds-font-family-code);
+      font-size: 12px;
+      background: var(--dsw-alias-markdown-inline-code);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+    .demo {
+      background: var(--dsw-alias-bg-module-platform);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 0 0 8px;
+    }
+    .demo .q { font-size: 13px; font-weight: 500; line-height: 20px; }
+    .demo .a { margin: 4px 0 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-tertiary); }
+
+    /* Preference rows — lumina / general */
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--dsw-alias-border-l2);
+    }
+    .row:not(:has(+ .row)) { border-bottom: none; }
+    .row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-right: 24px; }
+    .row-title { font-size: 14px; font-weight: 400; line-height: 22px; }
+    .prefs-section {
+      margin: 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--dsw-alias-border-l2);
+    }
+    .row-desc { margin: 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-tertiary); }
+    .selector {
+      height: 36px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 18px;
+      background: var(--dsw-alias-bg-module-platform);
+      font-size: 14px;
+    }
+    .selector:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .parser {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+    .parser + .parser { border-top: 1px solid var(--dsw-alias-border-l2); }
+    .parser.is-off { color: var(--dsw-alias-label-tertiary); pointer-events: none; }
+    .note { margin: 16px 0 0; font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-tertiary); max-width: 62ch; }
+
+    dialog {
+      border: none;
+      border-radius: 16px;
+      padding: 0;
+      background: var(--dsw-alias-bg-layer-2);
+      color: var(--dsw-alias-label-primary);
+      width: min(400px, 92vw);
+      box-shadow: var(--dsw-shadow-lv3);
+    }
+    dialog::backdrop { background: var(--dsw-alias-bg-mask-1); backdrop-filter: var(--dsw-mask-blur); }
+    .dlg { padding: 20px 20px 16px; position: relative; }
+    .dlg h2 { margin: 0 0 14px; font-size: 16px; font-weight: 500; padding-right: 28px; }
+    .dlg-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 13px; margin-bottom: 4px; }
+    .field input, .field textarea, pre.md-edit {
+      width: 100%;
+      border: 1px solid var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-bg-layer-1);
+      border-radius: 12px;
+      padding: 8px 12px;
+    }
+    .field input[readonly] {
+      color: var(--dsw-alias-label-tertiary);
+      background: var(--dsw-alias-bg-module-platform);
+    }
+    .field textarea { min-height: 72px; resize: vertical; }
+    .source-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .source-row .btn { flex: none; }
+    .checks { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 12px; font-size: 13px; }
+    .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; }
+    .dlg-foot .btn-danger { margin-right: auto; }
+    .btn-danger {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--dsw-alias-state-error-secondary);
+      background: transparent;
+      border-radius: 16px;
+      font-size: 13px;
+      color: var(--dsw-alias-state-error-primary);
+    }
+    .btn-danger:hover { background: var(--dsw-alias-interactive-bg-hover-danger); }
+    dialog.preview-dlg { width: min(640px, 92vw); }
+    textarea.md-edit, pre.md-edit {
+      min-height: min(48vh, 380px);
+      max-height: min(60vh, 520px);
+      font-family: var(--ds-font-family-code);
+      font-size: 13px;
+      line-height: 22px;
+    }
+    pre.md-edit {
+      margin: 0;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      outline: none;
+      box-sizing: border-box;
+    }
+    pre.md-edit mark {
+      background: var(--dsw-specific-bubble-highlight);
+      color: inherit;
+      border-radius: 2px;
+    }
+    pre.md-edit.is-ro {
+      background: var(--dsw-alias-bg-module-platform);
+      cursor: default;
+    }
+    [hidden] { display: none !important; }
+    .ico {
+      width: 16px;
+      height: 16px;
+      flex: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型</strong>
+    <span>token 来自本机 DSH 0.1.1-rc.2</span>
+    <button class="chip-btn" data-scene="chat" type="button">对话命中卡</button>
+    <button class="chip-btn" data-scene="b" data-empty="false" type="button" aria-pressed="true">设置工作台</button>
+    <button class="chip-btn" data-scene="b" data-empty="true" type="button">设置工作台空库状态</button>
+    <span class="grow"></span>
+    <button class="chip-btn" id="themeToggle" type="button">深色</button>
+  </div>
+
+  <div class="stage">
+    <section class="scene" id="scene-a">
+      <div class="app" style="position:relative">
+        <aside class="rail">
+          <div class="brand-row">DSH</div>
+          <button class="new-session" type="button">新会话</button>
+          <button class="set-trigger is-on" type="button">知识库</button>
+          <div class="ws-label">工作区</div>
+          <button class="ws-item" type="button">~/proj</button>
+          <div class="rail-foot"><button class="set-trigger" type="button">设置</button></div>
+        </aside>
+        <div class="center" style="padding:20px 24px">
+          <h1 class="heading" style="margin-bottom:12px">知识库</h1>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene is-on" id="scene-b">
+      <div class="app">
+        <aside class="rail">
+          <div class="brand-row">DSH</div>
+          <button class="new-session" type="button">新会话</button>
+          <div class="ws-label">工作区</div>
+          <button class="ws-item" type="button">~/proj</button>
+          <div class="rail-foot"><button class="set-trigger is-on" type="button">设置</button></div>
+        </aside>
+        <div class="center">
+          <div class="thread"><div class="thread-inner"><div class="user-row"><div class="bubble">对话还在背后，不抢会话。</div></div></div></div>
+        </div>
+      </div>
+      <div class="overlay" role="dialog" aria-label="设置">
+        <div class="mask"></div>
+        <div class="panel">
+          <nav class="nav">
+            <div class="nav-title">设置</div>
+            <div class="nav-list">
+              <button class="nav-cell" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v3l2 1.2"/></svg>
+                通用设置
+              </button>
+              <button class="nav-cell active" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4.5h10M3 8h10M3 11.5h7"/></svg>
+                知识库
+              </button>
+              <button class="nav-cell" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="10" height="10" rx="2"/><path d="M6 8h4"/></svg>
+                模型
+              </button>
+              <button class="nav-cell" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 2.8v2.2M8 11v2.2M2.8 8h2.2M11 8h2.2"/></svg>
+                Agent 预设
+              </button>
+              <button class="nav-cell" type="button">
+                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 5h8v7H4zM6 5V4h4v1"/></svg>
+                插件
+              </button>
+            </div>
+          </nav>
+          <div class="content">
+            <div class="header"><button class="close" type="button" aria-label="关闭">
+              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+            </button></div>
+            <div class="options">
+              <div class="section">
+                <div class="section-head">
+                  <h1 class="heading">知识库</h1>
+                  <div class="tabs" role="tablist">
+                    <button class="tab" role="tab" aria-selected="true" data-tab="lib" type="button">库</button>
+                    <button class="tab" role="tab" aria-selected="false" data-tab="prefs" type="button">偏好</button>
+                    <button class="tab" role="tab" aria-selected="false" data-tab="about" type="button">关于</button>
+                  </div>
+                </div>
+
+                <div class="panel-body is-on" id="panel-lib">
+                  <div class="lib" id="filled">
+                    <div class="lib-list">
+                      <div class="base-row" data-base="work">
+                        <button class="base is-on" id="base-work" type="button">
+                          <span class="id">工作库</span>
+                        </button>
+                      </div>
+                      <div class="base-row" data-base="life">
+                        <button class="base" id="base-life" type="button">
+                          <span class="id">生活库</span>
+                        </button>
+                      </div>
+                      <button class="ghost" type="button" id="openCreate">+ 新建知识库</button>
+                    </div>
+                    <div id="cab-col">
+                      <div class="cabinet" id="cab-work">
+                        <div class="cab-head">
+                          <div>
+                            <h2>工作库</h2>
+                            <p class="sub"><code>bases/work/</code> · 18 篇 · 上次用</p>
+                          </div>
+                          <div class="actions">
+                            <button class="btn" type="button" data-edit="work">编辑</button>
+                            <button class="btn btn-primary" type="button" id="openImport">导入</button>
+                          </div>
+                        </div>
+                        <details class="door">
+                          <summary>
+                            <svg class="twist" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4.25 2.83v8.34c0 .49.59.74.94.39l4.17-4.17a.55.55 0 0 0 0-.78L5.19 2.44c-.35-.35-.94-.1-.94.39Z" fill="currentColor"/></svg>
+                            公司合同、会议纪要、供应商往来。
+                          </summary>
+                          <div class="door-body">
+                            问条款、纪要、交付时使用本库。个人账单、家庭、医疗不要放。
+                            <div class="aliases">别名：工作, 公司, 合同库</div>
+                          </div>
+                        </details>
+                        <div class="tree">
+                          <details open>
+                            <summary>合同</summary>
+                            <details open>
+                              <summary>2024</summary>
+                              <div class="file"><span>供应商.md</span><span class="sz">12 KB</span><span class="when">今天</span></div>
+                              <div class="file"><span>框架协议.md</span><span class="sz">8 KB</span><span class="when">昨天</span></div>
+                              <div class="file"><span>保密协议.md</span><span class="sz">6 KB</span><span class="when">上周</span></div>
+                              <div class="file"><span>采购订单.md</span><span class="sz">5 KB</span><span class="when">上周</span></div>
+                              <div class="file"><span>变更单.md</span><span class="sz">3 KB</span><span class="when">2 月</span></div>
+                            </details>
+                            <details>
+                              <summary>2025</summary>
+                              <div class="file"><span>续约草案.md</span><span class="sz">9 KB</span><span class="when">3 月</span></div>
+                              <div class="file"><span>补充协议.md</span><span class="sz">4 KB</span><span class="when">3 月</span></div>
+                            </details>
+                          </details>
+                          <details open>
+                            <summary>会议</summary>
+                            <details>
+                              <summary>2024</summary>
+                              <div class="file"><span>2024-03.md</span><span class="sz">4 KB</span><span class="when">3 月</span></div>
+                              <div class="file"><span>2024-06.md</span><span class="sz">5 KB</span><span class="when">6 月</span></div>
+                              <div class="file"><span>2024-11.md</span><span class="sz">3 KB</span><span class="when">11 月</span></div>
+                            </details>
+                            <details open>
+                              <summary>2025</summary>
+                              <div class="file"><span>2025-01-周会.md</span><span class="sz">2 KB</span><span class="when">1 月</span></div>
+                              <div class="file"><span>2025-02-评审.md</span><span class="sz">7 KB</span><span class="when">2 月</span></div>
+                            </details>
+                          </details>
+                          <details>
+                            <summary>供应商</summary>
+                            <div class="file"><span>甲乙往来.md</span><span class="sz">11 KB</span><span class="when">上周</span></div>
+                            <div class="file"><span>验收纪要.md</span><span class="sz">5 KB</span><span class="when">昨天</span></div>
+                          </details>
+                          <div class="inbox">_inbox (2)</div>
+                        </div>
+                        <div class="footbar">
+                          <span><span class="dot"></span>任务 解析中 1 · 失败 0</span>
+                          <div class="search-box">
+                            <button class="icon-round" type="button" data-search="work" aria-label="搜索" title="搜索">
+                              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2L13 13"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="cabinet" id="cab-life" hidden>
+                        <div class="cab-head">
+                          <div>
+                            <h2>生活库</h2>
+                            <p class="sub"><code>bases/life/</code> · 3 篇</p>
+                          </div>
+                          <div class="actions">
+                            <button class="btn" type="button" data-edit="life">编辑</button>
+                            <button class="btn btn-primary" type="button" id="openImportLife">导入</button>
+                          </div>
+                        </div>
+                        <details class="door">
+                          <summary>
+                            <svg class="twist" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4.25 2.83v8.34c0 .49.59.74.94.39l4.17-4.17a.55.55 0 0 0 0-.78L5.19 2.44c-.35-.35-.94-.1-.94.39Z" fill="currentColor"/></svg>
+                            个人账单、家庭、医疗。
+                          </summary>
+                          <div class="door-body">
+                            问报销、体检时使用本库。公司合同不要放。
+                            <div class="aliases">别名：生活, 家里</div>
+                          </div>
+                        </details>
+                        <div class="tree">
+                          <details open>
+                            <summary>账单</summary>
+                            <div class="file"><span>2024水电.md</span><span class="sz">2 KB</span><span class="when">上周</span></div>
+                          </details>
+                        </div>
+                        <div class="footbar">
+                          <span>任务 无</span>
+                          <div class="search-box">
+                            <button class="icon-round" type="button" data-search="life" aria-label="搜索" title="搜索">
+                              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2L13 13"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lib is-empty" id="empty" hidden>
+                    <div class="cabinet">
+                      <div class="empty">
+                        <h2>先新建知识库</h2>
+                        <p>写上标题和描述，说明这个库装什么。然后才能导入文件、在对话里提问。导入不会自动建库。</p>
+                        <button class="btn btn-primary" type="button" id="openCreateEmpty">新建知识库</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel-body" id="panel-prefs">
+                  <div class="row">
+                    <div class="row-text">
+                      <div class="row-title">默认打开的库</div>
+                      <p class="row-desc">未指定知识库时，工作台搜索使用这个默认库。</p>
+                    </div>
+                    <select class="selector"><option>work（工作库）</option><option>life（生活库）</option></select>
+                  </div>
+                  <div class="row">
+                    <div class="row-text">
+                      <div class="row-title">单文件上限</div>
+                      <p class="row-desc">超过则该文件导入失败。</p>
+                    </div>
+                    <input class="selector" value="5 MB" style="width:120px" />
+                  </div>
+                  <div class="row">
+                    <div class="row-text">
+                      <div class="row-title">单库文字上限</div>
+                      <p class="row-desc">超过拒绝本批导入。</p>
+                    </div>
+                    <input class="selector" value="10 GB" style="width:120px" />
+                  </div>
+                  <p class="row-title prefs-section">解析器</p>
+                  <div class="parser"><input type="checkbox" checked disabled /><span>Markdown / txt</span></div>
+                  <div class="parser is-off"><input type="checkbox" disabled /><span>PDF</span></div>
+                  <div class="parser is-off"><input type="checkbox" disabled /><span>DOCX</span></div>
+                  <div class="parser is-off"><input type="checkbox" disabled /><span>自定义命令</span></div>
+                </div>
+
+                <div class="panel-body" id="panel-about">
+                  <div class="about">
+                    <h3>这是什么</h3>
+                    <p>知识库把你指定的 md/txt 复制到本机文件夹里。提问时一次只查一个库。导入不会自动建库，也不会把文件默默塞进某个库。</p>
+
+                    <h3>1. 建库</h3>
+                    <p>「库」页左下角或空态里的「新建知识库」。填 id、标题、描述、别名。id 创建后不能改。</p>
+                    <p>描述和别名是给选库用的：对话里没说查哪个库时，会拿各库的描述、别名对问题。两个都像就会问你，不会把所有库扫一遍。</p>
+                    <div class="demo">
+                      <div class="q">工作库 · 别名：工作, 公司, 合同库</div>
+                      <p class="a">描述：公司合同、会议纪要、供应商往来。问条款、纪要、交付时用本库。个人账单、家庭、医疗不要放。</p>
+                    </div>
+
+                    <h3>2. 导入</h3>
+                    <ol>
+                      <li>先选好左侧的库。</li>
+                      <li>点右侧「导入」。</li>
+                      <li>点「选择文件夹」或「选择文件」。也可以粘贴本机路径。</li>
+                      <li>指定类目，例如 <code>合同/2024</code>。没有这个文件夹会创建；不会因此新建一个知识库。</li>
+                      <li>开始导入。内容相同的文件会跳过，不会覆盖。目前只导入 md/txt。</li>
+                    </ol>
+                    <p>斜杠命令 <code>/kb ingest</code> 与按钮同一套字段。</p>
+
+                    <h3>3. 用自然语言问</h3>
+                    <p>在对话里直接问，不必先打开设置。点名库更准；没点名就靠描述选库。</p>
+                    <div class="demo">
+                      <div class="q">去年那个供应商合同的违约条款写了什么？</div>
+                      <p class="a">对上工作库 → 命中卡。点卡只读预览原文，该句高亮。</p>
+                    </div>
+                    <div class="demo">
+                      <div class="q">上个月水电费多少？</div>
+                      <p class="a">对上生活库。工作库里的合同不会被打开。</p>
+                    </div>
+                    <div class="demo">
+                      <div class="q">用 work 库查 termination 条款</div>
+                      <p class="a">已经点名库，不再猜。只搜 work。</p>
+                    </div>
+                    <p>命中卡可叠多条。点任意一条看原文。答案里的 [1] 对应卡片编号。库里没有的内容不会编出来。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="scene-chat">
+      <div class="app">
+        <aside class="rail">
+          <div class="brand-row">DSH</div>
+          <button class="new-session" type="button">新会话</button>
+          <div class="ws-label">工作区</div>
+          <button class="ws-item" type="button">~/proj</button>
+          <div class="rail-foot"><button class="set-trigger" type="button" id="openSettingsFromChat">设置</button></div>
+        </aside>
+        <div class="center">
+          <div class="chat-head">供应商合同违约条款 <span class="side">聊天 | 轨迹</span></div>
+          <div class="thread">
+            <div class="thread-inner">
+              <div class="user-row"><div class="bubble">去年那个供应商合同的违约条款写了什么？</div></div>
+              <div class="bot">模型先 <code>kb_list_bases</code> 再一次 <code>kb_search</code>（aliases：违约、解约、termination、违约金）。</div>
+              <div class="hit-list">
+                <article class="hit-card" data-file="供应商.md" data-path="work / 合同/2024 / 供应商.md" data-hl="若乙方违约，甲方可解除合同并收取违约金。">
+                  <div class="src"><span class="n-tag">[1]</span><span class="path">work / 合同/2024 / 供应商.md</span></div>
+                  <div class="quote">若乙方违约，甲方可解除合同并收取违约金。</div>
+                </article>
+                <article class="hit-card" data-file="供应商.md" data-path="work / 合同/2024 / 供应商.md" data-hl="`termination` 条款见附件三。">
+                  <div class="src"><span class="n-tag">[2]</span><span class="path">work / 合同/2024 / 供应商.md</span></div>
+                  <div class="quote">termination 条款见附件三。</div>
+                </article>
+                <article class="hit-card" data-file="框架协议.md" data-path="work / 合同/2024 / 框架协议.md" data-hl="双方就年度采购达成框架约定，具体订单另行签署。">
+                  <div class="src"><span class="n-tag">[3]</span><span class="path">work / 合同/2024 / 框架协议.md</span></div>
+                  <div class="quote">双方就年度采购达成框架约定，具体订单另行签署。</div>
+                </article>
+              </div>
+              <div class="bot">根据 [1]：乙方违约时甲方可解除合同并收取违约金。termination 条款见附件三。</div>
+            </div>
+          </div>
+          <div class="composer-wrap">
+            <div class="composer">
+              <div class="slash" id="slash">
+                <button type="button"><strong>/kb ingest</strong><br /><small>把本机路径导入已有知识库</small></button>
+                <button type="button"><strong>/kb status</strong><br /><small>导入任务进行到哪</small></button>
+              </div>
+              <button class="icon-round" type="button" id="plus">+</button>
+              <input placeholder="继续问，或输入 /kb" />
+              <span style="color:var(--dsw-alias-label-tertiary);font-size:13px">模型</span>
+              <button class="send" type="button">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="scene-later">
+      <div class="app">
+        <aside class="rail">
+          <div class="brand-row">DSH</div>
+          <button class="new-session" type="button">新会话</button>
+          <div class="rail-foot"><button class="set-trigger" type="button">设置</button></div>
+        </aside>
+        <div class="center">
+          <div class="later-banner">后做：顶栏跳转、输入框内当前库芯片、输入框下只读状态。导入和建库仍在设置 → 知识库。</div>
+          <div class="chat-head">供应商合同违约条款 <button class="chip" type="button" id="headerKb">知识库</button> <span class="side">聊天 | 轨迹</span></div>
+          <div class="thread"><div class="thread-inner"><div class="user-row"><div class="bubble">消息流不变。</div></div></div></div>
+          <div class="composer-wrap">
+            <div class="dock">输入框上面 conversation.input.dock（已有 Todo / 排队。不当常驻导入条）</div>
+            <div class="composer">
+              <button class="icon-round" type="button">+</button>
+              <span style="font-size:12px;color:var(--dsw-alias-label-tertiary)">权限 计划</span>
+              <button class="chip" type="button">库:work ▾</button>
+              <input placeholder="问：去年那个供应商合同违约条款写了什么？" />
+              <button class="send" type="button">发送</button>
+            </div>
+            <div class="dock">当前库 work · 12 篇</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="dlgCreate">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2>新建知识库</h2>
+      <div class="field">
+        <label for="cid">id *</label>
+        <input id="cid" placeholder="work" required />
+        <p class="help">创建后不能改。路径会是 bases/&lt;id&gt;/</p>
+      </div>
+      <div class="field">
+        <label>标题 *</label>
+        <input placeholder="工作库" />
+      </div>
+      <div class="field">
+        <label>描述 *</label>
+        <textarea placeholder="这个知识库装什么、什么问题该查它、什么不要放"></textarea>
+      </div>
+      <div class="field">
+        <label>别名</label>
+        <input placeholder="工作, 公司" />
+      </div>
+      <div class="dlg-foot">
+        <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+        <button class="btn btn-primary" value="ok" type="submit">创建</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgEdit">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2>编辑知识库</h2>
+      <div class="field">
+        <label for="eid">id</label>
+        <input id="eid" readonly />
+        <p class="help">创建后不能改</p>
+      </div>
+      <div class="field">
+        <label for="etitle">标题 *</label>
+        <input id="etitle" required />
+      </div>
+      <div class="field">
+        <label for="edesc">描述 *</label>
+        <textarea id="edesc" required></textarea>
+      </div>
+      <div class="field">
+        <label for="ealias">别名</label>
+        <input id="ealias" />
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-danger" type="button" id="deleteBase">删除</button>
+        <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+        <button class="btn btn-primary" value="ok" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgImport">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2>导入到 <span id="importTarget">work</span></h2>
+      <div class="field">
+        <label>源</label>
+        <div class="source-row">
+          <button class="btn" type="button" id="pickDir">选择文件夹</button>
+          <button class="btn" type="button" id="pickFile">选择文件</button>
+        </div>
+        <input id="srcPath" placeholder="或填写本机路径，如 ~/notes/合同" />
+        <p class="help">点按钮选本机目录或文件，不必手填。也可以粘贴路径。目前 md/txt。</p>
+        <input id="dirPick" type="file" webkitdirectory hidden />
+        <input id="filePick" type="file" accept=".md,.txt,.markdown,text/markdown,text/plain" hidden />
+      </div>
+      <div class="field">
+        <label>类目</label>
+        <input list="cats" value="合同/2024" />
+        <datalist id="cats">
+          <option value="合同/2024"></option>
+          <option value="会议"></option>
+          <option value="_inbox"></option>
+        </datalist>
+        <p class="help">可输入新路径，不会因此新建知识库。</p>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" checked /> 目录不存在则创建</label>
+        <label><input type="checkbox" /> 保留源目录结构</label>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+        <button class="btn btn-primary" value="ok" type="submit">开始导入</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgSearch" class="search-dlg">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2>搜索 <span id="searchTarget">work</span></h2>
+      <div class="search-row">
+        <input id="tryq" placeholder="关键词" value="违约条款" />
+        <button class="icon-round" type="button" id="runSearch" aria-label="搜索">
+          <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2L13 13"/></svg>
+        </button>
+      </div>
+      <div class="search-hits" id="searchHits" hidden>
+        合同/2024/供应商.md:3 若乙方<mark>违约</mark>，甲方可解除合同并收取<mark>违约</mark>金。<br />
+        合同/2024/供应商.md:4 termination 条款见附件三。
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgPreview" class="preview-dlg">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2 id="previewTitle">供应商.md</h2>
+      <p class="field help" id="previewPath" style="margin-top:-8px;margin-bottom:12px;font-size:12px;color:var(--dsw-alias-label-tertiary)">合同/2024/供应商.md</p>
+      <div class="field">
+        <pre id="previewBody" class="md-edit" contenteditable="true" spellcheck="false"></pre>
+      </div>
+      <div class="dlg-foot" id="previewFoot">
+        <button class="btn btn-danger" type="button" id="previewDelete">删除</button>
+        <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+        <button class="btn btn-primary" type="button" id="previewSave">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgConfirm">
+    <form class="dlg" method="dialog">
+      <button class="close dlg-x" value="cancel" type="submit" formnovalidate aria-label="关闭">
+        <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+      <h2 id="confirmTitle">删除</h2>
+      <p class="intro" id="confirmText" style="margin-bottom:16px"></p>
+      <div class="dlg-foot">
+        <button class="btn" value="cancel" type="submit" formnovalidate>取消</button>
+        <button class="btn btn-danger" value="ok" type="submit" id="confirmOk">删除</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+    function showScene(id, empty) {
+      $$(".scene").forEach((el) => el.classList.toggle("is-on", el.id === "scene-" + id));
+      $$("[data-scene]").forEach((b) => {
+        const same = b.dataset.scene === id;
+        const wantEmpty = empty === true;
+        const on = same && (b.dataset.empty === undefined || (b.dataset.empty === "true") === wantEmpty);
+        b.setAttribute("aria-pressed", String(on));
+      });
+      if (id === "b") {
+        $("#filled").hidden = !!empty;
+        $("#empty").hidden = !empty;
+        showPanel("lib");
+      }
+    }
+    $$("[data-scene]").forEach((b) => {
+      b.addEventListener("click", () => showScene(b.dataset.scene, b.dataset.empty === "true"));
+    });
+
+    function showPanel(id) {
+      $$(".tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === id)));
+      $$(".panel-body").forEach((p) => p.classList.toggle("is-on", p.id === "panel-" + id));
+    }
+    $$(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => showPanel(tab.dataset.tab));
+    });
+
+    function selectBase(id) {
+      $$(".base").forEach((b) => b.classList.toggle("is-on", b.id === "base-" + id));
+      const cabWork = $("#cab-work");
+      const cabLife = $("#cab-life");
+      if (cabWork) cabWork.hidden = id !== "work";
+      if (cabLife) cabLife.hidden = id !== "life";
+      $("#importTarget").textContent = id;
+    }
+    const bw = $("#base-work");
+    const bl = $("#base-life");
+    if (bw) bw.addEventListener("click", () => selectBase("work"));
+    if (bl) bl.addEventListener("click", () => selectBase("life"));
+
+    const dlgC = $("#dlgCreate");
+    const dlgE = $("#dlgEdit");
+    const dlgI = $("#dlgImport");
+    const bases = {
+      work: {
+        id: "work",
+        title: "工作库",
+        desc: "公司合同、会议纪要、供应商往来。问条款、纪要、交付时使用本库。个人账单、家庭、医疗不要放。",
+        aliases: "工作, 公司, 合同库"
+      },
+      life: {
+        id: "life",
+        title: "生活库",
+        desc: "个人账单、家庭、医疗。问报销、体检时使用本库。公司合同不要放。",
+        aliases: "生活, 家里"
+      }
+    };
+    function openEdit(id) {
+      const b = bases[id];
+      $("#eid").value = b.id;
+      $("#etitle").value = b.title;
+      $("#edesc").value = b.desc;
+      $("#ealias").value = b.aliases;
+      dlgE.showModal();
+    }
+    $$("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => openEdit(btn.dataset.edit));
+    });
+    ["openCreate", "openCreateEmpty"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", () => dlgC.showModal());
+    });
+    $("#openImport").addEventListener("click", () => { $("#importTarget").textContent = "work"; dlgI.showModal(); });
+    $("#openImportLife").addEventListener("click", () => { $("#importTarget").textContent = "life"; dlgI.showModal(); });
+    $("#pickDir").addEventListener("click", () => $("#dirPick").click());
+    $("#pickFile").addEventListener("click", () => $("#filePick").click());
+    $("#dirPick").addEventListener("change", () => {
+      const f = $("#dirPick").files[0];
+      if (!f) return;
+      const folder = (f.webkitRelativePath || f.name).split("/")[0];
+      $("#srcPath").value = folder + "/";
+    });
+    $("#filePick").addEventListener("change", () => {
+      const f = $("#filePick").files[0];
+      if (!f) return;
+      $("#srcPath").value = f.name;
+    });
+
+    const dlgS = $("#dlgSearch");
+    const dlgP = $("#dlgPreview");
+    const dlgQ = $("#dlgConfirm");
+    const trashSvg = '<svg class="ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 4.5h9M6.2 4.5V3.2h3.6v1.3M5.2 4.5l.6 8.2h4.4l.6-8.2M6.8 7v4M9.2 7v4"/></svg>';
+    let pendingDel = null;
+    let previewFile = null;
+
+    const sources = {
+      "供应商.md": "# 供应商合同\n\n若乙方违约，甲方可解除合同并收取违约金。\n\n`termination` 条款见附件三。\n",
+      "框架协议.md": "# 框架协议\n\n双方就年度采购达成框架约定，具体订单另行签署。\n",
+      "2024水电.md": "# 2024 水电\n\n上半年电费合计见附表。\n"
+    };
+
+    function askDelete(kind, name, el) {
+      pendingDel = { kind, name, el };
+      $("#confirmTitle").textContent = "删除";
+      $("#confirmText").textContent =
+        kind === "base" ? "删除知识库「" + name + "」及其中文件？" :
+        kind === "cat" ? "删除类目「" + name + "」及其中文件？" :
+        "删除「" + name + "」？";
+      dlgQ.showModal();
+    }
+    dlgQ.addEventListener("close", () => {
+      if (dlgQ.returnValue !== "ok" || !pendingDel) return;
+      const { kind, el, name } = pendingDel;
+      pendingDel = null;
+      if (kind === "file" && el) el.remove();
+      if (kind === "cat" && el) el.remove();
+      if (kind === "base") {
+        const row = document.querySelector('[data-base="' + name + '"]');
+        if (row) row.remove();
+        const cab = document.getElementById("cab-" + name);
+        if (cab) cab.remove();
+        const next = document.querySelector(".base");
+        if (next) next.click();
+        else {
+          $("#filled").hidden = true;
+          $("#empty").hidden = false;
+        }
+      }
+      dlgP.close();
+      dlgE.close();
+    });
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function setPreviewText(text, highlight) {
+      const el = $("#previewBody");
+      if (!highlight) {
+        el.textContent = text;
+        return;
+      }
+      const i = text.indexOf(highlight);
+      if (i < 0) {
+        el.textContent = text;
+        return;
+      }
+      el.innerHTML =
+        escapeHtml(text.slice(0, i)) +
+        "<mark id=\"previewHit\">" + escapeHtml(text.slice(i, i + highlight.length)) + "</mark>" +
+        escapeHtml(text.slice(i + highlight.length));
+    }
+    function getPreviewText() {
+      return $("#previewBody").innerText.replace(/\u00a0/g, " ");
+    }
+    function openPreview(name, path, fileEl, highlight, editable) {
+      previewFile = { name, el: fileEl || null };
+      $("#previewTitle").textContent = name;
+      $("#previewPath").textContent = path || name;
+      setPreviewText(sources[name] || "", highlight);
+      const canEdit = editable !== false;
+      const body = $("#previewBody");
+      body.contentEditable = canEdit ? "true" : "false";
+      body.classList.toggle("is-ro", !canEdit);
+      $("#previewFoot").hidden = !canEdit;
+      dlgP.showModal();
+      const hit = $("#previewHit");
+      if (hit) hit.scrollIntoView({ block: "center" });
+      else if (canEdit) body.focus();
+    }
+    $("#previewDelete").addEventListener("click", () => {
+      if (!previewFile) return;
+      askDelete("file", previewFile.name, previewFile.el);
+    });
+    $("#previewSave").addEventListener("click", () => {
+      if (!previewFile) return;
+      sources[previewFile.name] = getPreviewText();
+      dlgP.close();
+    });
+    $("#deleteBase").addEventListener("click", () => {
+      askDelete("base", $("#eid").value);
+    });
+
+    function attachDel(host, kind, name, removeEl) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "icon-del";
+      btn.setAttribute("aria-label", "删除");
+      btn.innerHTML = trashSvg;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        askDelete(kind, name, removeEl);
+      });
+      host.appendChild(btn);
+    }
+    const twistSvg = '<svg class="twist" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M4.25 2.82782L4.25 11.1722C4.25 11.6622 4.84243 11.9076 5.18891 11.5611L9.36109 7.38891C9.57588 7.17412 9.57588 6.82588 9.36109 6.61109L5.18891 2.43891C4.84243 2.09243 4.25 2.33782 4.25 2.82782Z" fill="currentColor"/></svg>';
+    $$(".tree details > summary").forEach((sum) => {
+      const label = document.createElement("span");
+      label.textContent = sum.textContent.trim();
+      sum.textContent = "";
+      sum.insertAdjacentHTML("afterbegin", twistSvg);
+      sum.appendChild(label);
+      attachDel(sum, "cat", label.textContent, sum.parentElement);
+    });
+    function filePath(el) {
+      const parts = [el.querySelector("span").textContent.trim()];
+      let n = el.parentElement;
+      while (n && !n.classList.contains("tree")) {
+        if (n.tagName === "DETAILS") {
+          const lab = n.querySelector(":scope > summary > span");
+          if (lab) parts.unshift(lab.textContent.trim());
+        }
+        n = n.parentElement;
+      }
+      return parts.join(" / ");
+    }
+    $$(".base-row").forEach((row) => {
+      attachDel(row, "base", row.dataset.base, row);
+    });
+    $$(".file").forEach((el) => {
+      const name = el.querySelector("span").textContent.trim();
+      el.addEventListener("click", () => openPreview(name, filePath(el), el));
+      attachDel(el, "file", name, el);
+    });
+    function openSearch(id) {
+      $("#searchTarget").textContent = id;
+      $("#searchHits").hidden = true;
+      dlgS.showModal();
+      $("#tryq").focus();
+      $("#tryq").select();
+    }
+    $$("[data-search]").forEach((btn) => {
+      btn.addEventListener("click", () => openSearch(btn.dataset.search));
+    });
+    function runSearch() {
+      $("#searchHits").hidden = false;
+    }
+    $("#runSearch").addEventListener("click", runSearch);
+    $("#tryq").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        runSearch();
+      }
+    });
+
+    function toWorkbench() {
+      showScene("b", false);
+    }
+    $$(".hit-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const name = card.dataset.file;
+        let fileEl = null;
+        $$(".file").forEach((el) => {
+          if (el.querySelector("span") && el.querySelector("span").textContent.trim() === name) fileEl = el;
+        });
+        openPreview(name, card.dataset.path, fileEl, card.dataset.hl, false);
+      });
+    });
+    $("#headerKb").addEventListener("click", toWorkbench);
+    $("#openSettingsFromChat").addEventListener("click", toWorkbench);
+    $("#plus").addEventListener("click", () => $("#slash").classList.toggle("is-on"));
+
+    $("#themeToggle").addEventListener("click", () => {
+      const dark = document.body.toggleAttribute("data-ds-dark-theme");
+      $("#themeToggle").textContent = dark ? "浅色" : "深色";
+    });
+  </script>
+</body>
+</html>
