@@ -2,6 +2,8 @@ import { createSettingsSection } from './settings/Section.tsx'
 import { KbSearchView } from './toolview/HitCard.tsx'
 import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL } from '../identity.ts'
 import type { Remote, SessionsHandle, WorkspacesHandle } from './bridge.ts'
+import { installZhiyuanNavIcon } from './nav-icon.ts'
+import { disposeSettingsStyles } from './settings/styles.ts'
 
 export const name = PACKAGE_NAME
 export const inject = ['slots', 'remote', 'remote.commands', 'sessions', 'workspaces']
@@ -32,7 +34,16 @@ export function apply(ctx: {
     registrant: PACKAGE_NAME,
   }, KbSearchView))
 
-  ctx.effect?.(() => () => {
-    console.log('[zhiyuan] client unloaded')
-  })
+  if (typeof ctx.effect === 'function') {
+    ctx.effect(() => {
+      const offNav = installZhiyuanNavIcon(() => SECTION_LABEL)
+      return () => {
+        offNav()
+        disposeSettingsStyles()
+        console.log('[zhiyuan] client unloaded')
+      }
+    })
+  } else {
+    installZhiyuanNavIcon(() => SECTION_LABEL)
+  }
 }

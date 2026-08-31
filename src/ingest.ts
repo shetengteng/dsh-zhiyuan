@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto'
 import { createReadStream, existsSync } from 'node:fs'
 import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
-import { TEXT_EXTS } from './identity.ts'
+import { CATEGORY_WARN_DEPTH, TEXT_EXTS } from './identity.ts'
 import { requireBase } from './bases.ts'
-import { readCatalog } from './catalog.ts'
+import { readCatalog, rememberLastDest } from './catalog.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, expandUserPath, resolveDest } from './paths.ts'
 import type { IngestFileResult, IngestInput, IngestResult } from './types.ts'
 import { KbError } from './types.ts'
@@ -109,6 +109,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
     failed: 0,
     createdDirs: [],
     files: [],
+    warnings: dest.deep ? [`类目深度超过 ${CATEGORY_WARN_DEPTH}，仍已写入`] : [],
   }
 
   let added = 0
@@ -136,6 +137,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
     }
   }
   result.createdDirs = [...createdDirs].filter(Boolean)
+  await rememberLastDest(dataRoot, input.baseId, dest.relative)
   return result
 }
 

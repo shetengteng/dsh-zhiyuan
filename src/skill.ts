@@ -44,10 +44,10 @@ export const ZHIYUAN_PROMPT_SECTION = {
   ].join(''),
 }
 
-export function registerZhiyuanSkill(ctx: { skills?: { register: (skill: unknown) => () => void } }): void {
-  ctx.skills?.register(ZHIYUAN_SKILL)
+export function registerZhiyuanSkill(ctx: { skills?: { register: (skill: unknown) => () => void } }): () => void {
+  return ctx.skills?.register(ZHIYUAN_SKILL) ?? (() => undefined)
 }
 
-export function registerZhiyuanPrompt(ctx: { systemPrompt?: { section: (section: unknown) => () => void } }): void {
-  ctx.systemPrompt?.section(ZHIYUAN_PROMPT_SECTION)
+export function registerZhiyuanPrompt(ctx: { systemPrompt?: { section: (section: unknown) => () => void } }): () => void {
+  return ctx.systemPrompt?.section(ZHIYUAN_PROMPT_SECTION) ?? (() => undefined)
 }

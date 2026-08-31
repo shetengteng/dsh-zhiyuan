@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { assertNoSymlinkEscape, resolveDest, setDataRootForTest } from '../src/paths.ts'
+import { assertInside, assertNoSymlinkEscape, expandUserPath, resolveDest, resolveEntry, setDataRootForTest } from '../src/paths.ts'
 import { KbError } from '../src/types.ts'
 
 const root = '/tmp/zhiyuan-path-root'
@@ -36,6 +36,21 @@ test('解析后仍在 bases/<id>/ 下', () => {
   const dest = resolveDest(root, 'work', '合同/2024')
   assert.ok(dest.absolute.includes(`${join('bases', 'work')}`))
   assert.ok(!dest.absolute.includes('life'))
+})
+
+test('expandUserPath 展开 ~；resolveEntry 与 resolveDest 同根', () => {
+  const home = process.env.HOME || ''
+  if (home) {
+    assert.equal(expandUserPath('~'), home)
+    assert.ok(expandUserPath('~/docs/a.md').startsWith(home))
+  }
+  assert.equal(expandUserPath('/tmp/a.md'), '/tmp/a.md')
+  assert.equal(resolveEntry(root, 'work', '合同/2024/a.md'), resolveDest(root, 'work', '合同/2024/a.md').absolute)
+})
+
+test('assertInside 拒绝逃出', () => {
+  assert.throws(() => assertInside('/tmp/root', '/tmp/other'), KbError)
+  assert.equal(assertInside('/tmp/root', '/tmp/root/a'), '/tmp/root/a')
 })
 
 test('符号链接逃出被拒绝', async () => {

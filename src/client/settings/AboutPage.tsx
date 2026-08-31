@@ -9,21 +9,35 @@ export function AboutPage() {
       <p>「库」页左下角或空态里的「新建知识库」。填 id、标题、描述、别名。id 创建后不能改。</p>
       <p>描述和别名是给选库用的：对话里没说查哪个库时，会拿各库的描述、别名对问题。两个都像就会问你，不会把所有库扫一遍。</p>
       <div className="zy-demo">
-        <div>工作库 · 别名：工作, 公司</div>
-        <p>描述：公司合同、会议纪要、供应商往来。问条款、纪要、交付时用本库。个人账单、家庭、医疗不要放。</p>
+        <div className="zy-q">工作库 · 别名：工作, 公司, 合同库</div>
+        <p className="zy-a">描述：公司合同、会议纪要、供应商往来。问条款、纪要、交付时用本库。个人账单、家庭、医疗不要放。</p>
       </div>
 
       <h3>2. 导入</h3>
       <ol>
         <li>先选好左侧的库。</li>
-        <li>点右侧「导入」，填本机路径。</li>
+        <li>点右侧「导入」。</li>
+        <li>点「选择文件夹」或「选择文件」。也可以粘贴本机路径。</li>
         <li>指定类目，例如 <code>合同/2024</code>。没有这个文件夹会创建；不会因此新建一个知识库。</li>
-        <li>内容相同的文件会跳过。目前只导入 md/txt。</li>
+        <li>开始导入。内容相同的文件会跳过，不会覆盖。目前只导入 md/txt。</li>
       </ol>
-      <p>斜杠命令 <code>/kb ingest &lt;path&gt; --base &lt;id&gt; --to &lt;类目&gt;</code> 与按钮同一套字段。</p>
+      <p>斜杠命令 <code>/kb ingest</code> 与按钮同一套字段。</p>
 
       <h3>3. 用自然语言问</h3>
-      <p>在对话里直接问。点名库更准；没点名就靠描述选库。命中必须带文件和片段 [n]。库里没有的内容不会编出来。</p>
+      <p>在对话里直接问，不必先打开设置。点名库更准；没点名就靠描述选库。</p>
+      <div className="zy-demo">
+        <div className="zy-q">去年那个供应商合同的违约条款写了什么？</div>
+        <p className="zy-a">对上工作库 → 命中卡。点卡只读预览原文，该句高亮。</p>
+      </div>
+      <div className="zy-demo">
+        <div className="zy-q">上个月水电费多少？</div>
+        <p className="zy-a">对上生活库。工作库里的合同不会被打开。</p>
+      </div>
+      <div className="zy-demo">
+        <div className="zy-q">用 work 库查 termination 条款</div>
+        <p className="zy-a">已经点名库，不再猜。只搜 work。</p>
+      </div>
+      <p>命中卡可叠多条。点任意一条看原文。答案里的 [1] 对应卡片编号。库里没有的内容不会编出来。</p>
     </div>
   )
 }

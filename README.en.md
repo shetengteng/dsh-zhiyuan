@@ -96,7 +96,7 @@ Slash commands (same fields as the tools):
 /kb status
 ```
 
-If `--to` is omitted, ask once, or reuse the last category for that base. Do not add `/kb search` as the primary path.
+If `--to` is omitted, reuse that base’s last category; otherwise the command errors and asks for `--to` or `--root`. Do not add `/kb search` as the primary path.
 
 ## Tools for the AI
 

@@ -35,6 +35,10 @@ export function setDataRootForTest(root: string | undefined): void {
   cachedRoot = root
 }
 
+export function clearDataRootCache(): void {
+  cachedRoot = undefined
+}
+
 export function basesRoot(dataRoot: string): string {
   return join(dataRoot, 'bases')
 }

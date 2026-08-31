@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { createBase } from '../src/bases.ts'
+import { lastDestCategory } from '../src/catalog.ts'
+import { resolveIngestTo } from '../src/commands.ts'
 import { ingest } from '../src/ingest.ts'
 import { KbError } from '../src/types.ts'
 
@@ -25,6 +27,7 @@ test('指定 合同/2024 不存在则创建再拷；源文件不被改', async (
   assert.equal(await readFile(dest, 'utf8'), body)
   assert.equal(await readFile(src, 'utf8'), body)
   assert.ok(result.createdDirs.includes('合同/2024'))
+  assert.equal(await lastDestCategory(root, 'work'), '合同/2024')
   await rm(root, { recursive: true, force: true })
 })
 
@@ -52,6 +55,42 @@ test('同指纹 skip；同名不同指纹改名', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+test('preserveTree 保留相对目录；createMissing=false 类目不存在则整批失败', async () => {
+  const root = await ready()
+  const dir = join(root, 'src', '子')
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, 'a.md'), 'tree')
+  const kept = await ingest(root, {
+    baseId: 'work',
+    sourcePath: join(root, 'src'),
+    destCategory: '归档',
+    preserveTree: true,
+  })
+  assert.ok(kept.copied.includes('归档/子/a.md'))
+  await assert.rejects(() => ingest(root, {
+    baseId: 'work',
+    sourcePath: join(dir, 'a.md'),
+    destCategory: '尚不存在',
+    createMissing: false,
+  }), /类目不存在/)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('非白名单后缀失败；源路径不存在失败', async () => {
+  const root = await ready()
+  const pdf = join(root, 'a.pdf')
+  await writeFile(pdf, 'x')
+  const denied = await ingest(root, { baseId: 'work', sourcePath: pdf, destCategory: '' })
+  assert.equal(denied.failed, 1)
+  assert.equal(denied.files[0].reason?.includes('.md'), true)
+  await assert.rejects(() => ingest(root, {
+    baseId: 'work',
+    sourcePath: join(root, 'missing.md'),
+    destCategory: '',
+  }), /源路径不存在/)
+  await rm(root, { recursive: true, force: true })
+})
+
 test('单文件超过 5MB 该文件失败', async () => {
   const root = await ready()
   const big = join(root, 'big.md')
@@ -65,5 +104,27 @@ test('单文件超过 5MB 该文件失败', async () => {
   const result = await ingest(root, { baseId: 'work', sourcePath: dir, destCategory: '' })
   assert.equal(result.failed, 1)
   assert.equal(result.copied.includes('ok.md'), true)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('类目深度超过 4 仍写入并提示', async () => {
+  const root = await ready()
+  const src = join(root, 'a.md')
+  await writeFile(src, 'x')
+  const result = await ingest(root, { baseId: 'work', sourcePath: src, destCategory: 'a/b/c/d/e' })
+  assert.ok(result.warnings.some((item) => item.includes('深度')))
+  assert.equal(existsSync(join(root, 'bases', 'work', 'a', 'b', 'c', 'd', 'e', 'a.md')), true)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('缺 --to 复用上次类目；没有上次则报错', async () => {
+  const root = await ready()
+  const src = join(root, 'a.md')
+  await writeFile(src, 'x')
+  await assert.rejects(() => resolveIngestTo(root, 'work', undefined, false), KbError)
+  await ingest(root, { baseId: 'work', sourcePath: src, destCategory: '合同/2024' })
+  assert.equal(await resolveIngestTo(root, 'work', undefined, false), '合同/2024')
+  assert.equal(await resolveIngestTo(root, 'work', undefined, true), '')
+  assert.equal(await resolveIngestTo(root, 'work', '会议', false), '会议')
   await rm(root, { recursive: true, force: true })
 })

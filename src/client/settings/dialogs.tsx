@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Button, Input, Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
 
 export { Modal }
@@ -29,6 +29,10 @@ function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormEl
   return new FormData(event.currentTarget)
 }
 
+function Foot(props: { children: unknown }) {
+  return <div className="zy-footbar">{props.children}</div>
+}
+
 export function CreateDialog(props: {
   error: string
   busy: boolean
@@ -43,10 +47,10 @@ export function CreateDialog(props: {
       title="新建知识库"
       className="zy-modal-form"
       footer={(
-        <>
-          <Button variant="ghost" type="button" onClick={props.onClose}>取消</Button>
-          <Button variant="primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>创建</Button>
-        </>
+        <Foot>
+          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
+          <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>创建</button>
+        </Foot>
       )}
     >
       <form
@@ -62,16 +66,16 @@ export function CreateDialog(props: {
         }}
       >
         <Field label="id *" help="创建后不能改。路径会是 bases/<id>/">
-          <Input className="zy-input" name="id" placeholder="work" required />
+          <input className="zy-box" name="id" placeholder="work" required />
         </Field>
         <Field label="标题 *">
-          <Input className="zy-input" name="title" placeholder="工作库" required />
+          <input className="zy-box" name="title" placeholder="工作库" required />
         </Field>
         <Field label="描述 *">
           <textarea className="zy-area" name="description" required placeholder="这个知识库装什么、什么问题该查它、什么不要放" />
         </Field>
         <Field label="别名">
-          <Input className="zy-input" name="aliases" placeholder="工作, 公司" />
+          <input className="zy-box" name="aliases" placeholder="工作, 公司" />
         </Field>
         <Note text={props.error} />
       </form>
@@ -95,11 +99,11 @@ export function EditDialog(props: {
       title="编辑知识库"
       className="zy-modal-form"
       footer={(
-        <>
-          <Button variant="ghost" type="button" onClick={props.onDelete}>删除</Button>
-          <Button variant="ghost" type="button" onClick={props.onClose}>取消</Button>
-          <Button variant="primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</Button>
-        </>
+        <Foot>
+          <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>
+          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
+          <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</button>
+        </Foot>
       )}
     >
       <form
@@ -114,16 +118,16 @@ export function EditDialog(props: {
         }}
       >
         <Field label="id" help="创建后不能改">
-          <Input className="zy-input" value={props.base.id} readOnly />
+          <input className="zy-box" value={props.base.id} readOnly />
         </Field>
         <Field label="标题 *">
-          <Input className="zy-input" name="title" defaultValue={props.base.title} required />
+          <input className="zy-box" name="title" defaultValue={props.base.title} required />
         </Field>
         <Field label="描述 *">
           <textarea className="zy-area" name="description" defaultValue={props.base.description} required />
         </Field>
         <Field label="别名">
-          <Input className="zy-input" name="aliases" defaultValue={props.base.aliases.join(', ')} />
+          <input className="zy-box" name="aliases" defaultValue={props.base.aliases.join(', ')} />
         </Field>
         <Note text={props.error} />
       </form>
@@ -145,10 +149,10 @@ export function ConfirmDialog(props: {
       className="zy-modal-form"
       description={props.message}
       footer={(
-        <>
-          <Button variant="ghost" type="button" onClick={props.onClose}>取消</Button>
-          <Button variant="primary" type="button" disabled={props.busy} onClick={props.onConfirm}>删除</Button>
-        </>
+        <Foot>
+          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
+          <button className="zy-btn zy-danger" type="button" disabled={props.busy} onClick={props.onConfirm}>删除</button>
+        </Foot>
       )}
     />
   )

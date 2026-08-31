@@ -10,7 +10,8 @@ import { KbError } from '../src/types.ts'
 
 test('aliases 超过 8 截断并警告', () => {
   const { terms, warnings } = mergeTerms('违约', Array.from({ length: 12 }, (_, i) => `词${i}`))
-  assert.equal(terms.length, 8)
+  assert.equal(terms.length, 9)
+  assert.equal(terms[0], '违约')
   assert.ok(warnings[0]?.includes('截断'))
 })
 
@@ -22,8 +23,9 @@ test('空库搜索 → 空列表', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-test('不带 baseId 失败', async () => {
+test('不带 baseId 失败；空 query 失败', async () => {
   await assert.rejects(() => searchBase('/tmp', { baseId: '', query: '违约' }), KbError)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '  ' }), /query 必填/)
 })
 
 test('一次多词、截段、打散同一篇', async () => {
@@ -59,5 +61,18 @@ test('一次多词、截段、打散同一篇', async () => {
   assert.ok(result.hits.length >= 1)
   assert.ok(result.hits.every((hit) => hit.path.includes('供应商合同')))
   assert.ok(result.hits[0].excerpt.includes('违约') || result.hits[0].excerpt.includes('termination'))
+  await rm(root, { recursive: true, force: true })
+})
+
+test('类目对不上则本库全扫；mergeTerms 去重', async () => {
+  const { terms } = mergeTerms('违约', ['违约', ' 解约 ', ''])
+  assert.deepEqual(terms, ['违约', '解约'])
+
+  const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-se3-')))
+  await createBase(root, { id: 'work', title: '工作库', description: '描述' })
+  await mkdir(join(root, 'bases', 'work', '会议'), { recursive: true })
+  await writeFile(join(root, 'bases', 'work', '会议', '纪要.md'), '违约金条款。\n')
+  const result = await searchBase(root, { baseId: 'work', query: '违约', category: '没有这个类目' })
+  assert.ok(result.hits.some((hit) => hit.path.includes('纪要')))
   await rm(root, { recursive: true, force: true })
 })

@@ -1,6 +1,6 @@
 import { COMMAND_NAME } from './identity.ts'
 import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, updateBase, writeEntry } from './bases.ts'
-import { readCatalog, writeCatalog } from './catalog.ts'
+import { lastDestCategory, readCatalog, writeCatalog } from './catalog.ts'
 import { ingest } from './ingest.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
@@ -82,20 +82,32 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
   }
 }
 
+export async function resolveIngestTo(
+  dataRoot: string,
+  baseId: string,
+  destFlag: string | undefined,
+  toRoot: boolean,
+): Promise<string> {
+  if (destFlag !== undefined) return destFlag
+  if (toRoot) return ''
+  const last = await lastDestCategory(dataRoot, baseId)
+  if (last === undefined) {
+    throw new KbError('missing_field', '请指定 --to <类目>，或 --root 导入到库根')
+  }
+  return last
+}
+
 async function handleIngest(rest: string[], flags: ReturnType<typeof parseFlags>['flags'], jobs: JobRunner) {
   const path = rest[0] ?? flagString(flags, 'path')
   const baseId = flagString(flags, 'base')
   if (!path) throw new KbError('missing_field', '用法：/kb ingest <path> --base <id> --to <类目>')
   if (!baseId) throw new KbError('missing_field', '导入必须指定 --base')
-  const dest = flagString(flags, 'to')
-  if (dest === undefined && !flagBool(flags, 'root', false)) {
-    throw new KbError('missing_field', '请指定 --to <类目>，或 --root 导入到库根')
-  }
   const root = await resolveDataRoot()
+  const destCategory = await resolveIngestTo(root, baseId, flagString(flags, 'to'), flagBool(flags, 'root', false))
   return jobs.enqueue('ingest', () => ingest(root, {
     baseId,
     sourcePath: path,
-    destCategory: dest ?? '',
+    destCategory,
     preserveTree: flagBool(flags, 'preserve-tree'),
     createMissing: !flagBool(flags, 'no-create'),
   }))
@@ -104,8 +116,8 @@ async function handleIngest(rest: string[], flags: ReturnType<typeof parseFlags>
 export function registerKbCommands(
   ctx: { commands: { register: (def: unknown) => () => void } },
   jobs: JobRunner,
-): void {
-  ctx.commands.register({
+): () => void {
+  return ctx.commands.register({
     name: COMMAND_NAME,
     description: '知源知识库：ingest / status / call',
     input: { hint: 'ingest <path> --base <id> --to <类目> | status | call {json}' },
@@ -131,5 +143,5 @@ export function registerKbCommands(
         return fail(error)
       }
     },
-  })
+  }) ?? (() => undefined)
 }

@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Modal, IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
-import { Switch } from './controls.tsx'
 import { Field, Note } from './dialogs.tsx'
+import { SearchIcon } from './icons.tsx'
 
 function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
   event.preventDefault()
   return new FormData(event.currentTarget)
+}
+
+type Picked = File & { path?: string; webkitRelativePath?: string }
+
+function pickedPath(file: Picked): string {
+  if (file.path) return file.path
+  const rel = file.webkitRelativePath
+  if (rel) return `${rel.split('/')[0]}/`
+  return file.name
 }
 
 export function ImportDialog(props: {
@@ -17,8 +26,17 @@ export function ImportDialog(props: {
   onSubmit: (input: { sourcePath: string; destCategory: string; preserveTree: boolean; createMissing: boolean }) => void
 }) {
   const form = useRef<HTMLFormElement>(null)
+  const pathRef = useRef<HTMLInputElement>(null)
+  const dirRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [createMissing, setCreateMissing] = useState(true)
   const [preserveTree, setPreserveTree] = useState(false)
+
+  const fillPath = (file?: File | null) => {
+    if (!file || !pathRef.current) return
+    pathRef.current.value = pickedPath(file)
+  }
+
   return (
     <Modal
       open
@@ -26,10 +44,10 @@ export function ImportDialog(props: {
       title={`导入到 ${props.baseId}`}
       className="zy-modal-form"
       footer={(
-        <>
-          <Button variant="ghost" type="button" onClick={props.onClose}>取消</Button>
-          <Button variant="primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>开始导入</Button>
-        </>
+        <div className="zy-footbar">
+          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
+          <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>开始导入</button>
+        </div>
       )}
     >
       <form
@@ -44,20 +62,39 @@ export function ImportDialog(props: {
           })
         }}
       >
-        <p className="zy-help">网页把本机路径交给主进程，不在浏览器里读文件。</p>
-        <Field label="本机路径 *">
-          <Input className="zy-input" name="sourcePath" placeholder="~/Downloads/供应商合同.md" required />
+        <Field
+          label="源"
+          help="点按钮选本机目录或文件。浏览器若只给出文件名，请改成完整路径。目前 md/txt。"
+        >
+          <div className="zy-source">
+            <button
+              className="zy-btn"
+              type="button"
+              onClick={() => {
+                dirRef.current?.setAttribute('webkitdirectory', '')
+                dirRef.current?.click()
+              }}
+            >
+              选择文件夹
+            </button>
+            <button className="zy-btn" type="button" onClick={() => fileRef.current?.click()}>选择文件</button>
+          </div>
+          <input ref={pathRef} className="zy-box" name="sourcePath" placeholder="~/notes/合同" required />
+          <input ref={dirRef} type="file" hidden multiple onChange={(event: { currentTarget: HTMLInputElement }) => fillPath(event.currentTarget.files?.[0])} />
+          <input ref={fileRef} type="file" hidden accept=".md,.txt,.markdown,text/markdown,text/plain" onChange={(event: { currentTarget: HTMLInputElement }) => fillPath(event.currentTarget.files?.[0])} />
         </Field>
-        <Field label="类目 destCategory" help="空 = 库根。可输入新路径，不会因此新建知识库。">
-          <Input className="zy-input" name="destCategory" placeholder="合同/2024" />
+        <Field label="类目" help="空 = 库根。可输入新路径，不会因此新建知识库。">
+          <input className="zy-box" name="destCategory" placeholder="合同/2024" />
         </Field>
-        <div className="zy-toggle">
-          <span>目录不存在则创建</span>
-          <Switch on={createMissing} label="目录不存在则创建" onToggle={() => setCreateMissing((value) => !value)} />
-        </div>
-        <div className="zy-toggle">
-          <span>保留源相对目录</span>
-          <Switch on={preserveTree} label="保留源相对目录" onToggle={() => setPreserveTree((value) => !value)} />
+        <div className="zy-checks">
+          <label>
+            <input type="checkbox" checked={createMissing} onChange={() => setCreateMissing((value) => !value)} />
+            目录不存在则创建
+          </label>
+          <label>
+            <input type="checkbox" checked={preserveTree} onChange={() => setPreserveTree((value) => !value)} />
+            保留源目录结构
+          </label>
         </div>
         <Note text={props.error} />
       </form>
@@ -84,22 +121,39 @@ export function SearchDialog(props: {
         }}
       >
         <div className="zy-search-bar">
-          <Input className="zy-input zy-search-q" name="query" placeholder="违约条款" defaultValue={props.query} autoFocus />
-          <Button variant="ghost" size="sm" type="submit" icon={<IconSearchOutline16 />} aria-label="搜索" disabled={props.busy} />
+          <input className="zy-box" name="query" placeholder="关键词" defaultValue={props.query} autoFocus />
+          <button className="zy-icon" type="submit" aria-label="搜索" disabled={props.busy}>
+            <SearchIcon />
+          </button>
         </div>
       </form>
       <Note text={props.warning} />
       {props.busy ? <p className="zy-help">检索中…</p> : null}
-      <div>
-        {props.hits.map((hit) => (
-          <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit" type="button" onClick={() => props.onOpen(hit)}>
-            <span className="zy-src">{hit.path}:{hit.startLine}</span>
-            <span className="zy-hit-ex">{hit.excerpt.split('\n').find((line) => line.trim()) ?? ''}</span>
-          </button>
-        ))}
-        {props.searched && !props.busy && !props.hits.length && !props.warning ? <p className="zy-help">无命中</p> : null}
-      </div>
+      {props.hits.length ? (
+        <div className="zy-search-hits">
+          {props.hits.map((hit) => (
+            <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpen(hit)}>
+              {hit.path}:{hit.startLine}{' '}
+              <HitMark text={hit.excerpt.split('\n').find((line) => line.trim()) ?? ''} query={props.query} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {props.searched && !props.busy && !props.hits.length && !props.warning ? <p className="zy-help">无命中</p> : null}
     </Modal>
+  )
+}
+
+function HitMark(props: { text: string; query: string }) {
+  const q = props.query.trim()
+  const i = q ? props.text.toLowerCase().indexOf(q.toLowerCase()) : -1
+  if (i < 0) return <>{props.text}</>
+  return (
+    <>
+      {props.text.slice(0, i)}
+      <mark>{props.text.slice(i, i + q.length)}</mark>
+      {props.text.slice(i + q.length)}
+    </>
   )
 }
 
@@ -125,11 +179,11 @@ export function PreviewDialog(props: {
       description={props.path}
       className="zy-modal-wide"
       footer={props.readonly ? undefined : (
-        <>
-          <Button variant="ghost" type="button" onClick={props.onDelete}>删除</Button>
-          <Button variant="ghost" type="button" onClick={props.onClose}>取消</Button>
-          <Button variant="primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</Button>
-        </>
+        <div className="zy-footbar">
+          <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>
+          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
+          <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</button>
+        </div>
       )}
     >
       {props.readonly ? (

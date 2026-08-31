@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, deleteBase, listBases, updateBase } from '../src/bases.ts'
+import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, updateBase, writeEntry } from '../src/bases.ts'
 import { ingest } from '../src/ingest.ts'
 import { KbError } from '../src/types.ts'
 
@@ -55,6 +55,29 @@ test('updateBase 不能改 id；deleteBase 需确认', async () => {
   await assert.rejects(() => deleteBase(root, 'work', false), KbError)
   await deleteBase(root, 'work', true)
   assert.equal((await listBases(root)).length, 0)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('write/read/deleteEntry 与 listTree；删除需确认', async () => {
+  const root = await sandbox()
+  await createBase(root, { id: 'work', title: '工作库', description: '描述' })
+  await writeEntry(root, 'work', '合同/2024/a.md', 'hello')
+  assert.deepEqual(await readEntry(root, 'work', '合同/2024/a.md'), { path: '合同/2024/a.md', text: 'hello' })
+  const tree = await listTree(root, 'work')
+  assert.equal(tree[0].name, '合同')
+  assert.equal(tree[0].kind, 'dir')
+  const file = tree[0].children?.[0].children?.[0]
+  assert.equal(file?.name, 'a.md')
+  await assert.rejects(() => deleteEntry(root, 'work', '合同/2024/a.md', false), KbError)
+  await deleteEntry(root, 'work', '合同/2024', true)
+  await assert.rejects(() => readEntry(root, 'work', '合同/2024/a.md'), /不存在/)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('updateBase 缺库拒绝；listTree 缺库拒绝', async () => {
+  const root = await sandbox()
+  await assert.rejects(() => updateBase(root, 'ghost', { title: 'x' }), /不存在/)
+  await assert.rejects(() => listTree(root, 'ghost'), /不存在/)
   await rm(root, { recursive: true, force: true })
 })
 

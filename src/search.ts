@@ -9,17 +9,17 @@ import { KbError } from './types.ts'
 
 export function mergeTerms(query: string, aliases: string[] | undefined): { terms: string[]; warnings: string[] } {
   const warnings: string[] = []
-  const raw = [query, ...(aliases ?? [])].map((item) => item.trim()).filter(Boolean)
+  let aliasList = (aliases ?? []).map((item) => item.trim()).filter(Boolean)
+  if (aliasList.length > MAX_ALIASES) {
+    warnings.push(`aliases 超过 ${MAX_ALIASES} 个，已截断`)
+    aliasList = aliasList.slice(0, MAX_ALIASES)
+  }
   const seen = new Set<string>()
   const terms: string[] = []
-  for (const term of raw) {
-    if (seen.has(term)) continue
+  for (const term of [query.trim(), ...aliasList]) {
+    if (!term || seen.has(term)) continue
     seen.add(term)
     terms.push(term)
-  }
-  if (terms.length > MAX_ALIASES) {
-    warnings.push(`aliases 超过 ${MAX_ALIASES} 个，已截断`)
-    return { terms: terms.slice(0, MAX_ALIASES), warnings }
   }
   return { terms, warnings }
 }

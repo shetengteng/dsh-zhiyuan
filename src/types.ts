@@ -11,6 +11,7 @@ export type BaseCard = {
   aliases: string[]
   createdAt: number
   lastUsedAt: number
+  lastDestCategory?: string
 }
 
 export type Catalog = {
@@ -82,6 +83,7 @@ export type IngestResult = {
   failed: number
   createdDirs: string[]
   files: IngestFileResult[]
+  warnings: string[]
 }
 
 export type JobStatus = {

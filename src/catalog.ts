@@ -41,6 +41,7 @@ function parseCard(value: unknown): BaseCard | null {
     aliases,
     createdAt: asNumber(rec.createdAt, 0),
     lastUsedAt: asNumber(rec.lastUsedAt, 0),
+    lastDestCategory: typeof rec.lastDestCategory === 'string' ? rec.lastDestCategory : undefined,
   }
 }
 
@@ -98,6 +99,19 @@ export function removeBase(catalog: Catalog, id: string): Catalog {
       defaultBaseId: catalog.prefs.defaultBaseId === id ? '' : catalog.prefs.defaultBaseId,
     },
   }
+}
+
+export async function lastDestCategory(dataRoot: string, baseId: string): Promise<string | undefined> {
+  const catalog = await readCatalog(dataRoot)
+  return catalog.bases.find((card) => card.id === baseId)?.lastDestCategory
+}
+
+export async function rememberLastDest(dataRoot: string, baseId: string, destCategory: string): Promise<void> {
+  const catalog = await readCatalog(dataRoot)
+  const current = catalog.bases.find((card) => card.id === baseId)
+  if (!current || current.lastDestCategory === destCategory) return
+  current.lastDestCategory = destCategory
+  await writeCatalog(dataRoot, catalog)
 }
 
 export function cleanAliases(aliases: string[] | undefined): string[] {

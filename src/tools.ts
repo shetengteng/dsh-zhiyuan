@@ -43,8 +43,9 @@ function fail(error: unknown): never {
   throw error
 }
 
-export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner()): void {
-  ctx.tools.register({
+export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner()): () => void {
+  const offs = [
+    ctx.tools.register({
     name: 'kb_list_bases',
     description: '列出已创建的知识库卡片：id、标题、描述、别名、类目名、约多少篇。不含文件名和正文。选库时先调用本工具。',
     parameters: { type: 'object' },
@@ -64,9 +65,8 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         fail(error)
       }
     },
-  })
-
-  ctx.tools.register({
+  }),
+    ctx.tools.register({
     name: 'kb_ingest',
     description: '把本机 md/txt 拷进已有知识库的指定类目。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
     parameters: {
@@ -78,6 +78,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         destCategory: { type: 'string', description: '库内相对类目，如 合同/2024；空=库根' },
         preserveTree: { type: 'boolean', description: '源是文件夹时是否保留相对子目录，默认 false' },
         createMissing: { type: 'boolean', description: '类目不存在则创建，默认 true。不建新库' },
+        onConflict: { type: 'string', enum: ['skip'], description: '默认 skip。同指纹跳过；同名不同内容改名，不覆盖' },
       },
     },
     output: {
@@ -97,14 +98,14 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
           destCategory: asString(rec.destCategory) ?? '',
           preserveTree: asBool(rec.preserveTree, false),
           createMissing: asBool(rec.createMissing, true),
+          onConflict: 'skip',
         }))
       } catch (error) {
         fail(error)
       }
     },
-  })
-
-  ctx.tools.register({
+  }),
+    ctx.tools.register({
     name: 'kb_search',
     description: '在指定知识库里一次多词 grep。必须带 baseId。换词放进 aliases（3～8）。没命中返回空列表，不要编造。',
     parameters: {
@@ -148,5 +149,11 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         fail(error)
       }
     },
-  })
+  }),
+  ]
+  return () => {
+    for (const off of offs.reverse()) {
+      if (typeof off === 'function') off()
+    }
+  }
 }

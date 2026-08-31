@@ -13,16 +13,18 @@ function dshModuleRoots(): string[] {
   const home = process.env.DSH_HOME || join(homedir(), '.dsh')
   roots.push(join(home, 'profiles', 'node_modules'))
   roots.push(join(home, 'node_modules'))
-  const launcher = join(
-    homedir(),
-    'Library/Application Support/io.deepseek.DeepSeek.deepseek-harness-launcher/dsh',
-  )
-  if (existsSync(launcher)) {
-    try {
-      for (const name of readdirSync(launcher)) {
-        roots.push(join(launcher, name, 'node_modules'))
-      }
-    } catch { /* ignore */ }
+  if (process.platform === 'darwin') {
+    const launcher = join(
+      homedir(),
+      'Library/Application Support/io.deepseek.DeepSeek.deepseek-harness-launcher/dsh',
+    )
+    if (existsSync(launcher)) {
+      try {
+        for (const name of readdirSync(launcher)) {
+          roots.push(join(launcher, name, 'node_modules'))
+        }
+      } catch { /* ignore */ }
+    }
   }
   return roots
 }

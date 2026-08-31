@@ -85,20 +85,20 @@ export function createSettingsSection(
             <SectionIcon size={18} />
             <h1>{SECTION_LABEL}</h1>
           </div>
-        </div>
-        <div className="zy-tabs" role="tablist">
-          {(['lib', 'prefs', 'about'] as Tab[]).map((id) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              className={tab === id ? 'zy-tab is-on' : 'zy-tab'}
-              onClick={() => setTab(id)}
-            >
-              {id === 'lib' ? '库' : id === 'prefs' ? '偏好' : '关于'}
-            </button>
-          ))}
+          <div className="zy-tabs" role="tablist">
+            {(['lib', 'prefs', 'about'] as Tab[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={tab === id ? 'zy-tab is-on' : 'zy-tab'}
+                onClick={() => setTab(id)}
+              >
+                {id === 'lib' ? '库' : id === 'prefs' ? '偏好' : '关于'}
+              </button>
+            ))}
+          </div>
         </div>
         {note ? (
           <p className="zy-note">
