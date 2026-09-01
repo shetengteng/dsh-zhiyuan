@@ -1,0 +1,44 @@
+---
+description: React 函数组件、hooks、可访问性、Host bridge 和工作台 UI 规范。
+globs: "src/client/**/*.{tsx,ts}"
+alwaysApply: false
+---
+
+# React 规范
+
+## 组件和文件
+
+- 使用函数组件和 hooks；组件、组件文件和主要导出物使用 PascalCase。
+- Props 类型使用具体名称，例如 `BasePageProps`、`PreviewDialogProps`；不要在多个组件里重复泛用的 `Props`。
+- 一个文件优先承载一个主要组件；确需组合导出时，文件名使用职责复数名（如 `Dialogs.tsx`、`Icons.tsx`），不要使用含义不明的文件名。
+- 页面编排和纯展示拆开：Section 负责状态与 Host 调用，Page/Dialog/Card 负责渲染和事件回调，纯格式化函数保持无副作用。
+- 事件回调使用 `onVerbNoun`，例如 `onSelectBase`、`onOpenEntry`、`onDeleteEntry`；参数名使用 `baseId`、`entryPath` 等完整语义。
+
+## 状态和副作用
+
+- Host 返回的数据是唯一真相；Client 只保存短暂展示态，不直接读写文件、不递归扫描磁盘、不模拟落盘成功。
+- 异步操作必须展示 pending、error、断连和可重试状态；按钮在提交期间正确 disabled，避免重复提交。
+- hooks 只能在组件顶层调用；`useEffect` 中注册的监听、订阅、timer 和 editor 实例必须在 cleanup 中释放。
+- effect 和事件处理中的异步任务要处理失败；组件卸载或请求过期时，不能把旧结果无条件写回当前状态。
+- 不要为派生数据重复建 state；可以从现有 props/state 计算的值直接计算。
+
+## 渲染和交互
+
+- 列表和树使用稳定业务 key，不使用数组下标作为动态列表 key。
+- 所有按钮明确 `type="button"` 或 `type="submit"`；输入项有 label、错误提示和必要的键盘路径。
+- 可操作元素必须可键盘到达，使用可见 `:focus-visible`；图标按钮提供 `aria-label`，弹框提供清晰标题和关闭路径。
+- 用户内容按文本渲染；禁止 `dangerouslySetInnerHTML`、`eval`、`new Function`。Markdown 预览必须使用受控解析器，不能直接插入未清洗 HTML。
+- 表单提交在边界处校验必填项和格式；不要只依赖浏览器 `required` 或前端显示限制。
+
+## 样式和依赖
+
+- Client 使用 DSH 提供的 `--dsw-alias-*` token，不写纯黑/纯白硬编码状态色。
+- CSS 私有类名使用 `zy-<component>-<element>`，并和 JSX 中的类名保持一一对应，例如 `zy-base-panel`、`zy-base-row`。
+- 不修改 DSH 壳的私有 DOM，不自建路由、HTTP 服务或第二套工作台；不把 React 打包进 Client。
+- 单个源文件遵守 `module-size.mdc` 的 300 行限制；超过时按状态、展示、弹框、纯函数或样式职责拆分。
+
+## 交付检查
+
+- 新增或修改组件时，至少覆盖空态、加载态、错误态、无数据态和正常态中的适用场景。
+- 改动 bridge、Host 命令或工具参数后，同时检查 RPC 字段和现有命名契约没有变化。
+- 完成后执行 `npm test`、`npm run build` 和 `git diff --check`；未实际执行的 UI/DSH 环境验收要明确标记为待测。

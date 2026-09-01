@@ -45,9 +45,9 @@ export function splitAliases(value: string | undefined): string[] {
 }
 
 export function tokenize(rawInput: string): string[] {
-  const out: string[] = []
+  const tokens: string[] = []
   const re = /"([^"]*)"|'([^']*)'|(\S+)/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(rawInput))) out.push(m[1] ?? m[2] ?? m[3])
-  return out
+  let tokenMatch: RegExpExecArray | null
+  while ((tokenMatch = re.exec(rawInput))) tokens.push(tokenMatch[1] ?? tokenMatch[2] ?? tokenMatch[3])
+  return tokens
 }

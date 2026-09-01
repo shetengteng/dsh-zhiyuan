@@ -1,11 +1,8 @@
 /** Package / runtime identity. Official names: 知源 / dsh-zhiyuan. 产品对象仍称知识库。 */
 
 export const PACKAGE_NAME = 'dsh-zhiyuan'
-export const PLUGIN_ID = 'zhiyuan'
-export const SETTINGS_NS = 'zhiyuan'
 export const SECTION_ID = 'knowledge'
 export const SECTION_LABEL = '知源'
-export const BRAND = '知源'
 export const TARGET_DSH_VERSION = '0.1.1-rc.2'
 export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'

@@ -54,21 +54,21 @@ export async function resolveSession(
   sessions?: SessionsHandle,
   workspaces?: WorkspacesHandle,
 ): Promise<string> {
-  const current = listedSession(sessions)
-  if (current) return current
+  const currentSessionId = listedSession(sessions)
+  if (currentSessionId) return currentSessionId
   const workspaceId = recentWorkspace(workspaces)
   if (workspaceId && typeof workspaces?.connectWorkspace === 'function') {
-    const id = await workspaces.connectWorkspace(workspaceId)
-    if (id) {
-      sessions?.open?.(id)
-      return id
+    const sessionId = await workspaces.connectWorkspace(workspaceId)
+    if (sessionId) {
+      sessions?.open?.(sessionId)
+      return sessionId
     }
   }
   if (typeof sessions?.create === 'function') {
-    const id = await sessions.create({})
-    if (id) {
-      sessions.open?.(id)
-      return id
+    const sessionId = await sessions.create({})
+    if (sessionId) {
+      sessions.open?.(sessionId)
+      return sessionId
     }
   }
   throw new Error('当前没有会话，无法联系主进程')

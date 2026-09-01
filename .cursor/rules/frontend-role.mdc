@@ -10,6 +10,8 @@ alwaysApply: false
 
 Client 跑在 DSH Web 壳里：函数组件 + hooks，展示层写 JSX（`.tsx`），样式走注入 CSS。不要引入 Vue / Pinia / Vue Router，不要打包 React。
 
+具体的 TypeScript 类型、命名和异步约束见同目录的 `typescript.mdc`；React 组件、hooks、可访问性和 bridge 约束见 `react.mdc`。本文件主要约束产品气质和工作台交互。
+
 ## 产品气质
 
 这是设置里的知识库工作台，不是营销页。熟悉感是优点；陌生而无目的的装饰是缺陷。

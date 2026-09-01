@@ -89,15 +89,15 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       },
     },
     execute: async (args: unknown) => {
-      const rec = asRecord(args)
+      const input = asRecord(args)
       try {
         const dataRoot = await resolveDataRoot()
         return await jobs.enqueue('ingest', () => ingest(dataRoot, {
-          baseId: requireString(rec, 'baseId'),
-          sourcePath: requireString(rec, 'sourcePath'),
-          destCategory: asString(rec.destCategory) ?? '',
-          preserveTree: asBool(rec.preserveTree, false),
-          createMissing: asBool(rec.createMissing, true),
+          baseId: requireString(input, 'baseId'),
+          sourcePath: requireString(input, 'sourcePath'),
+          destCategory: asString(input.destCategory) ?? '',
+          preserveTree: asBool(input.preserveTree, false),
+          createMissing: asBool(input.createMissing, true),
           onConflict: 'skip',
         }))
       } catch (error) {
@@ -132,18 +132,18 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       result.isError ? { card: 'generic', title: '检索失败' } : { card: 'generic', title: '知识库命中' }
     ),
     execute: async (args: unknown) => {
-      const rec = asRecord(args)
-      if (typeof rec.baseId !== 'string' || !rec.baseId.trim()) {
+      const input = asRecord(args)
+      if (typeof input.baseId !== 'string' || !input.baseId.trim()) {
         throw new Error('kb_search 必须带 baseId')
       }
       try {
         const dataRoot = await resolveDataRoot()
         return await searchBase(dataRoot, {
-          baseId: rec.baseId,
-          query: requireString(rec, 'query'),
-          aliases: asStringArray(rec.aliases),
-          category: asString(rec.category),
-          topK: typeof rec.topK === 'number' ? rec.topK : undefined,
+          baseId: input.baseId,
+          query: requireString(input, 'query'),
+          aliases: asStringArray(input.aliases),
+          category: asString(input.category),
+          topK: typeof input.topK === 'number' ? input.topK : undefined,
         })
       } catch (error) {
         fail(error)

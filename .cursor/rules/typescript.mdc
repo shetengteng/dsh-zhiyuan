@@ -1,0 +1,47 @@
+---
+description: TypeScript 类型安全、命名、模块边界和异步错误处理规范。
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript 规范
+
+## 文件和命名
+
+- 非 React 的 TypeScript 模块使用 `kebab-case.ts`，例如 `command-parse.ts`、`host-resolve.ts`。
+- React 组件文件使用 PascalCase，并与主要导出物一致，例如 `BasePage.tsx`、`KbSearchView.tsx`。
+- 同一职责的多个展示组件可以使用有意义的复数名，例如 `Dialogs.tsx`、`Icons.tsx`；禁止使用没有语义的 `utils.ts`、`helpers.ts`、`component.tsx`。
+- 测试文件使用被测模块名加 `.test.ts`，例如 `search.test.ts`；测试夹具目录和文件名可以使用业务语言或中文，以便直接对应验收数据。
+- 变量和函数使用 `camelCase`，类型、接口和 React 组件使用 `PascalCase`，真正的固定配置使用 `UPPER_SNAKE_CASE`。
+- 命名表达业务语义：使用 `currentBaseId`、`baseRoot`、`absolutePath`、`relativePath`；不要在局部变量中使用 `abs`、`rel`、`dest`、`rec`、`tmp` 等不必要缩写。
+
+## 类型边界
+
+- 保持 `strict`；禁止新增 `any`。外部输入、JSON、Host/Client bridge 返回值优先使用 `unknown`，在边界处做显式收窄。
+- 领域 DTO 只维护一份；Client 需要别名时使用类型转出或别名，不复制字段定义。
+- 导出的函数、类和公共类型写清楚返回类型；异步函数明确返回 `Promise<T>`。
+- 优先使用判别联合表达成功/失败和状态，避免用一组互相依赖的可选字段表示同一状态。
+- 类型断言只能放在已知边界（JSON、Host API、第三方类型不完整处），并紧邻运行时校验；不要用 `as` 掩盖不确定数据。
+- import 本地 TypeScript 文件时保留项目要求的 `.ts` / `.tsx` 扩展名；类型依赖使用 `import type`。
+
+## 外部契约和安全
+
+- `dsh-zhiyuan`、`zhiyuan`、`knowledge`、`kb_*`、`baseId`、`destCategory`、RPC `path` 和 `relPath` 是已有契约。重命名内部变量前，先确认不是持久化字段、命令 flag、工具 schema 或 RPC 字段。
+- 所有来自命令、工具、bridge、文件系统和 JSON 的输入都必须在 Host 边界校验；不能只依赖 UI 校验。
+- 文件路径必须经过库根 containment 和符号链接检查；禁止通过字符串拼接绕过路径校验。
+- 不在日志、错误消息或测试输出中写入密钥、令牌和不必要的完整用户内容。
+- 禁止 `eval`、`new Function` 和把不可信内容放进 HTML；文本默认按文本渲染。
+
+## 异步和验证
+
+- 每个异步调用都要有明确的错误路径；fire-and-forget 使用 `void promise.catch(...)` 或等价的集中错误处理。
+- 不吞掉异常；只有在有明确回退语义时才 `catch`，并说明回退原因。
+- 修改 Host/Client 契约、文件路径、持久化结构或构建入口后，至少执行：
+
+  ```sh
+  npm test
+  npm run build
+  git diff --check
+  ```
+
+- 不要手工修改 `lib/` 生成物；先修改 `src/`，再通过构建同步生成物。

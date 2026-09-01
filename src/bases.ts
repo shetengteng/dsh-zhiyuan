@@ -1,87 +1,87 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { BASE_ID_RE, TEXT_EXTS } from './identity.ts'
 import { cleanAliases, readCatalog, removeBase, upsertBase, writeCatalog } from './catalog.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, basesRoot, resolveDest } from './paths.ts'
-import type { BaseCard, BaseSummary, CreateBaseInput, TreeNode, UpdateBasePatch } from './types.ts'
+import type { BaseCard, BaseSummary, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
 import { KbError } from './types.ts'
 
-function requireText(value: string | undefined, field: string): string {
+function requireNonEmptyText(value: string | undefined, field: string): string {
   const text = value?.trim() ?? ''
   if (!text) throw new KbError('missing_field', `${field} 必填`)
   return text
 }
 
 function requireId(id: string): string {
-  const value = requireText(id, 'id')
+  const value = requireNonEmptyText(id, 'id')
   if (!BASE_ID_RE.test(value)) {
     throw new KbError('invalid_id', 'id 只能是小写字母、数字、_ 或 -，最长 64')
   }
   return value
 }
 
-async function dirExists(path: string): Promise<boolean> {
+async function directoryExists(directoryPath: string): Promise<boolean> {
   try {
-    return (await stat(path)).isDirectory()
+    return (await stat(directoryPath)).isDirectory()
   } catch {
     return false
   }
 }
 
 export async function scanBaseIds(dataRoot: string): Promise<string[]> {
-  const root = basesRoot(dataRoot)
-  if (!(await dirExists(root))) return []
-  const entries = await readdir(root, { withFileTypes: true })
+  const basesDirectory = basesRoot(dataRoot)
+  if (!(await directoryExists(basesDirectory))) return []
+  const entries = await readdir(basesDirectory, { withFileTypes: true })
   return entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.')).map((entry) => entry.name)
 }
 
-async function walkDocs(dir: string): Promise<string[]> {
-  const files: string[] = []
+async function walkTextDocuments(directoryPath: string): Promise<string[]> {
+  const documentPaths: string[] = []
   let entries: Awaited<ReturnType<typeof readdir>>
   try {
-    entries = await readdir(dir, { withFileTypes: true })
+    entries = await readdir(directoryPath, { withFileTypes: true })
   } catch {
-    return files
+    return documentPaths
   }
   for (const entry of entries) {
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) files.push(...await walkDocs(path))
-    else if (TEXT_EXTS.has(extOf(entry.name))) files.push(path)
+    const entryPath = join(directoryPath, entry.name)
+    if (entry.isDirectory()) documentPaths.push(...await walkTextDocuments(entryPath))
+    else if (TEXT_EXTS.has(extensionOf(entry.name))) documentPaths.push(entryPath)
   }
-  return files
+  return documentPaths
 }
 
-function extOf(name: string): string {
+function extensionOf(name: string): string {
   const index = name.lastIndexOf('.')
   return index >= 0 ? name.slice(index).toLowerCase() : ''
 }
 
 export async function countDocs(dataRoot: string, baseId: string): Promise<number> {
-  return (await walkDocs(baseDir(dataRoot, baseId))).length
+  return (await walkTextDocuments(baseDir(dataRoot, baseId))).length
 }
 
-async function listCategories(dataRoot: string, baseId: string): Promise<string[]> {
-  const root = baseDir(dataRoot, baseId)
-  if (!(await dirExists(root))) return []
-  const entries = await readdir(root, { withFileTypes: true })
+async function listBaseCategories(dataRoot: string, baseId: string): Promise<string[]> {
+  const baseDirectory = baseDir(dataRoot, baseId)
+  if (!(await directoryExists(baseDirectory))) return []
+  const entries = await readdir(baseDirectory, { withFileTypes: true })
   return entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.')).map((entry) => entry.name)
 }
 
-function cardFromDir(id: string): BaseCard {
+function createBaseCardFromDirectory(id: string): BaseCard {
   return { id, title: id, description: '', aliases: [], createdAt: 0, lastUsedAt: 0 }
 }
 
 export async function listBases(dataRoot: string): Promise<BaseSummary[]> {
   const catalog = await readCatalog(dataRoot)
-  const onDisk = await scanBaseIds(dataRoot)
-  const byId = new Map(catalog.bases.map((card) => [card.id, card]))
-  const ids = [...new Set([...onDisk, ...catalog.bases.map((card) => card.id)])]
+  const onDiskBaseIds = await scanBaseIds(dataRoot)
+  const cardsById = new Map(catalog.bases.map((card) => [card.id, card]))
+  const baseIds = [...new Set([...onDiskBaseIds, ...catalog.bases.map((card) => card.id)])]
   const summaries: BaseSummary[] = []
-  for (const id of ids.sort()) {
-    const card = byId.get(id) ?? cardFromDir(id)
+  for (const id of baseIds.sort()) {
+    const card = cardsById.get(id) ?? createBaseCardFromDirectory(id)
     summaries.push({
       ...card,
-      categories: await listCategories(dataRoot, id),
+      categories: await listBaseCategories(dataRoot, id),
       approxDocs: await countDocs(dataRoot, id),
       lastUsed: catalog.lastUsedBaseId === id,
     })
@@ -91,31 +91,31 @@ export async function listBases(dataRoot: string): Promise<BaseSummary[]> {
 
 export async function createBase(dataRoot: string, input: CreateBaseInput): Promise<BaseCard> {
   const id = requireId(input.id)
-  const title = requireText(input.title, 'title')
-  const description = requireText(input.description, 'description')
+  const title = requireNonEmptyText(input.title, 'title')
+  const description = requireNonEmptyText(input.description, 'description')
   const catalog = await readCatalog(dataRoot)
-  if (catalog.bases.some((card) => card.id === id) || await dirExists(baseDir(dataRoot, id))) {
+  if (catalog.bases.some((card) => card.id === id) || await directoryExists(baseDir(dataRoot, id))) {
     throw new KbError('base_exists', `知识库 ${id} 已存在`)
   }
   const now = Date.now()
   const card: BaseCard = { id, title, description, aliases: cleanAliases(input.aliases), createdAt: now, lastUsedAt: now }
   await mkdir(baseDir(dataRoot, id), { recursive: true })
-  const next = upsertBase(catalog, card)
-  if (!next.lastUsedBaseId) next.lastUsedBaseId = id
-  if (!next.prefs.defaultBaseId) next.prefs.defaultBaseId = id
-  await writeCatalog(dataRoot, next)
+  const nextCatalog = upsertBase(catalog, card)
+  if (!nextCatalog.lastUsedBaseId) nextCatalog.lastUsedBaseId = id
+  if (!nextCatalog.prefs.defaultBaseId) nextCatalog.prefs.defaultBaseId = id
+  await writeCatalog(dataRoot, nextCatalog)
   return card
 }
 
 export async function updateBase(dataRoot: string, id: string, patch: UpdateBasePatch): Promise<BaseCard> {
   const catalog = await readCatalog(dataRoot)
-  const current = catalog.bases.find((card) => card.id === id)
-  if (!current) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
+  const currentCard = catalog.bases.find((card) => card.id === id)
+  if (!currentCard) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
   const card: BaseCard = {
-    ...current,
-    title: patch.title !== undefined ? requireText(patch.title, 'title') : current.title,
-    description: patch.description !== undefined ? requireText(patch.description, 'description') : current.description,
-    aliases: patch.aliases !== undefined ? cleanAliases(patch.aliases) : current.aliases,
+    ...currentCard,
+    title: patch.title !== undefined ? requireNonEmptyText(patch.title, 'title') : currentCard.title,
+    description: patch.description !== undefined ? requireNonEmptyText(patch.description, 'description') : currentCard.description,
+    aliases: patch.aliases !== undefined ? cleanAliases(patch.aliases) : currentCard.aliases,
   }
   await writeCatalog(dataRoot, upsertBase(catalog, card))
   return card
@@ -130,70 +130,70 @@ export async function deleteBase(dataRoot: string, id: string, confirm: boolean)
 
 export async function markUsed(dataRoot: string, id: string): Promise<void> {
   const catalog = await readCatalog(dataRoot)
-  const current = catalog.bases.find((card) => card.id === id)
-  if (!current) return
-  current.lastUsedAt = Date.now()
+  const currentCard = catalog.bases.find((card) => card.id === id)
+  if (!currentCard) return
+  currentCard.lastUsedAt = Date.now()
   catalog.lastUsedBaseId = id
   await writeCatalog(dataRoot, catalog)
 }
 
 export async function requireBase(dataRoot: string, id: string): Promise<void> {
   const catalog = await readCatalog(dataRoot)
-  if (catalog.bases.some((card) => card.id === id) || await dirExists(baseDir(dataRoot, id))) return
+  if (catalog.bases.some((card) => card.id === id) || await directoryExists(baseDir(dataRoot, id))) return
   throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
 }
 
-async function walkTree(root: string, dir: string): Promise<TreeNode[]> {
-  const entries = await readdir(dir, { withFileTypes: true })
+async function walkTree(baseRoot: string, directoryPath: string): Promise<TreeNode[]> {
+  const entries = await readdir(directoryPath, { withFileTypes: true })
   const nodes: TreeNode[] = []
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, 'zh'))) {
-    const abs = join(dir, entry.name)
-    const path = relative(root, abs).split(sep).join('/')
+    const absolutePath = join(directoryPath, entry.name)
+    const relativePath = relative(baseRoot, absolutePath).split(sep).join('/')
     if (entry.isDirectory()) {
-      nodes.push({ name: entry.name, kind: 'dir', path, children: await walkTree(root, abs) })
+      nodes.push({ name: entry.name, kind: 'dir', path: relativePath, children: await walkTree(baseRoot, absolutePath) })
       continue
     }
-    if (!TEXT_EXTS.has(extOf(entry.name))) continue
-    const info = await stat(abs)
-    nodes.push({ name: entry.name, kind: 'file', path, size: info.size, mtime: info.mtimeMs })
+    if (!TEXT_EXTS.has(extensionOf(entry.name))) continue
+    const info = await stat(absolutePath)
+    nodes.push({ name: entry.name, kind: 'file', path: relativePath, size: info.size, mtime: info.mtimeMs })
   }
   return nodes
 }
 
 export async function listTree(dataRoot: string, baseId: string): Promise<TreeNode[]> {
   await requireBase(dataRoot, baseId)
-  const root = baseDir(dataRoot, baseId)
-  if (!(await dirExists(root))) return []
-  return walkTree(root, root)
+  const baseRoot = baseDir(dataRoot, baseId)
+  if (!(await directoryExists(baseRoot))) return []
+  return walkTree(baseRoot, baseRoot)
 }
 
-export async function readEntry(dataRoot: string, baseId: string, relPath: string): Promise<{ path: string; text: string }> {
+export async function readEntry(dataRoot: string, baseId: string, relativePath: string): Promise<ReadEntryResult> {
   await requireBase(dataRoot, baseId)
-  const abs = resolveDest(dataRoot, baseId, relPath).absolute
-  assertNoSymlinkEscape(baseDir(dataRoot, baseId), abs)
+  const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
+  assertNoSymlinkEscape(baseDir(dataRoot, baseId), absolutePath)
   try {
-    return { path: relPath, text: await readFile(abs, 'utf8') }
+    return { path: relativePath, text: await readFile(absolutePath, 'utf8') }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new KbError('not_found', `文件不存在：${relPath}`)
+      throw new KbError('not_found', `文件不存在：${relativePath}`)
     }
     throw error
   }
 }
 
-export async function writeEntry(dataRoot: string, baseId: string, relPath: string, text: string): Promise<void> {
+export async function writeEntry(dataRoot: string, baseId: string, relativePath: string, text: string): Promise<void> {
   await requireBase(dataRoot, baseId)
-  const abs = resolveDest(dataRoot, baseId, relPath).absolute
-  assertInside(baseDir(dataRoot, baseId), abs)
-  await mkdir(join(abs, '..'), { recursive: true })
-  await writeFile(abs, text, 'utf8')
+  const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
+  assertInside(baseDir(dataRoot, baseId), absolutePath)
+  await mkdir(dirname(absolutePath), { recursive: true })
+  await writeFile(absolutePath, text, 'utf8')
 }
 
-export async function deleteEntry(dataRoot: string, baseId: string, relPath: string, confirm: boolean): Promise<void> {
+export async function deleteEntry(dataRoot: string, baseId: string, relativePath: string, confirm: boolean): Promise<void> {
   if (!confirm) throw new KbError('confirm_required', '删除文件或类目需要确认')
   await requireBase(dataRoot, baseId)
-  const abs = resolveDest(dataRoot, baseId, relPath).absolute
-  assertInside(baseDir(dataRoot, baseId), abs)
-  assertNoSymlinkEscape(baseDir(dataRoot, baseId), abs)
-  await rm(abs, { recursive: true, force: true })
+  const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
+  assertInside(baseDir(dataRoot, baseId), absolutePath)
+  assertNoSymlinkEscape(baseDir(dataRoot, baseId), absolutePath)
+  await rm(absolutePath, { recursive: true, force: true })
 }

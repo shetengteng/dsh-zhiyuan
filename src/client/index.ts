@@ -1,5 +1,5 @@
-import { createSettingsSection } from './settings/Section.tsx'
-import { KbSearchView } from './toolview/HitCard.tsx'
+import { createSettingsSection } from './settings/SettingsSection.tsx'
+import { KbSearchView } from './toolview/KbSearchView.tsx'
 import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL } from '../identity.ts'
 import type { Remote, SessionsHandle, WorkspacesHandle } from './bridge.ts'
 import { installZhiyuanNavIcon } from './nav-icon.ts'

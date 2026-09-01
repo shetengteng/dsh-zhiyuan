@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import { MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT } from './identity.ts'
+import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT } from './identity.ts'
 import { markUsed, requireBase } from './bases.ts'
 import { baseDir, resolveDest } from './paths.ts'
 import type { SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
@@ -24,10 +24,10 @@ export function mergeTerms(query: string, aliases: string[] | undefined): { term
   return { terms, warnings }
 }
 
-type RgMatch = { path: string; line: number; text: string }
+type RipgrepMatch = { path: string; line: number; text: string }
 
-function parseRg(stdout: string, rootDir: string): RgMatch[] {
-  const matches: RgMatch[] = []
+function parseRg(stdout: string, rootDir: string): RipgrepMatch[] {
+  const matches: RipgrepMatch[] = []
   let currentPath = ''
   for (const raw of stdout.split(/\r?\n/)) {
     if (!raw) {
@@ -35,15 +35,15 @@ function parseRg(stdout: string, rootDir: string): RgMatch[] {
       continue
     }
     if (raw === '--') continue
-    const m = raw.match(/^(.*?):(\d+):(.*)$/)
-    const ctx = raw.match(/^(.*?)-(\d+)-(.*)$/)
-    const hit = m ?? ctx
-    if (!hit) continue
-    const printed = hit[1]
-    const abs = isAbsolute(printed) ? printed : join(rootDir, printed)
-    const rel = relative(rootDir, abs).split(sep).join('/')
-    currentPath = rel || currentPath
-    if (m) matches.push({ path: currentPath || rel, line: Number(m[2]), text: m[3] })
+    const lineMatch = raw.match(/^(.*?):(\d+):(.*)$/)
+    const contextMatch = raw.match(/^(.*?)-(\d+)-(.*)$/)
+    const match = lineMatch ?? contextMatch
+    if (!match) continue
+    const printedPath = match[1]
+    const absolutePath = isAbsolute(printedPath) ? printedPath : join(rootDir, printedPath)
+    const relativePath = relative(rootDir, absolutePath).split(sep).join('/')
+    currentPath = relativePath || currentPath
+    if (lineMatch) matches.push({ path: currentPath || relativePath, line: Number(lineMatch[2]), text: lineMatch[3] })
   }
   return matches
 }
@@ -56,32 +56,32 @@ function clipAround(lines: string[], center: number, radius: number): { start: n
 
 function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchHit & { file: string }> {
   const sorted = [...hits].sort((a, b) => a.file.localeCompare(b.file) || a.startLine - b.startLine)
-  const out: Array<SearchHit & { file: string }> = []
+  const mergedHits: Array<SearchHit & { file: string }> = []
   for (const hit of sorted) {
-    const prev = out.at(-1)
-    if (prev && prev.file === hit.file && hit.startLine <= prev.endLine + 1) {
-      prev.endLine = Math.max(prev.endLine, hit.endLine)
-      prev.excerpt = hit.startLine < prev.startLine ? `${hit.excerpt}\n${prev.excerpt}` : `${prev.excerpt}\n${hit.excerpt}`
-      prev.startLine = Math.min(prev.startLine, hit.startLine)
+    const previousHit = mergedHits.at(-1)
+    if (previousHit && previousHit.file === hit.file && hit.startLine <= previousHit.endLine + 1) {
+      previousHit.endLine = Math.max(previousHit.endLine, hit.endLine)
+      previousHit.excerpt = hit.startLine < previousHit.startLine ? `${hit.excerpt}\n${previousHit.excerpt}` : `${previousHit.excerpt}\n${hit.excerpt}`
+      previousHit.startLine = Math.min(previousHit.startLine, hit.startLine)
       continue
     }
-    out.push({ ...hit })
+    mergedHits.push({ ...hit })
   }
-  return out
+  return mergedHits
 }
 
 export function diversify(hits: Array<SearchHit & { file: string }>, topK: number): SearchHit[] {
-  const counts = new Map<string, number>()
-  const picked: Array<SearchHit & { file: string }> = []
-  const rest = [...hits]
-  while (picked.length < topK && rest.length) {
-    rest.sort((a, b) => (counts.get(a.file) ?? 0) - (counts.get(b.file) ?? 0))
-    const next = rest.shift()
-    if (!next) break
-    counts.set(next.file, (counts.get(next.file) ?? 0) + 1)
-    picked.push(next)
+  const fileHitCounts = new Map<string, number>()
+  const selectedHits: Array<SearchHit & { file: string }> = []
+  const remainingHits = [...hits]
+  while (selectedHits.length < topK && remainingHits.length) {
+    remainingHits.sort((a, b) => (fileHitCounts.get(a.file) ?? 0) - (fileHitCounts.get(b.file) ?? 0))
+    const nextHit = remainingHits.shift()
+    if (!nextHit) break
+    fileHitCounts.set(nextHit.file, (fileHitCounts.get(nextHit.file) ?? 0) + 1)
+    selectedHits.push(nextHit)
   }
-  return picked.map((hit, index) => ({
+  return selectedHits.map((hit, index) => ({
     n: index + 1,
     path: hit.path,
     startLine: hit.startLine,
@@ -92,14 +92,14 @@ export function diversify(hits: Array<SearchHit & { file: string }>, topK: numbe
 
 async function resolveRg(): Promise<string> {
   const mod = await import('@vscode/ripgrep')
-  const path = (mod as { rgPath?: string }).rgPath
-  if (!path || !existsSync(path)) throw new Error('找不到打包的 ripgrep')
-  return path
+  const ripgrepPath = (mod as { rgPath?: string }).rgPath
+  if (!ripgrepPath || !existsSync(ripgrepPath)) throw new Error('找不到打包的 ripgrep')
+  return ripgrepPath
 }
 
-function runRg(bin: string, args: string[], cwd: string): Promise<string> {
+function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { cwd, windowsHide: true })
+    const child = spawn(binaryPath, rgArgs, { cwd: workingDirectory, windowsHide: true })
     let stdout = ''
     let stderr = ''
     child.stdout.on('data', (chunk) => { stdout += String(chunk) })
@@ -115,20 +115,20 @@ function runRg(bin: string, args: string[], cwd: string): Promise<string> {
 export class RipgrepSearchEngine implements SearchEngine {
   async search(input: SearchInput): Promise<SearchHit[]> {
     if (!existsSync(input.rootDir)) return []
-    const bin = await resolveRg()
-    const args = ['-n', '-C', String(SEARCH_CONTEXT), '--glob', '*.md', '--glob', '*.txt', '--glob', '*.markdown']
-    for (const term of input.terms) args.push('-e', term)
-    args.push('.')
-    const stdout = await runRg(bin, args, input.rootDir)
+    const ripgrepBinary = await resolveRg()
+    const rgArgs = ['-n', '-C', String(SEARCH_CONTEXT), '--glob', '*.md', '--glob', '*.txt', '--glob', '*.markdown']
+    for (const term of input.terms) rgArgs.push('-e', term)
+    rgArgs.push('.')
+    const stdout = await runRg(ripgrepBinary, rgArgs, input.rootDir)
     const matches = parseRg(stdout, input.rootDir)
     const { readFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
-    const raw: Array<SearchHit & { file: string }> = []
+    const rawHits: Array<SearchHit & { file: string }> = []
     for (const match of matches) {
-      const abs = join(input.rootDir, match.path)
-      const lines = existsSync(abs) ? (await readFile(abs, 'utf8')).split(/\r?\n/) : [match.text]
+      const absolutePath = join(input.rootDir, match.path)
+      const lines = existsSync(absolutePath) ? (await readFile(absolutePath, 'utf8')).split(/\r?\n/) : [match.text]
       const clip = clipAround(lines, match.line, SEARCH_CONTEXT)
-      raw.push({
+      rawHits.push({
         n: 0,
         file: match.path,
         path: match.path,
@@ -137,7 +137,7 @@ export class RipgrepSearchEngine implements SearchEngine {
         excerpt: clip.excerpt,
       })
     }
-    return diversify(mergeAdjacent(raw), input.topK)
+    return diversify(mergeAdjacent(rawHits), input.topK)
   }
 }
 
@@ -150,12 +150,12 @@ export async function searchBase(
   if (!input.query?.trim()) throw new KbError('missing_field', 'query 必填')
   await requireBase(dataRoot, input.baseId)
   const { terms, warnings } = mergeTerms(input.query, input.aliases)
-  const topK = Math.min(MAX_TOP_K, Math.max(1, input.topK ?? 12))
+  const topK = Math.min(MAX_TOP_K, Math.max(1, input.topK ?? DEFAULT_TOP_K))
   let rootDir = baseDir(dataRoot, input.baseId)
   if (input.category?.trim()) {
     try {
-      const dest = resolveDest(dataRoot, input.baseId, input.category)
-      if (existsSync(dest.absolute)) rootDir = dest.absolute
+      const destination = resolveDest(dataRoot, input.baseId, input.category)
+      if (existsSync(destination.absolute)) rootDir = destination.absolute
     } catch {
       /* 对不上则本库全扫 */
     }

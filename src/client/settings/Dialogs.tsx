@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Button, Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
 
+/** Shared controls and dialogs for the settings workbench. */
 export { Modal }
 
 export function Field(props: { label: string; help?: string; children: unknown }) {
@@ -24,12 +25,12 @@ export function Note(props: { text: string }) {
   )
 }
 
-function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
+function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
   event.preventDefault()
   return new FormData(event.currentTarget)
 }
 
-function Foot(props: { children: unknown }) {
+function FormFooter(props: { children: unknown }) {
   return <div className="zy-footbar">{props.children}</div>
 }
 
@@ -47,16 +48,16 @@ export function CreateDialog(props: {
       title="新建知识库"
       className="zy-modal-form"
       footer={(
-        <Foot>
+        <FormFooter>
           <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
           <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>创建</button>
-        </Foot>
+        </FormFooter>
       )}
     >
       <form
         ref={form}
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
-          const data = readForm(event)
+          const data = readFormData(event)
           props.onSubmit({
             id: String(data.get('id') ?? ''),
             title: String(data.get('title') ?? ''),
@@ -99,17 +100,17 @@ export function EditDialog(props: {
       title="编辑知识库"
       className="zy-modal-form"
       footer={(
-        <Foot>
+        <FormFooter>
           <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>
           <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
           <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</button>
-        </Foot>
+        </FormFooter>
       )}
     >
       <form
         ref={form}
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
-          const data = readForm(event)
+          const data = readFormData(event)
           props.onSubmit({
             title: String(data.get('title') ?? ''),
             description: String(data.get('description') ?? ''),

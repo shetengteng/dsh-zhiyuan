@@ -5,14 +5,14 @@ import { DATA_DIR_NAME } from './identity.ts'
 import { importDsh } from './host-resolve.ts'
 import { KbError } from './types.ts'
 
-export type DestResolution = {
+export type DestinationResolution = {
   relative: string
   absolute: string
   segments: string[]
   deep: boolean
 }
 
-let cachedRoot: string | undefined
+let cachedDataRoot: string | undefined
 
 function fallbackDataRoot(): string {
   const home = process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -20,23 +20,23 @@ function fallbackDataRoot(): string {
 }
 
 export async function resolveDataRoot(): Promise<string> {
-  if (cachedRoot) return cachedRoot
+  if (cachedDataRoot) return cachedDataRoot
   const homePaths = await importDsh<{ dshHomePath: (...segments: string[]) => string }>(
     '@deepseek-ai/dsh-home-paths',
     'lib/index.js',
   )
-  cachedRoot = homePaths?.dshHomePath
+  cachedDataRoot = homePaths?.dshHomePath
     ? homePaths.dshHomePath('data', DATA_DIR_NAME)
     : fallbackDataRoot()
-  return cachedRoot
+  return cachedDataRoot
 }
 
-export function setDataRootForTest(root: string | undefined): void {
-  cachedRoot = root
+export function setDataRootForTest(dataRoot: string | undefined): void {
+  cachedDataRoot = dataRoot
 }
 
 export function clearDataRootCache(): void {
-  cachedRoot = undefined
+  cachedDataRoot = undefined
 }
 
 export function basesRoot(dataRoot: string): string {
@@ -55,22 +55,22 @@ export function statePath(dataRoot: string): string {
   return join(dataRoot, 'state.json')
 }
 
-function splitCategory(destCategory: string): string[] {
-  return destCategory
+function splitCategory(destinationCategory: string): string[] {
+  return destinationCategory
     .replaceAll('\\', '/')
     .split('/')
     .map((part) => part.trim())
     .filter(Boolean)
 }
 
-export function assertInside(root: string, candidate: string): string {
-  const absRoot = resolve(root)
-  const abs = resolve(candidate)
-  const rel = relative(absRoot, abs)
-  if (rel.startsWith('..') || isAbsolute(rel)) {
-    throw new KbError('path_escape', `路径必须仍在 ${absRoot} 下`)
+export function assertInside(baseRoot: string, candidatePath: string): string {
+  const absoluteRoot = resolve(baseRoot)
+  const absoluteCandidate = resolve(candidatePath)
+  const relativePath = relative(absoluteRoot, absoluteCandidate)
+  if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    throw new KbError('path_escape', `路径必须仍在 ${absoluteRoot} 下`)
   }
-  return abs
+  return absoluteCandidate
 }
 
 function rejectEscapeTokens(segments: string[]): void {
@@ -84,48 +84,47 @@ function rejectEscapeTokens(segments: string[]): void {
   }
 }
 
-export function resolveDest(dataRoot: string, baseId: string, destCategory: string): DestResolution {
-  if (isAbsolute(destCategory) || destCategory.startsWith('~')) {
+export function resolveDest(dataRoot: string, baseId: string, destinationCategory: string): DestinationResolution {
+  if (isAbsolute(destinationCategory) || destinationCategory.startsWith('~')) {
     throw new KbError('path_escape', '类目必须是库内相对路径')
   }
-  const segments = splitCategory(destCategory)
-  rejectEscapeTokens(segments)
-  const joined = segments.join('/')
-  const root = baseDir(dataRoot, baseId)
-  const absolute = assertInside(root, join(root, ...segments))
-  const normalizedRel = relative(root, absolute).split(sep).join('/')
-  if (normalizedRel === '..' || normalizedRel.startsWith('../')) {
+  const categorySegments = splitCategory(destinationCategory)
+  rejectEscapeTokens(categorySegments)
+  const baseRoot = baseDir(dataRoot, baseId)
+  const absoluteDestination = assertInside(baseRoot, join(baseRoot, ...categorySegments))
+  const normalizedRelativePath = relative(baseRoot, absoluteDestination).split(sep).join('/')
+  if (normalizedRelativePath === '..' || normalizedRelativePath.startsWith('../')) {
     throw new KbError('path_escape', '解析后的路径逃出了当前库')
   }
   return {
-    relative: normalizedRel === '.' ? '' : normalizedRel,
-    absolute,
-    segments,
-    deep: segments.length > 4,
+    relative: normalizedRelativePath === '.' ? '' : normalizedRelativePath,
+    absolute: absoluteDestination,
+    segments: categorySegments,
+    deep: categorySegments.length > 4,
   }
 }
 
-export function resolveEntry(dataRoot: string, baseId: string, relPath: string): string {
-  return resolveDest(dataRoot, baseId, relPath).absolute
+export function resolveEntry(dataRoot: string, baseId: string, relativePath: string): string {
+  return resolveDest(dataRoot, baseId, relativePath).absolute
 }
 
-export function assertNoSymlinkEscape(root: string, candidate: string): void {
-  const absRoot = resolve(root)
-  let cursor = candidate
+export function assertNoSymlinkEscape(baseRoot: string, candidatePath: string): void {
+  const absoluteRoot = resolve(baseRoot)
+  let currentPath = candidatePath
   while (true) {
-    if (existsSync(cursor)) {
-      const stat = lstatSync(cursor)
+    if (existsSync(currentPath)) {
+      const stat = lstatSync(currentPath)
       if (stat.isSymbolicLink()) {
-        const real = realpathSync(cursor)
-        const rel = relative(absRoot, real)
-        if (rel.startsWith('..') || isAbsolute(rel)) {
+        const realPath = realpathSync(currentPath)
+        const relativeRealPath = relative(absoluteRoot, realPath)
+        if (relativeRealPath.startsWith('..') || isAbsolute(relativeRealPath)) {
           throw new KbError('path_escape', '符号链接不能逃出知识库目录')
         }
       }
     }
-    const parent = resolve(cursor, '..')
-    if (parent === cursor || relative(absRoot, parent).startsWith('..')) break
-    cursor = parent
+    const parentPath = resolve(currentPath, '..')
+    if (parentPath === currentPath || relative(absoluteRoot, parentPath).startsWith('..')) break
+    currentPath = parentPath
   }
 }
 

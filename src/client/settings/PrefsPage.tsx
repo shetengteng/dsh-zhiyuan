@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Menu, IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary, Prefs } from '../models.ts'
-import { Note } from './dialogs.tsx'
+import { Note } from './Dialogs.tsx'
 
 export function PrefsPage(props: {
   prefs: Prefs
@@ -14,8 +14,8 @@ export function PrefsPage(props: {
   const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => { setDraft(props.prefs) }, [props.prefs])
 
-  const current = props.bases.find((base) => base.id === draft.defaultBaseId)
-  const label = current ? `${current.id}（${current.title}）` : '（无）'
+  const selectedBase = props.bases.find((base) => base.id === draft.defaultBaseId)
+  const label = selectedBase ? `${selectedBase.id}（${selectedBase.title}）` : '（无）'
 
   const commit = (next: Prefs) => {
     setDraft(next)
@@ -66,9 +66,9 @@ export function PrefsPage(props: {
           className="zy-selector zy-num"
           value={`${Math.round(draft.maxFileBytes / 1024 / 1024)} MB`}
           onChange={(event: { target: { value: string } }) => {
-            const n = parseInt(event.target.value, 10)
-            if (!Number.isFinite(n) || n < 1) return
-            setDraft({ ...draft, maxFileBytes: n * 1024 * 1024 })
+            const megabytes = parseInt(event.target.value, 10)
+            if (!Number.isFinite(megabytes) || megabytes < 1) return
+            setDraft({ ...draft, maxFileBytes: megabytes * 1024 * 1024 })
           }}
           onBlur={() => props.onSave(draft)}
         />
@@ -82,9 +82,9 @@ export function PrefsPage(props: {
           className="zy-selector zy-num"
           value={`${Math.round(draft.maxBaseBytes / 1024 / 1024 / 1024)} GB`}
           onChange={(event: { target: { value: string } }) => {
-            const n = parseInt(event.target.value, 10)
-            if (!Number.isFinite(n) || n < 1) return
-            setDraft({ ...draft, maxBaseBytes: n * 1024 * 1024 * 1024 })
+            const gigabytes = parseInt(event.target.value, 10)
+            if (!Number.isFinite(gigabytes) || gigabytes < 1) return
+            setDraft({ ...draft, maxBaseBytes: gigabytes * 1024 * 1024 * 1024 })
           }}
           onBlur={() => props.onSave(draft)}
         />

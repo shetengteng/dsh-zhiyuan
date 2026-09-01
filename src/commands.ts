@@ -22,40 +22,40 @@ function fail(error: unknown): CommandResult {
 async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
   const data = JSON.parse(payload) as Record<string, unknown>
   const op = String(data.op ?? '')
-  const root = await resolveDataRoot()
+  const dataRoot = await resolveDataRoot()
   switch (op) {
     case 'list':
-      return listBases(root)
+      return listBases(dataRoot)
     case 'create':
-      return createBase(root, {
+      return createBase(dataRoot, {
         id: String(data.id ?? ''),
         title: String(data.title ?? ''),
         description: String(data.description ?? ''),
         aliases: Array.isArray(data.aliases) ? data.aliases.map(String) : [],
       })
     case 'update':
-      return updateBase(root, String(data.id ?? ''), {
+      return updateBase(dataRoot, String(data.id ?? ''), {
         title: data.title as string | undefined,
         description: data.description as string | undefined,
         aliases: Array.isArray(data.aliases) ? data.aliases.map(String) : undefined,
       })
     case 'deleteBase':
-      await deleteBase(root, String(data.id ?? ''), Boolean(data.confirm))
+      await deleteBase(dataRoot, String(data.id ?? ''), Boolean(data.confirm))
       return { ok: true }
     case 'tree':
-      return listTree(root, String(data.id ?? ''))
+      return listTree(dataRoot, String(data.id ?? ''))
     case 'read':
-      return readEntry(root, String(data.id ?? ''), String(data.path ?? ''))
+      return readEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''))
     case 'write':
-      await writeEntry(root, String(data.id ?? ''), String(data.path ?? ''), String(data.text ?? ''))
+      await writeEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''), String(data.text ?? ''))
       return { ok: true }
     case 'deleteEntry':
-      await deleteEntry(root, String(data.id ?? ''), String(data.path ?? ''), Boolean(data.confirm))
+      await deleteEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''), Boolean(data.confirm))
       return { ok: true }
     case 'pick':
       return pickSource(data.kind === 'dir' ? 'dir' : 'file')
     case 'ingest':
-      return jobs.enqueue('ingest', () => ingest(root, {
+      return jobs.enqueue('ingest', () => ingest(dataRoot, {
         baseId: String(data.baseId ?? ''),
         sourcePath: String(data.sourcePath ?? ''),
         destCategory: String(data.destCategory ?? ''),
@@ -63,7 +63,7 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
         createMissing: data.createMissing !== false,
       }))
     case 'search':
-      return searchBase(root, {
+      return searchBase(dataRoot, {
         baseId: String(data.baseId ?? ''),
         query: String(data.query ?? ''),
         aliases: Array.isArray(data.aliases) ? data.aliases.map(String) : undefined,
@@ -71,13 +71,13 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
         topK: typeof data.topK === 'number' ? data.topK : undefined,
       })
     case 'prefs':
-      return (await readCatalog(root)).prefs
+      return (await readCatalog(dataRoot)).prefs
     case 'setPrefs': {
-      const catalog = await readCatalog(root)
+      const catalog = await readCatalog(dataRoot)
       if (typeof data.defaultBaseId === 'string') catalog.prefs.defaultBaseId = data.defaultBaseId
       if (typeof data.maxFileBytes === 'number') catalog.prefs.maxFileBytes = data.maxFileBytes
       if (typeof data.maxBaseBytes === 'number') catalog.prefs.maxBaseBytes = data.maxBaseBytes
-      await writeCatalog(root, catalog)
+      await writeCatalog(dataRoot, catalog)
       return catalog.prefs
     }
     default:
@@ -88,28 +88,28 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
 export async function resolveIngestTo(
   dataRoot: string,
   baseId: string,
-  destFlag: string | undefined,
-  toRoot: boolean,
+  destinationCategoryFlag: string | undefined,
+  importToBaseRoot: boolean,
 ): Promise<string> {
-  if (destFlag !== undefined) return destFlag
-  if (toRoot) return ''
-  const last = await lastDestCategory(dataRoot, baseId)
-  if (last === undefined) {
+  if (destinationCategoryFlag !== undefined) return destinationCategoryFlag
+  if (importToBaseRoot) return ''
+  const lastDestinationCategory = await lastDestCategory(dataRoot, baseId)
+  if (lastDestinationCategory === undefined) {
     throw new KbError('missing_field', '请指定 --to <类目>，或 --root 导入到库根')
   }
-  return last
+  return lastDestinationCategory
 }
 
 async function handleIngest(rest: string[], flags: ReturnType<typeof parseFlags>['flags'], jobs: JobRunner) {
-  const path = rest[0] ?? flagString(flags, 'path')
+  const sourcePath = rest[0] ?? flagString(flags, 'path')
   const baseId = flagString(flags, 'base')
-  if (!path) throw new KbError('missing_field', '用法：/kb ingest <path> --base <id> --to <类目>')
+  if (!sourcePath) throw new KbError('missing_field', '用法：/kb ingest <path> --base <id> --to <类目>')
   if (!baseId) throw new KbError('missing_field', '导入必须指定 --base')
-  const root = await resolveDataRoot()
-  const destCategory = await resolveIngestTo(root, baseId, flagString(flags, 'to'), flagBool(flags, 'root', false))
-  return jobs.enqueue('ingest', () => ingest(root, {
+  const dataRoot = await resolveDataRoot()
+  const destCategory = await resolveIngestTo(dataRoot, baseId, flagString(flags, 'to'), flagBool(flags, 'root', false))
+  return jobs.enqueue('ingest', () => ingest(dataRoot, {
     baseId,
-    sourcePath: path,
+    sourcePath,
     destCategory,
     preserveTree: flagBool(flags, 'preserve-tree'),
     createMissing: !flagBool(flags, 'no-create'),
@@ -133,8 +133,8 @@ export function registerKbCommands(
         if (parsed.sub === 'ingest') return ok(await handleIngest(parsed.rest, parsed.flags, jobs))
         if (parsed.sub === 'call') return ok(await handleCall(parsed.rest.join(' '), jobs))
         if (parsed.sub === 'search') {
-          const root = await resolveDataRoot()
-          return ok(await searchBase(root, {
+          const dataRoot = await resolveDataRoot()
+          return ok(await searchBase(dataRoot, {
             baseId: flagString(parsed.flags, 'base') ?? '',
             query: parsed.rest.join(' ') || flagString(parsed.flags, 'query') || '',
             aliases: splitAliases(flagString(parsed.flags, 'aliases')),

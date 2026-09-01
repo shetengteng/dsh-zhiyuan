@@ -27,42 +27,42 @@ function asNumber(value: unknown, fallback: number): number {
 
 function parseCard(value: unknown): BaseCard | null {
   if (!value || typeof value !== 'object') return null
-  const rec = value as Record<string, unknown>
-  const id = asString(rec.id)
-  const title = asString(rec.title)
+  const record = value as Record<string, unknown>
+  const id = asString(record.id)
+  const title = asString(record.title)
   if (!id) return null
-  const aliases = Array.isArray(rec.aliases)
-    ? rec.aliases.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
+  const aliases = Array.isArray(record.aliases)
+    ? record.aliases.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
     : []
   return {
     id,
     title,
-    description: asString(rec.description),
+    description: asString(record.description),
     aliases,
-    createdAt: asNumber(rec.createdAt, 0),
-    lastUsedAt: asNumber(rec.lastUsedAt, 0),
-    lastDestCategory: typeof rec.lastDestCategory === 'string' ? rec.lastDestCategory : undefined,
+    createdAt: asNumber(record.createdAt, 0),
+    lastUsedAt: asNumber(record.lastUsedAt, 0),
+    lastDestCategory: typeof record.lastDestCategory === 'string' ? record.lastDestCategory : undefined,
   }
 }
 
 function parsePrefs(value: unknown): CatalogPrefs {
-  const rec = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
-    defaultBaseId: asString(rec.defaultBaseId),
-    maxFileBytes: asNumber(rec.maxFileBytes, DEFAULT_MAX_FILE_BYTES),
-    maxBaseBytes: asNumber(rec.maxBaseBytes, DEFAULT_MAX_BASE_BYTES),
+    defaultBaseId: asString(record.defaultBaseId),
+    maxFileBytes: asNumber(record.maxFileBytes, DEFAULT_MAX_FILE_BYTES),
+    maxBaseBytes: asNumber(record.maxBaseBytes, DEFAULT_MAX_BASE_BYTES),
   }
 }
 
 export function parseCatalog(raw: unknown): Catalog {
-  const rec = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
-  const bases = Array.isArray(rec.bases)
-    ? rec.bases.map(parseCard).filter((card): card is BaseCard => Boolean(card))
+  const record = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+  const bases = Array.isArray(record.bases)
+    ? record.bases.map(parseCard).filter((card): card is BaseCard => Boolean(card))
     : []
   return {
     version: 1,
-    lastUsedBaseId: asString(rec.lastUsedBaseId),
-    prefs: parsePrefs(rec.prefs),
+    lastUsedBaseId: asString(record.lastUsedBaseId),
+    prefs: parsePrefs(record.prefs),
     bases,
   }
 }
@@ -85,8 +85,8 @@ export async function writeCatalog(dataRoot: string, catalog: Catalog): Promise<
 }
 
 export function upsertBase(catalog: Catalog, card: BaseCard): Catalog {
-  const rest = catalog.bases.filter((item) => item.id !== card.id)
-  return { ...catalog, bases: [...rest, card] }
+  const remainingCards = catalog.bases.filter((item) => item.id !== card.id)
+  return { ...catalog, bases: [...remainingCards, card] }
 }
 
 export function removeBase(catalog: Catalog, id: string): Catalog {
@@ -108,21 +108,21 @@ export async function lastDestCategory(dataRoot: string, baseId: string): Promis
 
 export async function rememberLastDest(dataRoot: string, baseId: string, destCategory: string): Promise<void> {
   const catalog = await readCatalog(dataRoot)
-  const current = catalog.bases.find((card) => card.id === baseId)
-  if (!current || current.lastDestCategory === destCategory) return
-  current.lastDestCategory = destCategory
+  const currentCard = catalog.bases.find((card) => card.id === baseId)
+  if (!currentCard || currentCard.lastDestCategory === destCategory) return
+  currentCard.lastDestCategory = destCategory
   await writeCatalog(dataRoot, catalog)
 }
 
 export function cleanAliases(aliases: string[] | undefined): string[] {
   if (!aliases) return []
   const seen = new Set<string>()
-  const out: string[] = []
-  for (const raw of aliases) {
-    const value = raw.trim()
+  const cleanedAliases: string[] = []
+  for (const rawAlias of aliases) {
+    const value = rawAlias.trim()
     if (!value || seen.has(value)) continue
     seen.add(value)
-    out.push(value)
+    cleanedAliases.push(value)
   }
-  return out
+  return cleanedAliases
 }

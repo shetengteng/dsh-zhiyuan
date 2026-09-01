@@ -36,6 +36,11 @@ export type TreeNode = {
   children?: TreeNode[]
 }
 
+export type ReadEntryResult = {
+  path: string
+  text: string
+}
+
 export type SearchHit = {
   n: number
   path: string

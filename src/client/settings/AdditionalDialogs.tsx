@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
-import { Field, Note } from './dialogs.tsx'
-import { SearchIcon } from './icons.tsx'
+import { Field, Note } from './Dialogs.tsx'
+import { SearchIcon } from './Icons.tsx'
 import { MdEditor, type MdEditorHandle } from './MdEditor.tsx'
 
-function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
+/** Import, search, and preview dialogs for the settings workbench. */
+function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
   event.preventDefault()
   return new FormData(event.currentTarget)
 }
@@ -51,7 +52,7 @@ export function ImportDialog(props: {
       <form
         ref={form}
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
-          const data = readForm(event)
+          const data = readFormData(event)
           props.onSubmit({
             sourcePath: String(data.get('sourcePath') ?? '').trim(),
             destCategory: String(data.get('destCategory') ?? '').trim(),
@@ -102,13 +103,13 @@ export function SearchDialog(props: {
   searched: boolean
   onClose: () => void
   onSearch: (query: string) => void
-  onOpen: (hit: SearchHit) => void
+  onOpenHit: (hit: SearchHit) => void
 }) {
   return (
     <Modal open onClose={props.onClose} title={`搜索  ${props.baseId}`} className="zy-modal-form">
       <form
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
-          props.onSearch(String(readForm(event).get('query') ?? ''))
+          props.onSearch(String(readFormData(event).get('query') ?? ''))
         }}
       >
         <div className="zy-search-bar">
@@ -123,7 +124,7 @@ export function SearchDialog(props: {
       {props.hits.length ? (
         <div className="zy-search-hits">
           {props.hits.map((hit) => (
-            <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpen(hit)}>
+            <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpenHit(hit)}>
               {hit.path}:{hit.startLine}{' '}
               <HitMark text={hit.excerpt.split('\n').find((line) => line.trim()) ?? ''} query={props.query} />
             </button>
@@ -136,20 +137,20 @@ export function SearchDialog(props: {
 }
 
 function HitMark(props: { text: string; query: string }) {
-  const q = props.query.trim()
-  const i = q ? props.text.toLowerCase().indexOf(q.toLowerCase()) : -1
-  if (i < 0) return <>{props.text}</>
+  const queryText = props.query.trim()
+  const matchStart = queryText ? props.text.toLowerCase().indexOf(queryText.toLowerCase()) : -1
+  if (matchStart < 0) return <>{props.text}</>
   return (
     <>
-      {props.text.slice(0, i)}
-      <mark>{props.text.slice(i, i + q.length)}</mark>
-      {props.text.slice(i + q.length)}
+      {props.text.slice(0, matchStart)}
+      <mark>{props.text.slice(matchStart, matchStart + queryText.length)}</mark>
+      {props.text.slice(matchStart + queryText.length)}
     </>
   )
 }
 
 export function PreviewDialog(props: {
-  path: string
+  entryPath: string
   text: string
   startLine?: number
   endLine?: number
@@ -162,16 +163,12 @@ export function PreviewDialog(props: {
 }) {
   const form = useRef<HTMLFormElement>(null)
   const editorRef = useRef<MdEditorHandle>(null)
-  const fileName = props.path.split('/').pop() || props.path
-  const range = props.startLine && props.startLine > 0
-    ? ` · ${props.startLine}${props.endLine && props.endLine !== props.startLine ? `–${props.endLine}` : ''} 行`
-    : ''
+  const fileName = props.entryPath.split('/').pop() || props.entryPath
   return (
     <Modal
       open
       onClose={props.onClose}
       title={fileName}
-      description={`${props.path}${range}`}
       className="zy-modal-wide"
       footer={props.readonly ? undefined : (
         <div className="zy-footbar">
@@ -182,7 +179,7 @@ export function PreviewDialog(props: {
       )}
     >
       {props.readonly ? (
-        <MdEditor key={props.path} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} />
+        <MdEditor key={props.entryPath} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} />
       ) : (
         <form
           ref={form}
@@ -192,7 +189,7 @@ export function PreviewDialog(props: {
             props.onSave(editorRef.current?.getMarkdown() ?? props.text)
           }}
         >
-          <MdEditor ref={editorRef} key={props.path} text={props.text} readonly={false} />
+          <MdEditor ref={editorRef} key={props.entryPath} text={props.text} readonly={false} />
         </form>
       )}
       <Note text={props.error} />

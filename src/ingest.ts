@@ -9,12 +9,12 @@ import { assertInside, assertNoSymlinkEscape, baseDir, expandUserPath, resolveDe
 import type { IngestFileResult, IngestInput, IngestResult } from './types.ts'
 import { KbError } from './types.ts'
 
-function extOf(name: string): string {
+function extensionOf(name: string): string {
   return extname(name).toLowerCase()
 }
 
 function isTextFile(name: string): boolean {
-  return TEXT_EXTS.has(extOf(name))
+  return TEXT_EXTS.has(extensionOf(name))
 }
 
 async function sha256File(path: string): Promise<string> {
@@ -34,26 +34,26 @@ async function walkSource(source: string): Promise<string[]> {
   const files: string[] = []
   const entries = await readdir(source, { withFileTypes: true })
   for (const entry of entries) {
-    const path = join(source, entry.name)
-    if (entry.isDirectory()) files.push(...await walkSource(path))
-    else if (entry.isFile()) files.push(path)
+    const entryPath = join(source, entry.name)
+    if (entry.isDirectory()) files.push(...await walkSource(entryPath))
+    else if (entry.isFile()) files.push(entryPath)
   }
   return files
 }
 
-async function existingHashes(root: string): Promise<Map<string, string>> {
+async function existingHashes(baseRoot: string): Promise<Map<string, string>> {
   const map = new Map<string, string>()
-  const files = await walkSource(root).catch(() => [] as string[])
+  const files = await walkSource(baseRoot).catch(() => [] as string[])
   for (const file of files) {
     if (!isTextFile(file)) continue
-    map.set(await sha256File(file), relative(root, file).split(sep).join('/'))
+    map.set(await sha256File(file), relative(baseRoot, file).split(sep).join('/'))
   }
   return map
 }
 
-async function dirSize(root: string): Promise<number> {
+async function dirSize(baseRoot: string): Promise<number> {
   let total = 0
-  const files = await walkSource(root).catch(() => [] as string[])
+  const files = await walkSource(baseRoot).catch(() => [] as string[])
   for (const file of files) {
     if (!isTextFile(file)) continue
     total += (await stat(file)).size
@@ -85,7 +85,7 @@ function missingSourceMessage(sourcePath: string): string {
   return `源路径不存在：${sourcePath}`
 }
 
-function sourceRel(sourceRoot: string, file: string, preserveTree: boolean): string {
+function relativeSourcePath(sourceRoot: string, file: string, preserveTree: boolean): string {
   if (!preserveTree) return basename(file)
   return relative(sourceRoot, file).split(sep).join('/')
 }
@@ -95,20 +95,20 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
   const catalog = await readCatalog(dataRoot)
   const source = expandUserPath(input.sourcePath)
   if (!existsSync(source)) throw new KbError('not_found', missingSourceMessage(input.sourcePath))
-  const dest = resolveDest(dataRoot, input.baseId, input.destCategory)
-  const root = baseDir(dataRoot, input.baseId)
-  assertInside(root, dest.absolute)
+  const destination = resolveDest(dataRoot, input.baseId, input.destCategory)
+  const baseRoot = baseDir(dataRoot, input.baseId)
+  assertInside(baseRoot, destination.absolute)
   const createMissing = input.createMissing !== false
   const preserveTree = Boolean(input.preserveTree)
-  if (createMissing) await mkdir(dest.absolute, { recursive: true })
-  else if (!existsSync(dest.absolute)) {
-    throw new KbError('not_found', `类目不存在：${dest.relative || '(库根)'}`)
+  if (createMissing) await mkdir(destination.absolute, { recursive: true })
+  else if (!existsSync(destination.absolute)) {
+    throw new KbError('not_found', `类目不存在：${destination.relative || '(库根)'}`)
   }
 
-  const hashes = await existingHashes(root)
-  const currentBytes = await dirSize(root)
+  const hashes = await existingHashes(baseRoot)
+  const currentBytes = await dirSize(baseRoot)
   const createdDirs = new Set<string>()
-  if (createMissing && dest.relative) createdDirs.add(dest.relative)
+  if (createMissing && destination.relative) createdDirs.add(destination.relative)
 
   const sourceInfo = await stat(source)
   const sourceRoot = sourceInfo.isDirectory() ? source : dirname(source)
@@ -121,45 +121,43 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
     failed: 0,
     createdDirs: [],
     files: [],
-    warnings: dest.deep ? [`类目深度超过 ${CATEGORY_WARN_DEPTH}，仍已写入`] : [],
+    warnings: destination.deep ? [`类目深度超过 ${CATEGORY_WARN_DEPTH}，仍已写入`] : [],
   }
 
-  let added = 0
+  let addedBytes = 0
   for (const file of files) {
-    const item = await ingestOne({
+    const fileResult = await ingestOne({
       file,
       sourceRoot,
-      destAbs: dest.absolute,
-      destRel: dest.relative,
+      destinationAbsolute: destination.absolute,
       preserveTree,
-      root,
+      baseRoot,
       hashes,
       maxFileBytes: catalog.prefs.maxFileBytes,
       maxBaseBytes: catalog.prefs.maxBaseBytes,
-      currentBytes: currentBytes + added,
+      currentBytes: currentBytes + addedBytes,
     })
-    result.files.push(item)
-    if (item.status === 'skipped') result.skipped += 1
-    else if (item.status === 'failed') result.failed += 1
+    result.files.push(fileResult)
+    if (fileResult.status === 'skipped') result.skipped += 1
+    else if (fileResult.status === 'failed') result.failed += 1
     else {
-      result.copied.push(item.relPath)
-      if (item.status === 'renamed') result.renamed.push(item.relPath)
-      if (item.relPath.includes('/')) createdDirs.add(dirname(item.relPath).split(sep).join('/'))
-      added += (await stat(join(root, item.relPath))).size
+      result.copied.push(fileResult.relPath)
+      if (fileResult.status === 'renamed') result.renamed.push(fileResult.relPath)
+      if (fileResult.relPath.includes('/')) createdDirs.add(dirname(fileResult.relPath).split(sep).join('/'))
+      addedBytes += (await stat(join(baseRoot, fileResult.relPath))).size
     }
   }
   result.createdDirs = [...createdDirs].filter(Boolean)
-  await rememberLastDest(dataRoot, input.baseId, dest.relative)
+  await rememberLastDest(dataRoot, input.baseId, destination.relative)
   return result
 }
 
 async function ingestOne(args: {
   file: string
   sourceRoot: string
-  destAbs: string
-  destRel: string
+  destinationAbsolute: string
   preserveTree: boolean
-  root: string
+  baseRoot: string
   hashes: Map<string, string>
   maxFileBytes: number
   maxBaseBytes: number
@@ -180,19 +178,19 @@ async function ingestOne(args: {
   if (args.hashes.has(digest)) {
     return { relPath: args.hashes.get(digest) ?? name, status: 'skipped', reason: '同指纹已在库中' }
   }
-  const relFromSource = sourceRel(args.sourceRoot, args.file, args.preserveTree)
-  const intended = join(args.destAbs, relFromSource)
-  assertInside(args.root, intended)
-  assertNoSymlinkEscape(args.root, dirname(intended))
-  await mkdir(dirname(intended), { recursive: true })
-  let destFile = intended
+  const sourceRelativePath = relativeSourcePath(args.sourceRoot, args.file, args.preserveTree)
+  const intendedPath = join(args.destinationAbsolute, sourceRelativePath)
+  assertInside(args.baseRoot, intendedPath)
+  assertNoSymlinkEscape(args.baseRoot, dirname(intendedPath))
+  await mkdir(dirname(intendedPath), { recursive: true })
+  let destinationPath = intendedPath
   let status: IngestFileResult['status'] = 'copied'
-  if (existsSync(destFile)) {
-    destFile = join(dirname(intended), uniqueName(dirname(intended), basename(intended)))
+  if (existsSync(destinationPath)) {
+    destinationPath = join(dirname(intendedPath), uniqueName(dirname(intendedPath), basename(intendedPath)))
     status = 'renamed'
   }
-  await copyFile(args.file, destFile)
-  const relPath = relative(args.root, destFile).split(sep).join('/')
-  args.hashes.set(digest, relPath)
-  return { relPath, status }
+  await copyFile(args.file, destinationPath)
+  const relativeDestinationPath = relative(args.baseRoot, destinationPath).split(sep).join('/')
+  args.hashes.set(digest, relativeDestinationPath)
+  return { relPath: relativeDestinationPath, status }
 }
