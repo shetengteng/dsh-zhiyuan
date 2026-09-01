@@ -53,6 +53,11 @@
     }
   },
   "dependencies": {
+    "@tiptap/core": "^3.30.6",
+    "@tiptap/extension-link": "^3.30.6",
+    "@tiptap/markdown": "^3.30.6",
+    "@tiptap/pm": "^3.30.6",
+    "@tiptap/starter-kit": "^3.30.6",
     "@vscode/ripgrep": "^1.18.0",
     "esbuild": "^0.25.0"
   },

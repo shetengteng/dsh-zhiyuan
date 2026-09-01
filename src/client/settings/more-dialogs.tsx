@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
 import { Field, Note } from './dialogs.tsx'
 import { SearchIcon } from './icons.tsx'
+import { MdEditor, type MdEditorHandle } from './MdEditor.tsx'
 
 function readForm(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
   event.preventDefault()
@@ -160,14 +161,19 @@ export function PreviewDialog(props: {
   onDelete?: () => void
 }) {
   const form = useRef<HTMLFormElement>(null)
+  const editorRef = useRef<MdEditorHandle>(null)
   const fileName = props.path.split('/').pop() || props.path
+  const range = props.startLine && props.startLine > 0
+    ? ` · ${props.startLine}${props.endLine && props.endLine !== props.startLine ? `–${props.endLine}` : ''} 行`
+    : ''
   return (
     <Modal
       open
       onClose={props.onClose}
       title={fileName}
-      description={props.path}
+      description={`${props.path}${range}`}
       className="zy-modal-wide"
+      contentClassName="zy-modal-md"
       footer={props.readonly ? undefined : (
         <div className="zy-footbar">
           <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>
@@ -177,42 +183,20 @@ export function PreviewDialog(props: {
       )}
     >
       {props.readonly ? (
-        <HighlightedPre text={props.text} startLine={props.startLine} endLine={props.endLine} />
+        <MdEditor key={props.path} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} />
       ) : (
         <form
           ref={form}
-          onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
+          onSubmit={(event: { preventDefault: () => void }) => {
+            event.preventDefault()
             if (!props.onSave) return
-            props.onSave(String(readForm(event).get('text') ?? ''))
+            props.onSave(editorRef.current?.getMarkdown() ?? props.text)
           }}
         >
-          <textarea className="zy-area" name="text" defaultValue={props.text} style={{ minHeight: 280 }} />
+          <MdEditor ref={editorRef} key={props.path} text={props.text} readonly={false} />
         </form>
       )}
       <Note text={props.error} />
     </Modal>
-  )
-}
-
-function HighlightedPre(props: { text: string; startLine?: number; endLine?: number }) {
-  const markRef = useRef<HTMLElement>(null)
-  const start = props.startLine && props.startLine > 0 ? props.startLine : 0
-  const end = props.endLine && props.endLine >= start ? props.endLine : start
-  useEffect(() => {
-    markRef.current?.scrollIntoView({ block: 'center' })
-  }, [start, end, props.text])
-  if (!start) return <pre className="zy-pre">{props.text}</pre>
-  const lines = props.text.split(/\r?\n/)
-  const first = Math.min(start, lines.length)
-  const last = Math.min(end || first, lines.length)
-  const before = lines.slice(0, first - 1).join('\n')
-  const mid = lines.slice(first - 1, last).join('\n')
-  const after = lines.slice(last).join('\n')
-  return (
-    <pre className="zy-pre">
-      {before}{before && mid ? '\n' : ''}
-      <mark ref={markRef} className="zy-hl">{mid}</mark>
-      {after ? `\n${after}` : ''}
-    </pre>
   )
 }

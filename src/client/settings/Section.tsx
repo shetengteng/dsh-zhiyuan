@@ -106,7 +106,7 @@ export function createSettingsSection(
             {note}
           </p>
         ) : null}
-        <div className="zy-body">
+        <div className={tab === 'lib' ? 'zy-body' : 'zy-body is-doc'}>
           {tab === 'lib' ? (
             <LibPage
               bases={bases}

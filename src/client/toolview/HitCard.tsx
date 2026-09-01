@@ -61,6 +61,7 @@ export function KbSearchView(props: { toolName?: string; block?: ToolBlock }) {
           title="只读预览"
           description={`${open.path} · [${open.n}]`}
           className="zy-modal-wide"
+          contentClassName="zy-modal-md"
           footer={<button className="zy-btn" type="button" onClick={() => setOpen(null)}>关闭</button>}
         >
           <pre className="zy-pre">{open.excerpt}</pre>

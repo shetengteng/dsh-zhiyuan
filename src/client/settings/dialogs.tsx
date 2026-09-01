@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
 
 export { Modal }
@@ -146,13 +146,14 @@ export function ConfirmDialog(props: {
       open
       onClose={props.onClose}
       title="确认删除"
+      closeLabel="关闭"
       className="zy-modal-form"
       description={props.message}
       footer={(
-        <Foot>
-          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
-          <button className="zy-btn zy-danger" type="button" disabled={props.busy} onClick={props.onConfirm}>删除</button>
-        </Foot>
+        <>
+          <Button type="button" variant="outline" onClick={props.onClose}>取消</Button>
+          <Button type="button" variant="outline" className="zy-danger" disabled={props.busy} onClick={props.onConfirm}>删除</Button>
+        </>
       )}
     />
   )

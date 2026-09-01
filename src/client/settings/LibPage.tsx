@@ -57,7 +57,7 @@ export function LibPage(props: {
                 <button className="zy-btn zy-primary" type="button" onClick={props.onImport}>导入</button>
               </div>
             </div>
-            <Door lead={lead} rest={rest} aliases={current.aliases} />
+            <Door lead={lead} rest={rest} aliases={current.aliases} path={`bases/${current.id}/`} />
             <div className="zy-tree">
               {props.pending ? <p className="zy-help">加载中…</p> : null}
               {props.tree.map((node) => <TreeItem key={node.path} node={node} onOpen={props.onOpenFile} onDelete={props.onDeleteEntry} />)}
@@ -90,29 +90,19 @@ function doorParts(description: string): { lead: string; rest: string } {
   return { lead: text.slice(0, cut), rest: text.slice(cut + 1).trim() }
 }
 
-function Door(props: { lead: string; rest: string; aliases: string[] }) {
+function Door(props: { lead: string; rest: string; aliases: string[]; path: string }) {
   const alias = props.aliases.length ? `别名：${props.aliases.join(', ')}` : ''
-  const extra = Boolean(props.rest || alias)
-  const body = extra ? (
-    <div className="zy-door-body">
-      {props.rest || null}
-      {alias ? <div className="zy-help">{alias}</div> : null}
-    </div>
-  ) : null
-  if (!extra) {
-    return (
-      <div className="zy-door zy-door-shut">
-        <span className="zy-lead">{props.lead}</span>
-      </div>
-    )
-  }
   return (
     <details className="zy-door">
       <summary>
         <TwistIcon />
         <span className="zy-lead">{props.lead}</span>
       </summary>
-      {body}
+      <div className="zy-door-body">
+        {props.rest || null}
+        <div className="zy-help"><code>{props.path}</code></div>
+        {alias ? <div className="zy-help">{alias}</div> : null}
+      </div>
     </details>
   )
 }
