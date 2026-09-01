@@ -36,7 +36,7 @@ export const MdEditor = forwardRef<MdEditorHandle, Props>(function MdEditor(prop
       content: props.text,
       contentType: 'markdown',
       editable: !props.readonly,
-      autofocus: props.readonly ? false : 'end',
+      autofocus: props.readonly ? false : 'start',
       editorProps: { attributes: { class: 'zy-md-doc' } },
     })
     editorRef.current = instance

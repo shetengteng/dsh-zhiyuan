@@ -173,7 +173,6 @@ export function PreviewDialog(props: {
       title={fileName}
       description={`${props.path}${range}`}
       className="zy-modal-wide"
-      contentClassName="zy-modal-md"
       footer={props.readonly ? undefined : (
         <div className="zy-footbar">
           <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>

@@ -128,17 +128,15 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-quote{font-size:13px;line-height:20px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .zy-ntag{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;background:var(--dsw-alias-markdown-citation);padding:0 5px;border-radius:4px;flex:none}
 .zy :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px;max-height:calc(100vh - 72px);box-sizing:border-box}
+.zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px}
 .zy-modal-form{width:min(400px,calc(100% - 32px))}
-.zy-modal-md{min-height:0;overflow:hidden;display:flex;flex-direction:column}
-.zy-modal-md form{display:flex;flex-direction:column;min-height:0;flex:1}
-.zy-md{display:flex;flex-direction:column;min-height:0;flex:1;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
+.zy-md{display:flex;flex-direction:column;min-height:0;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
 .zy-md-bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-module-platform);flex:none}
 .zy-md-tb{height:28px;min-width:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:12px;line-height:20px;cursor:pointer}
 .zy-md-tb:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-md-tb.is-on{background:var(--dsw-alias-interactive-bg-hover);font-weight:600}
 .zy-md-sep{width:1px;height:16px;background:var(--dsw-alias-border-l2);margin:0 4px}
-.zy-md-body{flex:1;min-height:min(42vh,420px);max-height:calc(100vh - 220px);overflow:auto}
+.zy-md-body{min-height:280px;max-height:min(52vh,520px);overflow:auto}
 .zy-md-doc{outline:none;min-height:100%;padding:22px 22px 24px;font-size:14px;line-height:1.7}
 .zy-md-doc p{margin:0 0 .75em}
 .zy-md-doc h1{font-size:1.6em;margin:0 0 .5em;font-weight:600}
