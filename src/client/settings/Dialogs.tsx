@@ -38,7 +38,7 @@ export function CreateDialog(props: {
   error: string
   busy: boolean
   onClose: () => void
-  onSubmit: (input: { id: string; title: string; description: string; aliases: string }) => void
+  onSubmit: (input: { title: string; description: string; aliases: string }) => void
 }) {
   const form = useRef<HTMLFormElement>(null)
   return (
@@ -59,17 +59,13 @@ export function CreateDialog(props: {
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
           const data = readFormData(event)
           props.onSubmit({
-            id: String(data.get('id') ?? ''),
             title: String(data.get('title') ?? ''),
             description: String(data.get('description') ?? ''),
             aliases: String(data.get('aliases') ?? ''),
           })
         }}
       >
-        <Field label="id *" help="创建后不能改。路径会是 bases/<id>/">
-          <input className="zy-box" name="id" placeholder="work" required />
-        </Field>
-        <Field label="标题 *">
+        <Field label="标题 *" help="标题不能与已有知识库重复。">
           <input className="zy-box" name="title" placeholder="工作库" required />
         </Field>
         <Field label="描述 *">
@@ -118,10 +114,7 @@ export function EditDialog(props: {
           })
         }}
       >
-        <Field label="id" help="创建后不能改">
-          <input className="zy-box" value={props.base.id} readOnly />
-        </Field>
-        <Field label="标题 *">
+        <Field label="标题 *" help="标题不能与其他知识库重复。">
           <input className="zy-box" name="title" defaultValue={props.base.title} required />
         </Field>
         <Field label="描述 *">

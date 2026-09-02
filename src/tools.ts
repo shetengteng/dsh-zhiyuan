@@ -3,6 +3,7 @@ import { createJobRunner, type JobRunner } from './jobs.ts'
 import { listBases } from './bases.ts'
 import { resolveDataRoot } from './paths.ts'
 import { searchBase } from './search.ts'
+import type { SearchHit } from './types.ts'
 import { KbError } from './types.ts'
 
 type Json = Record<string, unknown>
@@ -36,6 +37,18 @@ function asStringArray(value: unknown): string[] | undefined {
 
 function text(value: string) {
   return [{ type: 'text' as const, text: value }]
+}
+
+function renderSearchResult(value: unknown) {
+  const result = value as { hits?: SearchHit[]; warnings?: string[] } | undefined
+  const hits = Array.isArray(result?.hits) ? result.hits : []
+  const warnings = Array.isArray(result?.warnings) ? result.warnings.filter((item): item is string => typeof item === 'string' && item.trim()) : []
+  const renderedHits = hits.map((hit) => {
+    const lineRange = hit.startLine === hit.endLine ? `${hit.startLine}` : `${hit.startLine}–${hit.endLine}`
+    return `[${hit.n}] ${hit.path}:${lineRange}（命中行 ${hit.matchLine}）\n${hit.excerpt}`
+  })
+  const body = renderedHits.length ? renderedHits.join('\n\n') : '无命中'
+  return text(warnings.length ? `${body}\n\n提示：${warnings.join('；')}` : body)
 }
 
 function fail(error: unknown): never {
@@ -107,7 +120,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_search',
-    description: '在指定知识库里一次多词 grep。必须带 baseId。换词放进 aliases（3～8）。没命中返回空列表，不要编造。',
+    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和行号。必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
     parameters: {
       type: 'object',
       required: ['baseId', 'query'],
@@ -120,11 +133,29 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       },
     },
     output: {
-      schema: { type: 'object', properties: { hits: { type: 'array' }, warnings: { type: 'array' } } },
-      render: (_args: unknown, value: unknown) => {
-        const hits = (value as { hits?: Array<{ n: number; path: string }> })?.hits ?? []
-        return text(hits.length ? hits.map((hit) => `[${hit.n}] ${hit.path}`).join('\n') : '无命中')
+      schema: {
+        type: 'object',
+        required: ['hits', 'warnings'],
+        properties: {
+          hits: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['n', 'path', 'startLine', 'endLine', 'matchLine', 'excerpt'],
+              properties: {
+                n: { type: 'integer' },
+                path: { type: 'string' },
+                startLine: { type: 'integer' },
+                endLine: { type: 'integer' },
+                matchLine: { type: 'integer' },
+                excerpt: { type: 'string' },
+              },
+            },
+          },
+          warnings: { type: 'array', items: { type: 'string' } },
+        },
       },
+      render: (_args: unknown, value: unknown) => renderSearchResult(value),
       presentationMeta: (_args: unknown, value: unknown) => value as Json,
     },
     presentCall: () => ({ card: 'generic', title: '知识库检索' }),

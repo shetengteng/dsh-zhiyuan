@@ -69,10 +69,11 @@ describe('kb tools', { concurrency: false }, () => {
       const empty = await list.execute()
       assert.deepEqual(empty, { bases: [] })
       assert.equal(list.output.render({}, empty)[0].text, '还没有知识库')
-      await createBase(root, { id: 'work', title: '工作库', description: '描述' })
+      const base = await createBase(root, { title: '工作库', description: '描述' })
       const filled = await list.execute() as { bases: Array<{ id: string; title: string }> }
-      assert.equal(filled.bases[0].id, 'work')
-      assert.match(list.output.render({}, filled)[0].text, /work 工作库/)
+      assert.equal(filled.bases[0].id, base.id)
+      assert.equal(Object.prototype.hasOwnProperty.call(filled.bases[0], 'lastDestCategory'), false)
+      assert.match(list.output.render({}, filled)[0].text, new RegExp(`${base.id} 工作库`))
     })
   })
 
@@ -84,11 +85,11 @@ describe('kb tools', { concurrency: false }, () => {
       await assert.rejects(() => ingest.execute({ baseId: '  ', sourcePath: '/tmp/a.md' }), /baseId 必填/)
       await assert.rejects(() => ingest.execute({ baseId: 'work' }), /sourcePath 必填/)
       await assert.rejects(() => ingest.execute({ baseId: 'life', sourcePath: join(root, 'a.md') }), /先建库/)
-      await createBase(root, { id: 'work', title: '工作库', description: '描述' })
+      const base = await createBase(root, { title: '工作库', description: '描述' })
       const src = join(root, 'a.md')
       await writeFile(src, 'hello')
       const result = await ingest.execute({
-        baseId: 'work',
+        baseId: base.id,
         sourcePath: src,
         destCategory: '合同/2024',
       }) as { copied: string[]; skipped: number; failed: number }
@@ -105,12 +106,17 @@ describe('kb tools', { concurrency: false }, () => {
       await assert.rejects(() => search.execute({ query: '违约' }), /必须带 baseId/)
       await assert.rejects(() => search.execute(null), /必须带 baseId/)
       await assert.rejects(() => search.execute({ baseId: 'work' }), /query 必填/)
-      await createBase(root, { id: 'work', title: '工作库', description: '描述' })
-      const empty = await search.execute({ baseId: 'work', query: '违约' }) as { hits: unknown[] }
+      const base = await createBase(root, { title: '工作库', description: '描述' })
+      const empty = await search.execute({ baseId: base.id, query: '违约' }) as { hits: unknown[] }
       assert.deepEqual(empty.hits, [])
       assert.equal(search.output.render({}, empty)[0].text, '无命中')
-      const meta = { hits: [{ n: 1, path: 'a.md' }] }
-      assert.match(search.output.render({}, meta)[0].text, /\[1\] a.md/)
+      const meta = {
+        hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\n命中的正文\n第三行' }],
+        warnings: [],
+      }
+      const rendered = search.output.render({}, meta)[0].text
+      assert.match(rendered, /\[1\] a\.md:1–3/)
+      assert.match(rendered, /命中的正文/)
       assert.equal(search.output.presentationMeta?.({}, meta), meta)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })
       assert.deepEqual(search.presentResult?.({}, { isError: false }), { card: 'generic', title: '知识库命中' })
@@ -122,11 +128,11 @@ describe('kb tools', { concurrency: false }, () => {
     await withRoot(async (root, tools) => {
       const ingest = tools.get('kb_ingest')
       if (!ingest) throw new Error('missing')
-      await createBase(root, { id: 'work', title: '工作库', description: '描述' })
+      const base = await createBase(root, { title: '工作库', description: '描述' })
       await assert.rejects(async () => {
         try {
           await ingest.execute({
-            baseId: 'work',
+            baseId: base.id,
             sourcePath: srcMissing(root),
             destCategory: '../life',
           })

@@ -7,7 +7,6 @@ export const TARGET_DSH_VERSION = '0.1.1-rc.2'
 export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'
 
-export const BASE_ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
 export const TEXT_EXTS = new Set(['.md', '.txt', '.markdown'])
 export const DEFAULT_MAX_FILE_BYTES = 5_242_880
 export const DEFAULT_MAX_BASE_BYTES = 10_737_418_240

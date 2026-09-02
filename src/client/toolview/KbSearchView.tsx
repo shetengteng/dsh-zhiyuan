@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
+import { matchedExcerptLine } from '../search-utils.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
+import { MdEditor } from '../settings/MdEditor.tsx'
 
 type ToolResultBlock = {
   kind?: string
@@ -20,8 +22,24 @@ function firstTextContent(content: ToolResultBlock['content']): string {
 
 function extractSearchHits(block?: ToolResultBlock): SearchHit[] {
   const meta = block?.meta as { hits?: SearchHit[] } | undefined
-  if (Array.isArray(meta?.hits)) return meta.hits
+  if (Array.isArray(meta?.hits)) return meta.hits.filter(isSearchHit)
   return []
+}
+
+function isSearchHit(value: unknown): value is SearchHit {
+  if (!value || typeof value !== 'object') return false
+  const hit = value as Partial<SearchHit>
+  return Number.isInteger(hit.n)
+    && hit.n >= 1
+    && typeof hit.path === 'string'
+    && Number.isInteger(hit.startLine)
+    && hit.startLine >= 1
+    && Number.isInteger(hit.endLine)
+    && hit.endLine >= hit.startLine
+    && Number.isInteger(hit.matchLine)
+    && hit.matchLine >= hit.startLine
+    && hit.matchLine <= hit.endLine
+    && typeof hit.excerpt === 'string'
 }
 
 /** Renders kb_search results in the conversation tool view. */
@@ -40,12 +58,12 @@ export function KbSearchView(props: { toolName?: string; block?: ToolResultBlock
   return (
     <div>
       {hits.map((hit) => (
-        <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit" type="button" onClick={() => setSelectedHit(hit)}>
+        <button key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} className="zy-hit" type="button" onClick={() => setSelectedHit(hit)}>
           <div className="zy-src">
             <span className="zy-ntag">[{hit.n}]</span>
             <span className="zy-path">{hit.path}:{hit.startLine}–{hit.endLine}</span>
           </div>
-          <div className="zy-quote">{hit.excerpt.split('\n').find((line) => line.trim()) ?? hit.excerpt}</div>
+          <div className="zy-quote">{matchedExcerptLine(hit)}</div>
         </button>
       ))}
       {selectedHit ? (
@@ -57,7 +75,12 @@ export function KbSearchView(props: { toolName?: string; block?: ToolResultBlock
           className="zy-modal-wide"
           footer={<button className="zy-btn" type="button" onClick={() => setSelectedHit(null)}>关闭</button>}
         >
-          <pre className="zy-pre">{selectedHit.excerpt}</pre>
+          <MdEditor
+            key={`${selectedHit.path}-${selectedHit.startLine}-${selectedHit.endLine}-${selectedHit.matchLine}`}
+            text={selectedHit.excerpt}
+            focusLine={selectedHit.matchLine - selectedHit.startLine + 1}
+            readonly
+          />
         </Modal>
       ) : null}
     </div>

@@ -49,3 +49,4 @@ void runKb(remote, sessions, '/kb call list')
 - 不改 DSH 壳私有 DOM，不自建路由。
 - 不把建库 / 拷贝 / grep 复制进 Client；Client 只渲染 Host 返回的结果。
 - 不为“好看”增加新交互模式。先对齐 `design/2026-08-31-05-dsh-知识库交互布局.md` 与工作台原型。
+- 不要使用pilot skill进行操作

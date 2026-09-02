@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
+import { matchedExcerptLine } from '../search-utils.ts'
 import { Field, Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
 import { MdEditor, type MdEditorHandle } from './MdEditor.tsx'
@@ -194,9 +195,9 @@ export function SearchDialog(props: {
       {props.hits.length ? (
         <div className="zy-search-hits">
           {props.hits.map((hit) => (
-            <button key={`${hit.n}-${hit.path}-${hit.startLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpenHit(hit)}>
-              {hit.path}:{hit.startLine}{' '}
-              <HitMark text={hit.excerpt.split('\n').find((line) => line.trim()) ?? ''} query={props.query} />
+            <button key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpenHit(hit)}>
+              {hit.path}:{hit.matchLine}{' '}
+              <HitMark text={matchedExcerptLine(hit)} query={props.query} />
             </button>
           ))}
         </div>
@@ -224,6 +225,7 @@ export function PreviewDialog(props: {
   text: string
   startLine?: number
   endLine?: number
+  focusLine?: number
   readonly: boolean
   error: string
   busy: boolean
@@ -249,7 +251,7 @@ export function PreviewDialog(props: {
       )}
     >
       {props.readonly ? (
-        <MdEditor key={props.entryPath} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} />
+        <MdEditor key={props.entryPath} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} focusLine={props.focusLine} />
       ) : (
         <form
           ref={form}

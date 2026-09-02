@@ -18,6 +18,7 @@ test('skill 正文锁住选库 / 换词 / 出处 / 导入硬规则', () => {
   assert.match(body, /必须带 `baseId`/)
   assert.match(body, /不得说「根据知识库」/)
   assert.match(body, /\[n\]/)
+  assert.match(body, /不能只报路径/)
   assert.match(body, /grep \/ glob \/ read/)
   assert.match(body, /禁止猜一个新库/)
   assert.match(body, /禁止无 destCategory 就散落/)

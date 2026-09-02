@@ -46,6 +46,7 @@ export type SearchHit = {
   path: string
   startLine: number
   endLine: number
+  matchLine: number
   excerpt: string
 }
 
@@ -98,7 +99,6 @@ export type JobStatus = {
 }
 
 export type CreateBaseInput = {
-  id: string
   title: string
   description: string
   aliases?: string[]
@@ -111,9 +111,9 @@ export type UpdateBasePatch = {
 }
 
 export type KbErrorCode =
-  | 'invalid_id'
   | 'missing_field'
   | 'base_exists'
+  | 'title_exists'
   | 'base_missing'
   | 'path_escape'
   | 'confirm_required'

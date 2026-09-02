@@ -54,15 +54,34 @@ function clipAround(lines: string[], center: number, radius: number): { start: n
   return { start, end, excerpt: lines.slice(start - 1, end).join('\n') }
 }
 
+function mergeExcerpts(first: SearchHit, second: SearchHit, startLine: number, endLine: number): string {
+  const firstLines = first.excerpt.split(/\r?\n/)
+  const secondLines = second.excerpt.split(/\r?\n/)
+  const mergedLines: string[] = []
+  for (let line = startLine; line <= endLine; line += 1) {
+    if (line >= second.startLine && line <= second.endLine) {
+      mergedLines.push(secondLines[line - second.startLine] ?? '')
+    } else if (line >= first.startLine && line <= first.endLine) {
+      mergedLines.push(firstLines[line - first.startLine] ?? '')
+    } else {
+      mergedLines.push('')
+    }
+  }
+  return mergedLines.join('\n')
+}
+
 function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchHit & { file: string }> {
   const sorted = [...hits].sort((a, b) => a.file.localeCompare(b.file) || a.startLine - b.startLine)
   const mergedHits: Array<SearchHit & { file: string }> = []
   for (const hit of sorted) {
     const previousHit = mergedHits.at(-1)
     if (previousHit && previousHit.file === hit.file && hit.startLine <= previousHit.endLine + 1) {
-      previousHit.endLine = Math.max(previousHit.endLine, hit.endLine)
-      previousHit.excerpt = hit.startLine < previousHit.startLine ? `${hit.excerpt}\n${previousHit.excerpt}` : `${previousHit.excerpt}\n${hit.excerpt}`
-      previousHit.startLine = Math.min(previousHit.startLine, hit.startLine)
+      const startLine = Math.min(previousHit.startLine, hit.startLine)
+      const endLine = Math.max(previousHit.endLine, hit.endLine)
+      previousHit.excerpt = mergeExcerpts(previousHit, hit, startLine, endLine)
+      previousHit.startLine = startLine
+      previousHit.endLine = endLine
+      previousHit.matchLine = Math.min(previousHit.matchLine, hit.matchLine)
       continue
     }
     mergedHits.push({ ...hit })
@@ -86,6 +105,7 @@ export function diversify(hits: Array<SearchHit & { file: string }>, topK: numbe
     path: hit.path,
     startLine: hit.startLine,
     endLine: hit.endLine,
+    matchLine: hit.matchLine,
     excerpt: hit.excerpt,
   }))
 }
@@ -134,6 +154,7 @@ export class RipgrepSearchEngine implements SearchEngine {
         path: match.path,
         startLine: clip.start,
         endLine: clip.end,
+        matchLine: match.line,
         excerpt: clip.excerpt,
       })
     }

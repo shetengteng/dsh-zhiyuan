@@ -36,7 +36,7 @@ export function createSettingsSection(
     const [searched, setSearched] = useState(false)
     const [searchBusy, setSearchBusy] = useState(false)
     const [previewOrigin, setPreviewOrigin] = useState('tree' as 'tree' | 'search')
-    const [preview, setPreview] = useState({ entryPath: '', text: '', readonly: false, startLine: 0, endLine: 0 })
+    const [preview, setPreview] = useState({ entryPath: '', text: '', readonly: false, startLine: 0, endLine: 0, focusLine: 0 })
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
 
     const currentBase = bases.find((item) => item.id === currentBaseId)
@@ -133,7 +133,7 @@ export function createSettingsSection(
               onOpenEntry={(entryPath) => {
                 void call({ op: 'read', id: currentBaseId, path: entryPath }).then((value) => {
                   const entry = value as ReadEntryResult
-                  setPreview({ entryPath: entry.path, text: entry.text, readonly: false, startLine: 0, endLine: 0 })
+                  setPreview({ entryPath: entry.path, text: entry.text, readonly: false, startLine: 0, endLine: 0, focusLine: 0 })
                   setPreviewOrigin('tree')
                   setDialog('preview')
                 }).catch((err) => setNote(err instanceof Error ? err.message : String(err)))
@@ -213,7 +213,7 @@ export function createSettingsSection(
             onOpenHit={(hit) => {
               void call({ op: 'read', id: currentBase.id, path: hit.path }).then((value) => {
                 const entry = value as ReadEntryResult
-                setPreview({ entryPath: entry.path, text: entry.text, readonly: true, startLine: hit.startLine, endLine: hit.endLine })
+                setPreview({ entryPath: entry.path, text: entry.text, readonly: true, startLine: hit.startLine, endLine: hit.endLine, focusLine: hit.matchLine })
                 setPreviewOrigin('search')
                 setDialog('preview')
               }).catch((err) => setError(err instanceof Error ? err.message : String(err)))
@@ -226,6 +226,7 @@ export function createSettingsSection(
             text={preview.text}
             startLine={preview.startLine}
             endLine={preview.endLine}
+            focusLine={preview.focusLine}
             readonly={preview.readonly}
             error={error}
             busy={pending}

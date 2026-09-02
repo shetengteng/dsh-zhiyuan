@@ -19,7 +19,7 @@ One npm package, one install: Host (create / ingest / search) + Web workbench. T
 You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and excerpt `[n]`, which the current chat model uses to write the answer.
 
 - **Source text lives in folders only.** Ingest copies files. It does not store external links, and it does not write full text into a database.
-- **A category is a subdirectory.** Example: `bases/work/合同/2024/供应商合同.md`.
+- **A category is a subdirectory.** Example: `bases/<uuid>/合同/2024/供应商合同.md`.
 - **Select a base, then search.** If the user does not name a base, the model must list bases and pick one `baseId`. Scanning every base is forbidden.
 - **Offline.** Ingest and search do not use the network. A complete natural-language answer still depends on having a local model.
 
@@ -72,19 +72,19 @@ The Host owns durable state. The data root uses the official DSH plugin data dir
 <plugin-data>/dsh-zhiyuan/
 ├── catalog.json          # base cards + last-used; not source text
 └── bases/
-    ├── work/合同/2024/供应商合同.md
-    └── life/
+    ├── <uuid>/合同/2024/供应商合同.md
+    └── <uuid>/
 ```
 
 Bases can still be listed by scanning `bases/` when `catalog.json` is missing. A missing card leaves the description empty and the model will often pick the wrong base, so the create flow requires a description.
 
 Workbench Preferences can change: default base, per-file cap (default 5 MB), per-base text cap (default 10 GB). Parsers: md/txt enabled; everything else disabled.
 
-Base card fields: `id` / `title` / `description` / `aliases`. `id` is immutable after create (`[a-z0-9][a-z0-9_-]{0,63}`).
+Base card fields: `id` / `title` / `description` / `aliases`. The system generates `id` as a UUID; it is immutable and hidden from the create/edit forms. `title` must be unique.
 
 ## How to use
 
-1. **Create a base**: Settings → Zhiyuan → New. `id`, title, and description are required; aliases are optional (e.g.「工作」「公司」). The ingest path never creates a base.
+1. **Create a base**: Settings → Zhiyuan → New. Title and description are required; titles must be unique, and the system generates the UUID; aliases are optional (e.g.「工作」「公司」). The ingest path never creates a base.
 2. **Ingest**: Provide an existing `baseId` and category `destCategory` (empty = base root). Missing categories create folders; a missing base fails. The source path is read-only and is not modified.
 3. **Ask**: Ask about facts in the library. The model should call `kb_list_bases`, then one `kb_search`. With no hits it must not say “according to the knowledge base”.
 4. **Trial search**: The workbench search box calls search directly, without the model, to confirm it still works offline.
@@ -122,10 +122,10 @@ After install, at least confirm:
 
 Happy path (product acceptance):
 
-1. Create base `work`, aliases: 工作, 公司. Description must say this library is for clauses and meeting notes, not personal bills.
+1. Create the “工作库” base, aliases: 工作, 公司. The system generates its UUID. Description must say this library is for clauses and meeting notes, not personal bills.
 2. Ingest a local contract markdown into category `合同/2024` (the folder may not exist yet).
-3. Disk path is `bases/work/合同/2024/…`; the source file is unchanged.
-4. Ask about a termination clause: the model lists bases, then `kb_search(baseId=work, …)`; hits include line numbers.
+3. Disk path is `bases/<uuid>/合同/2024/…`; the source file is unchanged.
+4. Ask about a termination clause: the model lists bases, then calls `kb_search` with the returned `baseId`; hits include line numbers.
 5. Unplug the network: ingest again and trial-search again; both still succeed.
 
 Must fail: ingest into a missing base; `destCategory` with `..` or an absolute path; `kb_search` without `baseId`; a single file over 5 MB (that file fails, others may continue); search on an empty base returns an empty list.

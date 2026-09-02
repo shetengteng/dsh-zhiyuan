@@ -29,20 +29,21 @@ function parseCard(value: unknown): BaseCard | null {
   if (!value || typeof value !== 'object') return null
   const record = value as Record<string, unknown>
   const id = asString(record.id)
-  const title = asString(record.title)
+  const title = asString(record.title).trim()
   if (!id) return null
   const aliases = Array.isArray(record.aliases)
     ? record.aliases.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
     : []
-  return {
+  const card: BaseCard = {
     id,
     title,
     description: asString(record.description),
     aliases,
     createdAt: asNumber(record.createdAt, 0),
     lastUsedAt: asNumber(record.lastUsedAt, 0),
-    lastDestCategory: typeof record.lastDestCategory === 'string' ? record.lastDestCategory : undefined,
   }
+  if (typeof record.lastDestCategory === 'string') card.lastDestCategory = record.lastDestCategory
+  return card
 }
 
 function parsePrefs(value: unknown): CatalogPrefs {

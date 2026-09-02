@@ -1,23 +1,16 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { dirname, join, relative, sep } from 'node:path'
-import { BASE_ID_RE, TEXT_EXTS } from './identity.ts'
+import { TEXT_EXTS } from './identity.ts'
 import { cleanAliases, readCatalog, removeBase, upsertBase, writeCatalog } from './catalog.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, basesRoot, resolveDest } from './paths.ts'
-import type { BaseCard, BaseSummary, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
+import type { BaseCard, BaseSummary, Catalog, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
 import { KbError } from './types.ts'
 
 function requireNonEmptyText(value: string | undefined, field: string): string {
   const text = value?.trim() ?? ''
   if (!text) throw new KbError('missing_field', `${field} 必填`)
   return text
-}
-
-function requireId(id: string): string {
-  const value = requireNonEmptyText(id, 'id')
-  if (!BASE_ID_RE.test(value)) {
-    throw new KbError('invalid_id', 'id 只能是小写字母、数字、_ 或 -，最长 64')
-  }
-  return value
 }
 
 async function directoryExists(directoryPath: string): Promise<boolean> {
@@ -89,14 +82,29 @@ export async function listBases(dataRoot: string): Promise<BaseSummary[]> {
   return summaries
 }
 
+async function hasBaseTitle(dataRoot: string, catalog: Catalog, title: string, excludeId?: string): Promise<boolean> {
+  if (catalog.bases.some((card) => card.id !== excludeId && card.title === title)) return true
+  const catalogIds = new Set(catalog.bases.map((card) => card.id))
+  return (await scanBaseIds(dataRoot)).some((id) => id !== excludeId && !catalogIds.has(id) && id.trim() === title)
+}
+
+async function generateBaseId(dataRoot: string, catalog: Catalog): Promise<string> {
+  const existingIds = new Set([...catalog.bases.map((card) => card.id), ...await scanBaseIds(dataRoot)])
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const id = randomUUID()
+    if (!existingIds.has(id)) return id
+  }
+  throw new KbError('base_exists', '无法生成唯一知识库 ID，请重试')
+}
+
 export async function createBase(dataRoot: string, input: CreateBaseInput): Promise<BaseCard> {
-  const id = requireId(input.id)
   const title = requireNonEmptyText(input.title, 'title')
   const description = requireNonEmptyText(input.description, 'description')
   const catalog = await readCatalog(dataRoot)
-  if (catalog.bases.some((card) => card.id === id) || await directoryExists(baseDir(dataRoot, id))) {
-    throw new KbError('base_exists', `知识库 ${id} 已存在`)
+  if (await hasBaseTitle(dataRoot, catalog, title)) {
+    throw new KbError('title_exists', `知识库标题「${title}」已存在`)
   }
+  const id = await generateBaseId(dataRoot, catalog)
   const now = Date.now()
   const card: BaseCard = { id, title, description, aliases: cleanAliases(input.aliases), createdAt: now, lastUsedAt: now }
   await mkdir(baseDir(dataRoot, id), { recursive: true })
@@ -111,9 +119,13 @@ export async function updateBase(dataRoot: string, id: string, patch: UpdateBase
   const catalog = await readCatalog(dataRoot)
   const currentCard = catalog.bases.find((card) => card.id === id)
   if (!currentCard) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
+  const title = patch.title !== undefined ? requireNonEmptyText(patch.title, 'title') : currentCard.title
+  if (await hasBaseTitle(dataRoot, catalog, title, id)) {
+    throw new KbError('title_exists', `知识库标题「${title}」已存在`)
+  }
   const card: BaseCard = {
     ...currentCard,
-    title: patch.title !== undefined ? requireNonEmptyText(patch.title, 'title') : currentCard.title,
+    title,
     description: patch.description !== undefined ? requireNonEmptyText(patch.description, 'description') : currentCard.description,
     aliases: patch.aliases !== undefined ? cleanAliases(patch.aliases) : currentCard.aliases,
   }

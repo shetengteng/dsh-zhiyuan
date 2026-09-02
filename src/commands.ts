@@ -28,7 +28,6 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
       return listBases(dataRoot)
     case 'create':
       return createBase(dataRoot, {
-        id: String(data.id ?? ''),
         title: String(data.title ?? ''),
         description: String(data.description ?? ''),
         aliases: Array.isArray(data.aliases) ? data.aliases.map(String) : [],

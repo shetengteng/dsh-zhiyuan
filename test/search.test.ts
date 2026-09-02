@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { createBase } from '../src/bases.ts'
+import { matchedExcerptLine } from '../src/client/search-utils.ts'
 import { diversify, mergeTerms, searchBase } from '../src/search.ts'
 import type { SearchHit } from '../src/types.ts'
 import { KbError } from '../src/types.ts'
@@ -15,10 +16,39 @@ test('aliases 超过 8 截断并警告', () => {
   assert.ok(warnings[0]?.includes('截断'))
 })
 
+test('命中展示使用实际命中行，而不是上下文第一行', () => {
+  assert.equal(matchedExcerptLine({
+    n: 1,
+    path: 'README.md',
+    startLine: 149,
+    endLine: 165,
+    matchLine: 157,
+    excerpt: [
+      '上下文第一行',
+      '上下文第 2 行',
+      '上下文第 3 行',
+      '上下文第 4 行',
+      '上下文第 5 行',
+      '上下文第 6 行',
+      '上下文第 7 行',
+      '上下文第 8 行',
+      '命中的 shadcn 行',
+      '上下文第 10 行',
+      '上下文第 11 行',
+      '上下文第 12 行',
+      '上下文第 13 行',
+      '上下文第 14 行',
+      '上下文第 15 行',
+      '上下文第 16 行',
+      '上下文最后一行',
+    ].join('\n'),
+  }), '命中的 shadcn 行')
+})
+
 test('空库搜索 → 空列表', async () => {
   const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-se-')))
-  await createBase(root, { id: 'work', title: '工作库', description: '描述' })
-  const result = await searchBase(root, { baseId: 'work', query: '违约' })
+  const base = await createBase(root, { title: '工作库', description: '描述' })
+  const result = await searchBase(root, { baseId: base.id, query: '违约' })
   assert.deepEqual(result.hits, [])
   await rm(root, { recursive: true, force: true })
 })
@@ -31,18 +61,18 @@ test('不带 baseId 失败；空 query 失败', async () => {
 test('一次多词、截段、打散同一篇', async () => {
   const packed: Array<SearchHit & { file: string }> = []
   for (let i = 1; i <= 6; i += 1) {
-    packed.push({ n: 0, file: '合同/2024/供应商合同.md', path: '合同/2024/供应商合同.md', startLine: i * 10, endLine: i * 10 + 8, excerpt: `段${i}` })
+    packed.push({ n: 0, file: '合同/2024/供应商合同.md', path: '合同/2024/供应商合同.md', startLine: i * 10, endLine: i * 10 + 8, matchLine: i * 10, excerpt: `段${i}` })
   }
-  packed.push({ n: 0, file: '会议/纪要.md', path: '会议/纪要.md', startLine: 2, endLine: 10, excerpt: '会议' })
+  packed.push({ n: 0, file: '会议/纪要.md', path: '会议/纪要.md', startLine: 2, endLine: 10, matchLine: 2, excerpt: '会议' })
   const hits = diversify(packed, 4)
   assert.equal(hits.length, 4)
   assert.equal(hits[0].n, 1)
   assert.ok(new Set(hits.map((hit) => hit.path)).size >= 2)
 
   const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-se2-')))
-  await createBase(root, { id: 'work', title: '工作库', description: '描述' })
-  await mkdir(join(root, 'bases', 'work', '合同', '2024'), { recursive: true })
-  await mkdir(join(root, 'bases', 'work', '会议'), { recursive: true })
+  const base = await createBase(root, { title: '工作库', description: '描述' })
+  await mkdir(join(root, 'bases', base.id, '合同', '2024'), { recursive: true })
+  await mkdir(join(root, 'bases', base.id, '会议'), { recursive: true })
   const body = [
     '供应商合同',
     ...Array.from({ length: 20 }, () => '前文'),
@@ -50,17 +80,21 @@ test('一次多词、截段、打散同一篇', async () => {
     'termination 条款见附件三。',
     '解约需书面通知。',
   ].join('\n')
-  await writeFile(join(root, 'bases', 'work', '合同', '2024', '供应商合同.md'), body)
-  await writeFile(join(root, 'bases', 'work', '会议', '纪要.md'), '周会纪要，无合同条款。\n')
+  await writeFile(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md'), body)
+  await writeFile(join(root, 'bases', base.id, '会议', '纪要.md'), '周会纪要，无合同条款。\n')
   const result = await searchBase(root, {
-    baseId: 'work',
+    baseId: base.id,
     query: '违约',
     aliases: ['解约', 'termination'],
     category: '合同/2024',
   })
   assert.ok(result.hits.length >= 1)
   assert.ok(result.hits.every((hit) => hit.path.includes('供应商合同')))
-  assert.ok(result.hits[0].excerpt.includes('违约') || result.hits[0].excerpt.includes('termination'))
+  const hit = result.hits[0]
+  assert.ok(hit.excerpt.includes('违约') || hit.excerpt.includes('termination'))
+  assert.ok(hit.matchLine >= hit.startLine && hit.matchLine <= hit.endLine)
+  assert.match(hit.excerpt.split('\n')[hit.matchLine - hit.startLine] ?? '', /违约|termination|解约/)
+  assert.equal(hit.excerpt.split('\n').length, hit.endLine - hit.startLine + 1)
   await rm(root, { recursive: true, force: true })
 })
 
@@ -69,10 +103,10 @@ test('类目对不上则本库全扫；mergeTerms 去重', async () => {
   assert.deepEqual(terms, ['违约', '解约'])
 
   const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-se3-')))
-  await createBase(root, { id: 'work', title: '工作库', description: '描述' })
-  await mkdir(join(root, 'bases', 'work', '会议'), { recursive: true })
-  await writeFile(join(root, 'bases', 'work', '会议', '纪要.md'), '违约金条款。\n')
-  const result = await searchBase(root, { baseId: 'work', query: '违约', category: '没有这个类目' })
+  const base = await createBase(root, { title: '工作库', description: '描述' })
+  await mkdir(join(root, 'bases', base.id, '会议'), { recursive: true })
+  await writeFile(join(root, 'bases', base.id, '会议', '纪要.md'), '违约金条款。\n')
+  const result = await searchBase(root, { baseId: base.id, query: '违约', category: '没有这个类目' })
   assert.ok(result.hits.some((hit) => hit.path.includes('纪要')))
   await rm(root, { recursive: true, force: true })
 })

@@ -11,6 +11,7 @@ type MdEditorProps = {
   readonly: boolean
   startLine?: number
   endLine?: number
+  focusLine?: number
 }
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEditor(props, ref) {
@@ -44,7 +45,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEdi
     const bump = () => setTick((n) => n + 1)
     instance.on('selectionUpdate', bump)
     instance.on('update', bump)
-    const snippet = hitSnippet(props.text, props.startLine, props.endLine)
+    const snippet = hitSnippet(props.text, props.focusLine ?? props.startLine, props.endLine)
     if (snippet) requestAnimationFrame(() => scrollToSnippet(instance.view.dom, snippet))
     return () => {
       instance.off('selectionUpdate', bump)
@@ -53,7 +54,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEdi
       editorRef.current = null
       setEditor(null)
     }
-  }, [props.text, props.readonly, props.startLine, props.endLine])
+  }, [props.text, props.readonly, props.startLine, props.endLine, props.focusLine])
 
   return (
     <div className={props.readonly ? 'zy-md is-ro' : 'zy-md'}>
