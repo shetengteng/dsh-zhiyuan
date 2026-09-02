@@ -2,375 +2,255 @@
 
 > 日期：2026-09-01  
 > 序号：01（当日第一份）  
-> 定位：给知源下一档「DOCX 导入」选库、定管道，不改现有漏斗与原文货架。  
-> 对照：[01 可行性](./2026-08-30-01-dsh-知识库插件可行性方案.md) §4.5（`.docx` 后做）、[04 导入](./2026-08-31-04-dsh-导入落柜与分类.md)、[06 实施计划](./2026-08-31-06-dsh-知识库MVP实施计划.md)、[07 待办](./2026-08-31-07-dsh-知识库MVP待办.md)（换档才开 PDF / DOCX）。  
-> 性质：公开 npm / GitHub 文档二次整理 + 对照本仓库约束；**未对真实合同样张跑过转换，不声称质量验收通过**。  
-> 不改：工具名、先选库再搜、正文只落 `bases/<id>/` 下的 `.md`。
+> 修订：2026-09-02 — 去掉 PDF / Pandoc / 全家桶展开；接口改成可插拔 Converter；补全依赖组合、安全隔离和多输出落盘语义。  
+> 定位：给知源「DOCX 导入」选库、定通用转换口。库内正文仍只落 `bases/<id>/` 下可检索文本。  
+> 对照：[04 导入](./2026-08-31-04-dsh-导入落柜与分类.md)、[03 XLSX/CSV](./2026-09-02-03-dsh-XLSX与CSV进库方案.md)。  
+> 性质：公开 npm / GitHub 二次整理 + 对照本仓库约束；**未对真实合同跑过转换，不声称质量验收通过**。
 
 ---
 
 ## 1. 一句话
 
-知源检索只吃文件夹里的 `.md` / `.txt`。DOCX 不能原样拷进库，必须在 **Host** 转成 Markdown 再走现有 ingest。TS/JS 里真正干活的几乎都是同一条管道：**mammoth（DOCX→HTML）+ turndown（HTML→MD）**。本档推荐直接装这两块，再加 GFM 表格插件；不装万能「Office 全家桶」。
+检索只吃库里的文本。`.docx` 不能原样拷进柜，必须在 **Host** 转成 Markdown 再走现有 ingest。
+
+第一档只做 DOCX。转换层用一份与格式无关的口，xlsx / csv（已另档）和以后的格式都挂同一条 `ingestOne` 分叉，不各写一套落盘。
+
+**推荐引擎**：自拼 `mammoth` + `@joplin/turndown` + `@joplin/turndown-plugin-gfm`。不装 Office / PDF 全家桶。
 
 ---
 
-## 2. 本仓库约束（选库前先钉死）
+## 2. 选库前的约束
 
-| 约束 | 来源 | 对转换器的要求 |
-|------|------|----------------|
-| 转换只在 Host | 插件规则：浏览器没有 `ctx.tools`；建库 / 导入走主进程 | 库必须能跑 Node ESM，禁止塞进 `src/client` |
-| 拔网线仍能导入 | 01 / 07 | 禁止默认打 URL、CDN worker、云 OCR |
-| 禁止 `workspace:`、少原生绑定 | 插件规则、01 §4.3 | 不要 Python / LibreOffice。Pandoc 可行，但受官方二进制矩阵与体积约束，见 §5.4 |
-| 落盘后必须能被 ripgrep 扫到 | 06 / `search.ts` | 产物是 `.md`，不是 `.docx`；不要把正文只放进 AST |
-| 单文件 5 MB、单库 10 GB | catalog `prefs` | 配额按**落盘后的 md**计；源 docx 也先过 5 MB，超了该项失败 |
-| 工作台不扫盘、不当网盘 | 06 §6 | Client 只交路径；转换进度走已有 `jobs` 队列 |
-| 模块 ≤300 行 | 仓库规则 | 新开转换模块，不往 `ingest.ts` 堆 |
-| 偏好页 DOCX 现在置灰 | `PrefsPage.tsx` | 本档落地后才勾上；PDF 仍灰 |
+| 约束 | 对转换器的要求 |
+|------|----------------|
+| 转换只在 Host | 库必须能跑 Node ESM；禁止进 `src/client` |
+| 拔网线仍能导入 | 禁止默认打 URL、CDN worker、云 OCR |
+| 无 Python / 少原生 | 不要 LibreOffice、不要自研解 OOXML |
+| 落盘后能被 ripgrep 扫到 | 产物是 `.md`，不留源 `.docx` |
+| 单文件 5 MB、单库 10 GB | 源与写出各过一遍；配额对象是写出后的字节 |
+| 模块 ≤300 行 | 新开 `src/convert/`，不往 `ingest.ts` 堆解析 |
 
-`.doc`（OLE 老格式）不在范围内。现有 JS 库认的是 OOXML zip（`.docx`）。加密、带宏、纯扫描件当图的 Word，本档第一版允许失败并写原因。
+`.doc`（OLE）、加密、带宏、纯扫描件当图：第一版失败并写原因。PDF / pptx 本档不选库、不写实现。
 
 ---
 
-## 3. 转换在管道里的位置
+## 3. 库调研（2026-09）
 
-现在 `ingestOne`：白名单 → 体积 → sha256 → 拷贝。DOCX 插在「白名单通过」和「指纹 / 拷贝」之间：
-
-```
-源 .docx（只读）
-  → Host 转成 markdown 字符串 + 可选图片字节
-  → 写成 bases/<id>/<类目>/<原名>.md
-  → 指纹 / 冲突 / 配额走现有逻辑（对象是这段 md，不是源 zip）
-```
-
-| 决策 | 取舍 |
-|------|------|
-| 库里不留 `.docx` | 预览、试搜、命中卡都已经按 md 写；留双份会让 grep 漏或重复 |
-| 指纹哈希**转换后的 md** | 同内容 skip；换转换器后同一源可能再进一份（改名 `name-2.md`），可接受 |
-| 源文件只读 | 与 04 一致；失败不落盘 |
-| 图片第一版丢掉 | grep 搜不到图；base64 会把一篇合同撑过 5 MB。占位写成 `![图]()` 或省略 |
-| 警告给人看 | mammoth 的 `messages`（未映射样式等）进该项 `reason` 或结果旁注，不当成功静默 |
-
-文件夹导入：目录里混有 md 与 docx 时，md 仍拷贝；docx 逐个转；已失败项不挡同批其他文件。
-
----
-
-## 4. 库怎么分类
-
-几乎所有「DOCX→MD」的 npm 包都叠在 mammoth 上。差别是：**自己拼管道，还是买一层包装（再顺带 PDF/XLSX/OCR）**。
+几乎所有「DOCX→MD」的 npm 包都叠在同一条管道上。差别是自己拼，还是买一层包装（再顺带 PDF / xlsx / OCR）。
 
 ```
 .docx (zip + word/document.xml)
-        │
-        ▼
-   mammoth / 自研 OOXML AST
-        │
-        ▼
-      HTML 或 AST
-        │
-        ▼
- turndown (+ GFM 表) 或自研 MD 生成器
-        │
-        ▼
-      .md 文本
+        →  mammoth（语义 HTML，不抄字体颜色）
+        →  turndown + GFM 表
+        →  .md
 ```
 
-Pandoc 转换质量通常最好。它不是 TS 库，是 Haskell 二进制（另有官方 `pandoc.wasm`）。平台能不能覆盖齐，见 §5.4；不再一句话否决。
+mammoth 自带的 `convertToMarkdown` **已弃用**，官方明确：先 HTML，再用别的库转 MD。
 
----
+### 3.1 推荐：自拼三件套
 
-## 5. 候选对照（2026-09 公开数据）
+| 包 | 角色 | 版本 / 许可 | 为什么够用 |
+|----|------|-------------|------------|
+| `mammoth` | DOCX→干净 HTML | 1.12.2，BSD-2 | 工业级、无原生、无联网；样式按语义映射 |
+| `@joplin/turndown` | HTML→Markdown | 4.0.85，MIT | 与下行 Joplin GFM 插件成对使用；会移除 JavaScript 链接 |
+| `@joplin/turndown-plugin-gfm` | GFM 表 / 删除线 | 1.0.67，MIT | Joplin 在维护。**不加则表格标记会被剥掉** |
 
-下载量为当时 npm 周下载，会变；用来分「工业级 / 薄包装 / 实验」，不当验收。
+三件都是纯 JS。Win / macOS / Linux（含 ARM）都能跑，和 DSH 桌面矩阵对齐。
 
-### 5.1 推荐自拼：mammoth + turndown
-
-| | **mammoth** | **turndown** |
-|--|-------------|--------------|
-| 包 | `mammoth` | `turndown` |
-| 角色 | DOCX→干净 HTML（按样式语义，不抄字体颜色） | HTML→Markdown |
-| 版本 / 更新 | 1.12.2（2026-08-28） | 7.x，长期维护 |
-| 许可 | BSD-2-Clause | MIT |
-| 周下载 | ~780 万 | 量级同档（生态标配） |
-| 原生 / 联网 | 无 | 无 |
-| 表格 | HTML `<table>` 能出 | **必须**加 GFM 插件，否则表格标记会被剥掉 |
-| 图片 | 默认可 data URI；可用 `convertImage` 抽文件或丢掉 | 跟着 `<img>` 走 |
-| 作者态度 | **自带 `convertToMarkdown` 已弃用**，明确叫你 HTML 再转 MD | — |
-
-GFM 插件不要用停更的 `turndown-plugin-gfm`（2017）。用 **`@joplin/turndown-plugin-gfm`**（Joplin 在养；`markitdown-ts`、`word-to-markdown` 也是这个）。
-
-中文 Word 默认样式是「标题 1」不是 `Heading 1`。必须带 styleMap，否则正文全是段落、grep 看不到结构：
+中文 Word 文档常把内置标题保存为「标题 N」，而英语文档常为 `Heading N`。显式映射两者，并覆盖 1～6 级；实际样张仍以 `mammoth.messages` 和快照为准：
 
 ```
 p[style-name='标题 1'] => h1:fresh
 p[style-name='标题 2'] => h2:fresh
 p[style-name='标题 3'] => h3:fresh
 p[style-name='标题 4'] => h4:fresh
+p[style-name='标题 5'] => h5:fresh
+p[style-name='标题 6'] => h6:fresh
+p[style-name='Heading 1'] => h1:fresh
+p[style-name='Heading 2'] => h2:fresh
+p[style-name='Heading 3'] => h3:fresh
+p[style-name='Heading 4'] => h4:fresh
+p[style-name='Heading 5'] => h5:fresh
+p[style-name='Heading 6'] => h6:fresh
 ```
 
-mammoth 同时认 `Heading 1` 默认表，中英混排文档两边都要。
+`mammoth` 默认样式映射不能替代这份显式约定；中英混排两边都要。
 
-### 5.2 薄包装（同一管道，多一层 API）
+图片第一版丢掉。`convertImage` 的回调必须返回含 `src` 的合法图片属性，不能“返回空”；先返回一个无网络占位 `src`，再由 Turndown 的 `img` 规则移除整张图片，最终 Markdown 不得留下 `![图]()` 或 data URI。base64 内嵌容易顶满 5 MB；grep 也搜不到图。
 
-| 包 | 周下载（约） | 许可 | 多出来的东西 | 为何不首选 |
-|----|--------------|------|--------------|------------|
-| `word-to-markdown`（benbalter） | 43 | ISC | markdownlint / prettier 清洗；图片 extract/strip；要 **Node ≥ 22.13** | 下载极低；清洗器重；我们已有 Node 22 类型但不必绑死小版本 |
-| `@aidalinfo/office-to-markdown` | ~500 | MIT | OMML→LaTeX；偏 Bun | 新、依赖面小但生态未验证 |
-| `docx-markdown-utils` | 中低 | （见包） | 双向 MD↔DOCX，14 个依赖 | 我们不生成 docx |
-| `markitdown-ts` | ~1.1 万 | MIT | 仿 Microsoft markitdown：PDF / xlsx / URL / zip / 可选 LLM 描述图 | 依赖 `jsdom`、`pdf-parse`、`xlsx`、`ai`；URL 转换与离线默认冲突 |
-| `@paulmeller/docflow` | 低 | 视包 | SuperDoc + jsdom，链式 API | 体积与职责远超「转一篇 Word」 |
+三包都作为直接运行时依赖写入 `package.json`，使用无 `^` 的精确版本，并提交更新后的 lockfile。`@joplin/turndown` / GFM 插件没有可直接使用的完整 TypeScript 类型时，在 `src/**/*.d.ts` 补最小模块声明；不得用 `any` 扩散到 Converter 接口。
 
-这些包的 DOCX 路径，文档里都能追到 mammoth。买包装等于：多锁定一层、多拖无关格式，换不来更好的 Word 语义。兼容性不是「Windows 跑不了」，见下两小节。
+### 3.2 看过、不装
 
-#### word-to-markdown（benbalter，0.3.0）
+| 选项 | 本质 | 不选 |
+|------|------|------|
+| `word-to-markdown` | 同一管道 + prettier / markdownlint | 周下载约 40；默认 base64 内嵌图；Node ≥ 22.13。图片三态和 styleMap 可抄，不必装包 |
+| `@aidalinfo/office-to-markdown` | 同一管道 + OMML→LaTeX | 偏 Bun，生态未验证 |
+| `officeparser` / `markitdown-ts` | 全家桶（PDF / OCR / xlsx / `ai`） | 为一篇 Word 引入原生 canvas、有洞的 `xlsx@0.18.5`、或 pdfjs + tesseract。与「本档不做 PDF」冲突 |
+| Pandoc / `pandoc-wasm` | 质量通常最好 | Haskell 二进制或 ~15 MB GPL wasm。第一档要零本机依赖、包要小，不值 |
+| `undocx` | Rust / Python | 无 Node 入口；禁止 Python |
+| `@markitdownjs/docx` | 新 TS AST | 2026-06 上架，周下载个位数 |
+| 只用 `mammoth.convertToMarkdown` | 官方弃用 | 表格 / 清洗弱于 HTML→turndown |
+| 自研解 zip + `document.xml` | — | 样式、编号、修订成本远高于 mammoth |
 
-纯 JS，**没有**按平台的原生包。Win ARM / Alpine / 本机三个桌面 OS 都能跑，和自拼 mammoth 同一档。
-
-| 项 | 兼容结论 |
-|----|----------|
-| OS / CPU | 无原生。DSH 承诺的 Win/macOS/Linux（含 ARM）都过 |
-| Node | 要求 **≥ 22.13**。DSH 是 `^22.19 \|\| >=24`，**运行时够**。本仓库 esbuild `target: node20` 只影响我们打出来的 `lib/`，不挡它 |
-| 模块 | ESM only。Host 已是 ESM + `packages: 'external'`，import 即可 |
-| 默认行为 | 图片 **base64 内嵌**。一篇带图合同很容易顶满 5 MB 配额；必须显式 `images: 'strip'` 或 `'extract'` |
-| 中文样式 | 没有自带「标题 1」映射；要靠 `options.mammoth.styleMap`，和自拼一样 |
-| 公式 / 文本框 / 批注 | 文档写明 **mammoth 阶段丢掉**；`convertWithWarnings` 才有提示 |
-| 体积 | 运行时还拉 prettier、markdownlint。清洗更干净，转换更慢，lock 更肥 |
-| 成熟度 | 2026-07 上架，周下载约 40。API 可能变；不要当十年基建 |
-
-**结论**：平台兼容性好。卡的是产品默认（内嵌图）和包太新，不是 OS。
-
-#### markitdown-ts（0.0.10）
-
-DOCX 仍走 mammoth，**但 `npm i` 会把 PDF/表格栈整棵装进来**，兼容性出在依赖树，不在 Word 解析。
-
-| 项 | 兼容结论 |
-|----|----------|
-| DOCX 本体 | 纯 JS，平台齐 |
-| `pdf-parse` ^2.4 | **硬依赖 `@napi-rs/canvas`**（原生 Skia，约几十 MB）。只转 docx 也会装上 |
-| canvas 平台 | 官方 optional 含 darwin-arm64/x64、linux gnu/musl x64+arm64、**win32-arm64**、riscv。比 Pandoc 官方 zip **更齐** |
-| 原生真实风险 | ① Node ABI：DSH 用户会混 22.19 与 24，预编译对不上就装失败或运行崩；② `package-lock` 在 Mac 生成、Linux 安装时 optional 丢包（npm 老问题）；③ Git 装插件时 `prepare` 只打 JS，canvas 必须能在用户机器上 `npm install` 出来 |
-| `xlsx` 0.18.5 | npm 上最后一版，带原型污染 / ReDoS CVE。第一版不用 xlsx 也会进 lock；以后开表格等于喂用户文件给有洞的解析器 |
-| `jsdom` | 无原生，但内存大。不要拿它在 Client 跑 |
-| `ai` | Vercel AI SDK 是**直接依赖**，不是可选。DOCX 用不到，安装仍带上 |
-| peer | `unzipper`、`youtube-transcript` 不装则 zip / YouTube 路径炸；DOCX 通常还能走 |
-| 离线 | `convert(url)` 会联网。Host 只允许走路径 / Buffer，禁止 URL / Bing SERP / YouTube |
-| PPTX | 未实现 |
-
-**结论**：三个桌面 OS 的 DOCX **能转**。真正不兼容的是「为了一篇 Word 引入原生 canvas + 有洞的 xlsx」。这比 Pandoc 的 Win ARM 缺口更日常——每个 `dsh plugin add` 的用户都要过一遍原生安装。
-
-### 5.3 全家桶：officeparser
-
-| 项 | 事实 |
-|----|------|
-| 包 | `officeparser` 7.8.0（2026-08-18） |
-| 许可 | MIT |
-| 周下载 | ~74 万 |
-| 做法 | 自研 AST，再 `OfficeConverter.convert(file, 'md')`；styleMap 号称兼容 mammoth |
-| 引擎 | Node ≥ 18；CJS + ESM 双入口。`sideEffects: false` 但 **一个入口仍会解析全部格式依赖** |
-| 依赖 | `@xmldom/xmldom`、`fflate`、`file-type`、**`pdfjs-dist@6.1.200`**、**`tesseract.js`** |
-| 适合 | 同一里程碑要吃 PDF / xlsx / pptx，并接受 OCR 可选 |
-
-#### 兼容性（对照知源 Host）
-
-| 项 | 兼容结论 |
-|----|----------|
-| DOCX / OOXML | **纯 JS**（`fflate` 解 zip + xmldom）。Win ARM、Alpine、无编译器的机器都能转 Word |
-| 装包体积 | **不能**「只买 docx」。`pdfjs-dist` + `tesseract.js` 会进 `node_modules`，即使从不调 PDF/OCR。比 mammoth 重一个数量级 |
-| 运行时（默认） | `ocr` 默认 false，且 v6.1 起 **懒加载** Tesseract。只转 docx、不设 `ocr: true`，**不应**去拉语言包 |
-| OCR 一旦打开 | 默认语言 **`eng`**；训练数据默认 **jsDelivr**。断网会挂或空识别。中文要 `chi_sim` / `chi_tra`，并自备 `langPath`（见 tesseract.js 本地安装说明） |
-| PDF.js worker | 浏览器默认 `cdn.jsdelivr.net/.../pdf.worker.min.mjs`。Host 必须走 Node 入口、worker 用 `node_modules` 里的文件。**禁止**把 officeparser 打进 Client；也禁止 esbuild 把 Host **打进 bundle**（当前 `packages: 'external'` 是对的，改掉就会丢 worker） |
-| 出 PDF | 可选 peer **puppeteer**（真 Chrome）。我们只吃进、不生成，不要装 |
-| 中文 Word | 靠 styleMap，与 mammoth 同类，不是自动认「标题 1」 |
-| 安全 | 维护者写明：解析器攻击面大、单人维护、不保证恶意文件。个人本机可接受；不要当隔离沙箱 |
-
-**对知源现在**：DOCX **没有** Pandoc 那种「某 CPU 没包」的洞。代价是安装即全家桶，以及以后开 PDF/OCR 时必须先钉死 **离线 worker + 中文 tessdata**，否则「拔网线能导入」会在换档时被打破。
-
-07 换档写明 PDF 另开。officeparser 的 RAG chunk 与 03「第一版不切段建目录」也不该现在用。
-
-**后做信号**：真要同一套解析器吃 PDF+Office，再评估 officeparser（Node 入口、`ocr: false`、自备 pdf worker）。不要为 DOCX 单独预装。
-
-### 5.4 Pandoc：平台矩阵（2026-09，对照 3.10.2 官方资产）
-
-Pandoc **可以**当 Host 转换器。限制不在「Windows / macOS / Linux 这三个名字」，而在 **官方只打了哪些 CPU**、**单文件 25～40 MB**、以及 **GPL**。DSH Web / CLI 本身是 npm + Node，三个桌面 OS 都能跑；知源已经用 `@vscode/ripgrep` 的 `optionalDependencies` 按平台塞二进制——Pandoc 能抄这个形，但覆盖面和体积都对不齐 ripgrep。
-
-#### 官方原生包
-
-| 目标 | 官方资产 | 约体积 | 备注 |
-|------|----------|--------|------|
-| macOS Apple Silicon | `arm64-macOS.zip` / `.pkg` | 40 MB | GHC 侧要求 macOS **11.3+**；本机用户基本都过线 |
-| macOS Intel | `x86_64-macOS.zip` / `.pkg` | 25 MB | 太旧的 macOS 走 Homebrew 会现场编 GHC，装很久 |
-| Linux x64 | `linux-amd64.tar.gz` / `.deb` | 33 MB | **静态链接**，不绑 glibc；Alpine / musl 一般能跑 |
-| Linux arm64 | `linux-arm64.tar.gz` / `.deb` | 36 MB | 同上 |
-| Windows x64 | `windows-x86_64.zip` / `.msi` | 40 MB | 官方主发包 |
-| **Windows ARM64**（Surface / 骁龙本） | **无** | — | [jgm/pandoc#10095](https://github.com/jgm/pandoc/issues/10095) 仍开着；卡在 GHC 没有 Windows AArch64。本机可用 **x64 包 + Prism 模拟**，更慢，偶发依赖问题 |
-| Linux 32 位 / ppc64 / riscv64 / s390x | **无** | — | ripgrep 我们打了这些 optional 包；Pandoc 没有 |
-| FreeBSD / Android | **无**官方包 | — | 源码或第三方 ports，不当承诺 |
-
-对照本仓库已装的 ripgrep：12 个 optional 包（含 `win32-arm64`、`linux-arm`、`ia32`），每个大约一两 MB。Pandoc 每个 triple 大一个数量级，且缺 Win ARM 与冷门 Linux。
-
-`dsh plugin add` / `npm install` 若用 optional 包，**只会下载当前机器那一份**（约 35 MB），不会五份全拉。Git 仓库不要把二进制检进 `lib/`。`prepare` 只打 JS，二进制必须来自 npm optional 或用户 PATH。
-
-#### 三种接法的平台含义
-
-| 接法 | 平台覆盖 | 离线 | 体积 / 许可 | 对知源 |
-|------|----------|------|-------------|--------|
-| **PATH：本机已装 `pandoc`** | 用户装到哪算哪；Win ARM 若装了 x64 包也能 spawn | 已装则断网能转 | 我们的包仍 MIT，不发行 GPL 二进制 | 没装就失败。要配 mammoth **回退**，否则导入在干净机器上是空的 |
-| **optionalDep 打官方 zip（仿 ripgrep）** | 稳：darwin-arm64 / darwin-x64 / linux-x64 / linux-arm64 / win32-x64。**洞：win32-arm64**（可试塞 x64 exe 靠模拟） | 装包时需能拉 npm；装完断网能转 | 安装 +35 MB；**再分发官方二进制 = 带上 GPL-2.0-or-later** | 和现有 `@vscode/ripgrep` 同形，但我们要自建 5 个平台包，维护成本高 |
-| **`pandoc-wasm`（官方 wasm，npm 约 15 MB）** | **与 OS/CPU 无关**：Node 18+ 能跑 WASM 即可，含 Win ARM、Alpine | 包内自带 `pandoc.wasm`，不访问网络（WASM 沙箱本来就不能 HTTP） | npm 包装 GPL（内含 wasm）；比原生慢；RTS 堆约 64 MB，5 MB 合同够用 | **平台兼容性最好的 Pandoc 路径**。DOCX→MD、`--extract-media` 走虚拟文件系统。不要打进 Client |
-
-wasm 限制（对导入无伤）：不能调 LaTeX 出 PDF、不能跑外部 filter、不能自己去拉 URL。这些我们本来就不做。
-
-#### 运行时注意（三个 OS 都有）
-
-- Host 用 `spawn`，与 `search.ts` 调 rg 一样；cwd / 参数必须是绝对路径，Windows 注意空格与 `\\`。  
-- macOS Gatekeeper：从 zip 解开的未签名二进制可能第一次被拦；pkg 安装通常好于我们自己 optional 解压。  
-- Windows SmartScreen / 公司策略可能拦未签名 `pandoc.exe`。  
-- 沙箱：DSH 在 Windows 上的命令沙箱有已知问题。转换必须在 **Host 进程内 spawn**，不要走「让模型执行 shell」那条。  
-- 旧 `.doc`：原生 Pandoc 仍要外部转换器（常是 LibreOffice），**不要承诺**。加密 docx 同样失败。
-
-#### 对本档选型的修正
-
-Pandoc **不是**「平台不够用」被否掉，而是：
-
-1. 想 **零本机依赖、全平台（含 Win ARM）**：`pandoc-wasm`，或 mammoth。  
-2. 想 **原生速度 + 少维护**：PATH 上的 pandoc，没有则 mammoth。  
-3. 想 **装上就能用、仿 ripgrep 发二进制**：只覆盖 5 个官方 triple，Win ARM 写明「走 x64 模拟或 wasm」。不要假装和 ripgrep 一样齐。
-
-第一档若坚持「插件自己保证能转、不要求用户先装软件」：**wasm 或 mammoth**。PATH-only 不能当唯一实现。
-
-### 5.5 明确不选
-
-| 选项 | 原因 |
-|------|------|
-| 只用 `mammoth.convertToMarkdown` | 官方弃用，表格 / 清洗弱于 HTML→turndown |
-| LibreOffice headless | 体积与启动成本更大，且同样要本机装套件 |
-| 浏览器里转 | 违反 Host 主人；大文件会卡设置页 |
-| 自研解 zip + 读 `word/document.xml` | 样式、编号、修订、表格合并成本远高于 mammoth |
-| `.doc` / 加密 docx | 现有库基本不管；失败并提示另存为未加密 `.docx` |
+包装库换不来更好的 Word 语义，只多一层锁定和无关格式。引擎以后要换，换的是 Converter 实现，不是 ingest。
 
 ---
 
-## 6. 选定
+## 4. 通用转换口（本档真正要钉死的）
 
-仍先定 ingest 契约（§3 / §7）：Host 转成 `.md` 再落盘。引擎可换。
+ingest 不认「docx / xlsx / 以后某格式」。它只认两件事：**拷贝** 或 **转换后写出**。
 
-| 档 | 引擎 | 何时用 |
-|----|------|--------|
-| 默认实现（无本机软件） | `mammoth` + `turndown` + `@joplin/turndown-plugin-gfm` | 干净机器、Win ARM、不想 GPL、包要小 |
-| 质量优先、平台要齐 | `pandoc-wasm`（Host only） | 接受 ~15 MB 与 GPL、要 Pandoc 保真 |
-| 本机已有 Pandoc | PATH 里的 `pandoc` | 原生最快；**必须**无二进制时回退到上一档 |
+```
+源文件（只读）
+  → 按后缀查 Converter
+  → ConvertOutcome.files[]
+  → 每个文件：配额 / 指纹 / 冲突 / writeFile
+```
 
-不在第一档做：自建 5 个 optional 平台包去发官方 zip。缺 Win ARM、体积 35 MB、还要处理 GPL 再分发。
+```ts
+/** 一份源可能写出 1..N 个库内文件（docx=1 个 md；xlsx=每表一个 csv）。 */
+type ConvertedFile = {
+  /** 仅文件名；Ingest 在写盘前再次验证，Converter 不能自行决定目录。 */
+  destName: string
+  bytes: Buffer
+  warnings: string[]
+}
 
-包装库（word-to-markdown 等）当对照实现：图片三态和中文 styleMap 可抄，不必装包。
+type ConvertOutcome = {
+  files: ConvertedFile[]
+}
+
+type Converter = {
+  sourceExts: readonly string[]
+  convert(sourcePath: string): Promise<ConvertOutcome>
+}
+```
+
+| 规则 | 说明 |
+|------|------|
+| 注册表按源后缀查找 | `CONVERT_EXTS` 由各 Converter 的 `sourceExts` 汇总，禁止在 `ingest.ts` 手写 `if (ext === '.docx')` |
+| 库内可检索后缀仍是 `TEXT_EXTS` | `.md` / `.txt` / `.markdown`；csv 由 03 档另加。Converter 的 `destName` 必须落在 `TEXT_EXTS` 里 |
+| 输出名在 Ingest 复验 | `destName` 必须等于其 basename、不得含 `/`、`\\`、NUL 或 `.` / `..`，且扩展名在 `TEXT_EXTS`；不得因 xlsx sheet 名或未来 Converter 让路径逃出库根 |
+| 保留目录由 Ingest 统一拼 | Converter 只返回文件名。`preserveTree=true` 时，Ingest 用源相对目录加上 `destName`，故 `子/a.docx → 子/a.md`；不得让 Converter 接收或返回目标目录 |
+| 指纹哈希**写出字节** | 同内容 skip；换引擎后同一源可能再进一份 `name-2.md`，可接受 |
+| 多文件先算总字节再写 | 任一超 5 MB / 整批超 10 GB → 整份源失败、已算的不落盘；先预留全部目标名、写同目录临时文件，全部成功后再 rename；写/rename 失败时仅回滚本次新建文件 |
+| 源只读、失败不落盘 | 与 04 一致。`ingestOne` 的返回模型须改为“一个源 + 多个 output 结果”，再由外层按 output 计 copied / renamed / skipped，不能沿用当前一源一 `IngestFileResult` 的假设 |
+| 警告给人看 | 将 `mammoth.messages` 映射为结构化 warning（code + 安全的用户文案）；成功项也可带 warning。设置页需在导入结束后显示摘要；工具输出也要带 warning，不能关闭弹框后丢失 |
+| 错误不回显库原文 | 对用户和工具返回稳定错误码及通用文案；不得把可含源路径、文档内容或内部实现的异常原文塞进 `reason` |
+| 超时与资源隔离 | Converter 运行在 Worker 或子进程，由 Host 父进程在 30s 后强制终止；`Promise.race` 不是超时实现。设内存上限，失败时无输出落盘 |
+
+`ingestOne` 分叉：
+
+```
+后缀 ∈ TEXT_EXTS 且 ∉ CONVERT_EXTS  → 现逻辑（md/txt/markdown：copyFile）
+后缀 ∈ CONVERT_EXTS                 → converter.convert → 按 files[] 走指纹 / 改名 / writeFile
+否则                                → failed，reason 列出允许的源后缀
+```
+
+文件夹混进 md 与 docx：md 仍拷；docx 走转换；失败项不挡同批。
+
+一个转换源可以有多个 output，因此结果模型须区分两层：源级 `status`（成功 / 全跳过 / 失败）和 output 级 `copied` / `renamed` / `skipped`。例如一本 xlsx 有两张表，一张与既有内容同指纹而另一张写入，源级为成功、output 级分别为 skipped 与 copied。DOCX 第一版恒一份 output，仍走同一模型，避免以后再破坏 API。
+
+xlsx / csv 已在 [03](./2026-09-02-03-dsh-XLSX与CSV进库方案.md) 写成 `ConvertedTable`。落地时把那份收成上面的 `ConvertOutcome`（`csvUtf8` 改名 `bytes`），不要并存两套类型。本档不实现表格，只把口留齐。
+
+以后若加 PDF：新开一个 Converter，注册 `.pdf`，仍返回 `ConvertOutcome`。本档不为它预留空壳、不装解析器。
+
+---
+
+## 5. DOCX Converter 怎么接
+
+```ts
+convertDocx(sourcePath: string): Promise<ConvertOutcome>
+// 恒为 1 个文件：destName = basename 去 .docx 加 .md
+```
+
+实现要点（都关在 `src/convert/docx.ts`，ingest 看不见 mammoth）：
+
+1. 父进程先以扩展名、常规文件和 5 MB 压缩源体积做快速拒绝；解析 Worker/子进程内再执行 `mammoth.convertToHtml({ path }, { styleMap, externalFileAccess: false, convertImage })`。
+2. `@joplin/turndown` + Joplin `tables` / `strikethrough` → markdown 字符串；增加规则移除 `img` 和任何不在 allowlist 的链接。第一版只保留 `https:` 与 `mailto:`，丢弃 `javascript:`、`data:`、`file:` 及未知协议。
+3. `files: [{ destName, bytes: Buffer.from(md, 'utf8'), warnings }]`
+4. 以结构化错误和 warning 回给 ingest；不回显库错误原文。
+
+不要把 HTML 或源路径发给网络。不解出嵌入 OLE。第一版不抽图，但“源 zip 小于 5 MB”不能防 zip bomb 或病理解析，隔离和硬终止仍是必需项。
+
+---
+
+## 6. 安全边界与失败语义
+
+DOCX 是 ZIP，且 `mammoth` 不对源文档做通用安全清洗。导入源即使来自本机，也按不可信输入处理：
+
+- `externalFileAccess` 显式固定为 `false`；不读取文档引用的库外文件。
+- 解析和转换后的 Markdown 都不得直通不受控渲染器。Host 在写盘前执行链接协议 allowlist 和图片/原始 HTML 清理；Client 的 Markdown 渲染器仍须保持自身的 XSS 防护，不能成为唯一防线。
+- Worker/子进程只接收已校验的绝对源路径与固定转换选项；父进程负责超时、资源限制和终止。不得把不可信字段拼进 shell，也不执行文档内宏、OLE、外部命令或脚本。
+- 失败不创建库内正文；转换 warning 不改变成功状态，但必须在 UI 与 `kb_ingest` 结果中可见。源文件更新后若写出字节变化，现有“同名不同指纹改名”语义仍产生 `name-2.md`，不伪装成覆盖更新。
 
 ---
 
 ## 7. 模块怎么切
 
-目标文件都保持 ≤300 行。入口只装配。
+目标文件 ≤300 行。入口只装配。
 
 | 文件 | 职责 |
 |------|------|
-| `src/convert/docx.ts` | 读路径或 Buffer → markdown 字符串 + `warnings[]`；styleMap；默认丢图 |
-| `src/convert/md-from-html.ts` | turndown + GFM tables / strikethrough；与 docx 解耦，方便以后 HTML 源 |
-| `src/identity.ts` | `CONVERT_EXTS = { '.docx' }`；`TEXT_EXTS` 仍只表示**库内可检索后缀** |
-| `src/ingest.ts` | `ingestOne`：docx 走转换再写入 `.md`；md/txt 仍 `copyFile` |
-| `src/pick-source.ts` | 文件对话框 filter 加上 `*.docx` |
-| `src/client/settings/PrefsPage.tsx` | DOCX 解析器勾上（仍 disabled 或只读 checked，与 md 一样表示「已开」） |
+| `src/convert/types.ts` | `ConvertedFile` / `ConvertOutcome` / `Converter` |
+| `src/convert/registry.ts` | `sourceExt → Converter`；导出 `CONVERT_EXTS` |
+| `src/convert/md-from-html.ts` | turndown + GFM；与 docx 解耦，以后 HTML 源可复用 |
+| `src/convert/docx.ts` | Worker/子进程内 mammoth + 中英 styleMap + 丢图；实现 `Converter` |
+| `src/convert/worker.ts`（或等价子进程入口） | 只解析转换、返回 bytes / 结构化 warnings；不写库、不调 Client、不执行 shell |
+| `src/identity.ts` | `TEXT_EXTS` 仍只表示**库内可检索后缀**；`CONVERT_EXTS` 从 registry 来，不要在这里手写一份 |
+| `src/ingest.ts` | §4 分叉；输出名复验、预检配额、临时写入 / 回滚、体积 / 哈希 / 改名；**不 import mammoth** |
+| `src/pick-source.ts` | 文件对话框加上 `*.docx` |
+| `src/client/settings/PrefsPage.tsx` | DOCX 勾上（disabled checked，与 md 一样表示「已开」） |
+| `src/client/settings/SettingsSection.tsx` / `AdditionalDialogs.tsx` | 导入完成后显示 copied / skipped / failed 与每项 warning，不要直接关闭后丢弃结果 |
 
 不要：`src/parsers/*` 预留 PDF 空壳；不要 `chunks` 表；不要 Client 调 mammoth。
 
-建议内部口（实现时再落类型，本档只定形状）：
-
-```ts
-type ConvertOutcome = {
-  markdown: string
-  warnings: string[]
-  // 第一版恒为空；extract 档再填
-  images: { name: string; bytes: Uint8Array }[]
-}
-
-convertDocx(sourcePath: string): Promise<ConvertOutcome>
-```
-
-`ingestOne` 对 docx：
-
-1. 源体积 > `maxFileBytes` → 该项失败（与现 md 相同）。  
-2. `convertDocx` 抛错 → `failed`，reason 用库错误原文（截断到一行）。  
-3. `Buffer.byteLength(markdown)` 再过一遍 5 MB / 10 GB。  
-4. 目标名：`basename` 去 `.docx` 加 `.md`；冲突仍 `name-2.md`。  
-5. `sha256` 对 markdown utf8，不对本机源 zip。  
-6. `writeFile` 目标 md，不 `copyFile` 源。
-
 ---
 
-## 8. 保真与失败边界
+## 8. 保真（导入成功 ≠ 版式还原）
 
-Word 和 Markdown 结构不对齐。mammoth 只认**语义样式**，不抄页面布局。下面必须在 UI / Skill / 关于页说清，避免「导入成功 = 版式还原」。
+mammoth 只认**语义样式**，不抄页面布局。工作台 / Skill / 关于页要说清。
 
 | 能保 | 弱或丢 | 直接失败 |
 |------|--------|----------|
 | 标题（含映射后的「标题 N」） | 文本框 / 艺术字 / SmartArt | 不是合法 zip / 不是 docx |
-| 段落、粗斜体、删除线 | 修订（可能只留最终或混进痕迹，需样张确认） | 加密 / 权限保护 |
-| 有序 / 无序清单 | 复杂编号、多级混用 | `.doc` |
-| GFM 管道表（简单行列） | 合并单元格、嵌套表、表边框 | 转换超时（队列里单项，不拖垮进程需自设上限） |
-| 超链接 | 页眉页脚、批注（可配置忽略） | — |
-| 脚注 / 尾注（mammoth 支持） | 公式（OMML；第一版当普通跑或变乱码） | — |
-
-公式：Pandoc 对 OMML / 公式通常强于 mammoth。若选 §5.4 的 PATH 或 wasm 路径，公式跟 Pandoc 走；纯 mammoth 档再另评估 `@aidalinfo/office-to-markdown`。
+| 段落、粗斜体、删除线 | 修订痕迹（需样张确认） | 加密 / 权限保护 |
+| 有序 / 无序清单 | 复杂多级编号 | `.doc` |
+| GFM 管道表（简单行列） | 合并单元格、嵌套表 | 转换超时 |
+| 超链接、脚注 / 尾注 | 页眉页脚、批注、OMML 公式 | — |
 
 ---
 
-## 9. 安全
+## 9. 验收（实现档才勾）
 
-DOCX 是 zip。mammoth / officeparser 都会解压内部 XML。
-
-- 只读用户给的 `sourcePath`，写出仍只在 `bases/<id>/`（现有 `assertInside`）。  
-- 不解出嵌入 OLE 可执行物到库外。  
-- 第一版不抽图，减少 zip bomb 落盘面；仍应对转换设时间上限（例如 30s），超时记失败。  
-- 不把源路径或转换 HTML 发给网络。
-
-officeparser 自己写明：解析器攻击面大，不保证恶意文件安全。我们选更窄的 mammoth，不等于可以喂完全不信任的来源；个人本机库场景可接受。
-
----
-
-## 10. 验收（实现档才勾）
-
-实现未写、样张未跑，下列全是待做。
-
-- [ ] 单测：最小 fixture（标题、列表、表、中文「标题 1」、超链接）→ 稳定 md 快照  
-- [ ] 单测：非法字节 / `.doc` 扩展名 → `failed`，库目录无新文件  
-- [ ] 单测：同文档转两次 → 第二次 skip（md 指纹）  
-- [ ] 文件夹混进 md + docx：两种都进，后缀对  
-- [ ] 偏好勾 DOCX；选文件对话框能点到 `.docx`  
-- [ ] 断网：本机 docx 仍能导入（不声明「网页已开」除非真跑过 `dsh web`）  
-- [ ] 一篇真实中文合同（用户自备，不进 git）：条款能被 `kb_search` 命中  
+- [ ] 最小 fixture（标题、列表、表、中文与英文 Heading 1～6、超链接）→ md 快照
+- [ ] 非法字节 / `.doc` → `failed`，库内无新文件
+- [ ] 同文档转两次 → 第二次 skip（md 指纹）
+- [ ] 文件夹混 md + docx 且 `preserveTree=true`：两种都进，目录与后缀都对
+- [ ] 恶意链接（`javascript:` / `data:` / `file:`）和图片 → 输出中不存在；`https:` / `mailto:` 仍可保留
+- [ ] 高压缩比 ZIP、超大表格或病理样式：30s 后由父进程终止，Host 未卡死、库内无新文件
+- [ ] 多 output 的 Converter：先预检全部配额；模拟第二次写入失败，已新建 output 全部回滚，既有文件不受影响
+- [ ] `mammoth.messages` 既在 Host / 工具结果返回，也在设置页导入摘要可见；异常原文不泄露给用户
+- [ ] 偏好勾 DOCX；选文件能点到 `.docx`
+- [ ] 断网：本机 docx 仍能导入
 
 ---
 
-## 11. 明确本档不写进代码的
+## 10. 本档不写进代码的
 
-- PDF、xlsx、pptx、OCR  
-- 库内保留源 `.docx`  
+- PDF / pptx / OCR、库内保留源 `.docx`  
+- 装 officeparser / markitdown-ts / Pandoc / Python  
+- 为「以后方便」预留空解析器  
+- 把转换放到 Client 或自建 HTTP  
 - 对话区芯片、自动归类、FTS  
-- 为「以后方便」接入 officeparser / markitdown-ts  
-- 把转换放到 Client 或自建 HTTP
 
 ---
 
-## 12. 参考链接
+## 11. 参考
 
-- mammoth：https://github.com/mwilliamson/mammoth.js · https://www.npmjs.com/package/mammoth  
-- turndown：https://github.com/mixmark-io/turndown  
-- Joplin GFM 插件：https://www.npmjs.com/package/@joplin/turndown-plugin-gfm  
-- word-to-markdown（对照管道）：https://github.com/benbalter/word-to-markdown-js  
-- markitdown-ts：https://www.npmjs.com/package/markitdown-ts  
-- officeparser：https://github.com/harshankur/officeParser  
-- `@napi-rs/canvas` 平台包（markitdown-ts → pdf-parse）：https://www.npmjs.com/package/@napi-rs/canvas  
-- tesseract.js 本地语言包：https://github.com/naptha/tesseract.js/blob/HEAD/docs/local-installation.md  
-- Pandoc 安装说明：https://github.com/jgm/pandoc/blob/main/INSTALL.md  
-- 官方发布（平台资产）：https://github.com/jgm/pandoc/releases  
-- Windows ARM64 无官方包：https://github.com/jgm/pandoc/issues/10095  
-- `pandoc-wasm`：https://github.com/pandoc/pandoc-wasm · https://www.npmjs.com/package/pandoc-wasm  
-- 本仓库先行结论：01 §4.5「`.docx` 当压缩包解开再抽」——JS 路径落成 mammoth；Pandoc 见 §5.4。
+- mammoth：https://github.com/mwilliamson/mammoth.js  
+- Joplin Turndown：https://www.npmjs.com/package/@joplin/turndown
+- Joplin GFM：https://www.npmjs.com/package/@joplin/turndown-plugin-gfm  
+- word-to-markdown（对照管道，不装）：https://github.com/benbalter/word-to-markdown-js  
+- 表格进库另见：[03 XLSX/CSV](./2026-09-02-03-dsh-XLSX与CSV进库方案.md)

@@ -45,7 +45,7 @@ function renderSearchResult(value: unknown) {
   const warnings = Array.isArray(result?.warnings) ? result.warnings.filter((item): item is string => typeof item === 'string' && item.trim()) : []
   const renderedHits = hits.map((hit) => {
     const lineRange = hit.startLine === hit.endLine ? `${hit.startLine}` : `${hit.startLine}–${hit.endLine}`
-    return `[${hit.n}] ${hit.path}:${lineRange}（命中行 ${hit.matchLine}）\n${hit.excerpt}`
+    return `\`${hit.n}\` ${hit.path}:${lineRange}（命中行 ${hit.matchLine}）\n${hit.excerpt}`
   })
   const body = renderedHits.length ? renderedHits.join('\n\n') : '无命中'
   return text(warnings.length ? `${body}\n\n提示：${warnings.join('；')}` : body)

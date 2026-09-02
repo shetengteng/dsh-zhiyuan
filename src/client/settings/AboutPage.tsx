@@ -1,3 +1,5 @@
+import { CitationTag } from '../CitationTag.tsx'
+
 export function AboutPage() {
   return (
     <div className="zy-about">
@@ -37,7 +39,7 @@ export function AboutPage() {
         <div className="zy-q">用 work 库查 termination 条款</div>
         <p className="zy-a">已经点名库，不再猜。只搜 work。</p>
       </div>
-      <p>命中卡可叠多条。点任意一条看原文。答案里的 [1] 对应卡片编号。库里没有的内容不会编出来。</p>
+      <p>命中卡可叠多条。点任意一条看原文。答案里的 <CitationTag n={1} /> 对应卡片编号。库里没有的内容不会编出来。</p>
     </div>
   )
 }

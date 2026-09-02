@@ -16,7 +16,7 @@ One npm package, one install: Host (create / ingest / search) + Web workbench. T
 
 ## What it does
 
-You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and excerpt `[n]`, which the current chat model uses to write the answer.
+You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and a numeric excerpt id, which the current chat model uses to write the answer.
 
 - **Source text lives in folders only.** Ingest copies files. It does not store external links, and it does not write full text into a database.
 - **A category is a subdirectory.** Example: `bases/<uuid>/合同/2024/供应商合同.md`.
@@ -108,7 +108,7 @@ If `--to` is omitted, reuse that base’s last category; otherwise the command e
 
 Skill hard rules: if no base is named, list first; if two bases fit, ask the user; expand query terms only once; project `grep` / `glob` is not knowledge-base search; never invent a new base on ingest.
 
-Hit cards in the conversation show path, excerpt, and `[n]`. Opening a card is a read-only preview: no edits, and it does not jump to Settings.
+Hit cards in the conversation show path, excerpt, and a numeric id tag. Answers use Markdown inline code for citation ids (for example, `1`). Opening a card shows a read-only Markdown preview in DSH's right details column: no edits, and it does not jump to Settings.
 
 ## Verify
 

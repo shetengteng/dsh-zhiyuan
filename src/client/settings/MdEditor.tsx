@@ -12,6 +12,7 @@ type MdEditorProps = {
   startLine?: number
   endLine?: number
   focusLine?: number
+  highlightText?: string
 }
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEditor(props, ref) {
@@ -45,7 +46,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEdi
     const bump = () => setTick((n) => n + 1)
     instance.on('selectionUpdate', bump)
     instance.on('update', bump)
-    const snippet = hitSnippet(props.text, props.focusLine ?? props.startLine, props.endLine)
+    const snippet = props.highlightText?.trim() || hitSnippet(props.text, props.focusLine ?? props.startLine, props.endLine)
     if (snippet) requestAnimationFrame(() => scrollToSnippet(instance.view.dom, snippet))
     return () => {
       instance.off('selectionUpdate', bump)
@@ -54,7 +55,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(function MdEdi
       editorRef.current = null
       setEditor(null)
     }
-  }, [props.text, props.readonly, props.startLine, props.endLine, props.focusLine])
+  }, [props.text, props.readonly, props.startLine, props.endLine, props.focusLine, props.highlightText])
 
   return (
     <div className={props.readonly ? 'zy-md is-ro' : 'zy-md'}>
@@ -104,15 +105,43 @@ function hitSnippet(text: string, startLine?: number, endLine?: number): string 
 function scrollToSnippet(documentRoot: HTMLElement, snippet: string) {
   const needle = snippet.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
   if (!needle) return
-  const probe = needle.slice(0, Math.min(48, needle.length))
+
+  const normalizedNeedle = normalizeMarkdownLine(needle)
+  if (!normalizedNeedle) return
   const walker = document.createTreeWalker(documentRoot, NodeFilter.SHOW_TEXT)
   let node: Node | null
   while ((node = walker.nextNode())) {
-    if (!(node.textContent ?? '').includes(probe)) continue
-    const el = node.parentElement
-    if (!el) break
-    el.classList.add('zy-hl')
-    el.scrollIntoView({ block: 'center' })
-    break
+    const text = node.textContent ?? ''
+    const matchStart = findTextMatch(text, normalizedNeedle)
+    if (matchStart === -1) continue
+    const mark = document.createElement('span')
+    mark.className = 'zy-hl'
+    const range = document.createRange()
+    range.setStart(node, matchStart)
+    range.setEnd(node, matchStart + normalizedNeedle.length)
+    range.surroundContents(mark)
+    mark.scrollIntoView({ block: 'center', inline: 'nearest' })
+    return
   }
+
+  const block = Array.from(documentRoot.querySelectorAll('p,h1,h2,h3,h4,h5,h6,li,blockquote,pre'))
+    .find((element) => normalizeMarkdownLine(element.textContent ?? '').includes(normalizedNeedle))
+  if (!block) return
+  block.classList.add('zy-hl')
+  block.scrollIntoView({ block: 'center', inline: 'nearest' })
+}
+
+function findTextMatch(text: string, needle: string): number {
+  return text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase())
+}
+
+function normalizeMarkdownLine(value: string): string {
+  return value
+    .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?)/, '')
+    .replace(/^\s*(?:[-+*]\s+|\d+[.)]\s+)/, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }

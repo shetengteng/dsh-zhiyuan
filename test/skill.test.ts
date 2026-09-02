@@ -17,7 +17,9 @@ test('skill 正文锁住选库 / 换词 / 出处 / 导入硬规则', () => {
   assert.match(body, /禁止连调三十轮/)
   assert.match(body, /必须带 `baseId`/)
   assert.match(body, /不得说「根据知识库」/)
-  assert.match(body, /\[n\]/)
+  assert.match(body, /引用编号使用 Markdown 行内代码包裹/)
+  assert.match(body, /命中了 `1` 处/)
+  assert.doesNotMatch(body, /\[n\]/)
   assert.match(body, /不能只报路径/)
   assert.match(body, /grep \/ glob \/ read/)
   assert.match(body, /禁止猜一个新库/)
@@ -30,6 +32,7 @@ test('system prompt 段与 skill 同口径', () => {
   assert.match(ZHIYUAN_PROMPT_SECTION.text, /先 kb_list_bases/)
   assert.match(ZHIYUAN_PROMPT_SECTION.text, /禁止扫全部 bases/)
   assert.match(ZHIYUAN_PROMPT_SECTION.text, /不得说「根据知识库」/)
+  assert.match(ZHIYUAN_PROMPT_SECTION.text, /Markdown 行内代码包裹/)
   assert.match(ZHIYUAN_PROMPT_SECTION.text, /grep \/ glob 不算知识库检索/)
 })
 

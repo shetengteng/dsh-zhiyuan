@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
 import { matchedExcerptLine } from '../search-utils.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
-import { MdEditor } from '../settings/MdEditor.tsx'
+import { CitationTag } from '../CitationTag.tsx'
+import type { PreviewController } from './preview-state.ts'
+import { isSamePreviewHit, usePreviewSelection } from './preview-state.ts'
 
 type ToolResultBlock = {
   kind?: string
@@ -42,47 +42,41 @@ function isSearchHit(value: unknown): value is SearchHit {
     && typeof hit.excerpt === 'string'
 }
 
-/** Renders kb_search results in the conversation tool view. */
-export function KbSearchView(props: { toolName?: string; block?: ToolResultBlock }) {
-  ensureSettingsStyles()
-  const block = props.block
-  const running = !block || block.kind !== 'tool-result'
-  const failed = block?.kind === 'tool-result' && Boolean(block.isError)
-  const hits = extractSearchHits(block)
-  const [selectedHit, setSelectedHit] = useState(null as SearchHit | null)
+export function createKbSearchView(preview: PreviewController) {
+  /** Renders kb_search results in the conversation tool view. */
+  return function KbSearchView(props: { toolName?: string; block?: ToolResultBlock }) {
+    ensureSettingsStyles()
+    const block = props.block
+    const running = !block || block.kind !== 'tool-result'
+    const failed = block?.kind === 'tool-result' && Boolean(block.isError)
+    const hits = extractSearchHits(block)
+    const selectedHit = usePreviewSelection(preview)
 
-  if (running) return <div className="zy-help">正在检索知识库…</div>
-  if (failed) return <div className="zy-note">{firstTextContent(block?.content) || '检索失败'}</div>
-  if (!hits.length) return <div className="zy-help">无命中</div>
+    if (running) return <div className="zy-help">正在检索知识库…</div>
+    if (failed) return <div className="zy-note">{firstTextContent(block?.content) || '检索失败'}</div>
+    if (!hits.length) return <div className="zy-help">无命中</div>
 
-  return (
-    <div>
-      {hits.map((hit) => (
-        <button key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} className="zy-hit" type="button" onClick={() => setSelectedHit(hit)}>
-          <div className="zy-src">
-            <span className="zy-ntag">[{hit.n}]</span>
-            <span className="zy-path">{hit.path}:{hit.startLine}–{hit.endLine}</span>
-          </div>
-          <div className="zy-quote">{matchedExcerptLine(hit)}</div>
-        </button>
-      ))}
-      {selectedHit ? (
-        <Modal
-          open
-          onClose={() => setSelectedHit(null)}
-          title="只读预览"
-          description={`${selectedHit.path} · [${selectedHit.n}]`}
-          className="zy-modal-wide"
-          footer={<button className="zy-btn" type="button" onClick={() => setSelectedHit(null)}>关闭</button>}
-        >
-          <MdEditor
-            key={`${selectedHit.path}-${selectedHit.startLine}-${selectedHit.endLine}-${selectedHit.matchLine}`}
-            text={selectedHit.excerpt}
-            focusLine={selectedHit.matchLine - selectedHit.startLine + 1}
-            readonly
-          />
-        </Modal>
-      ) : null}
-    </div>
-  )
+    return (
+      <div>
+        {hits.map((hit) => {
+          const selected = isSamePreviewHit(selectedHit, hit)
+          return (
+            <button
+              key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`}
+              className={selected ? 'zy-hit is-selected' : 'zy-hit'}
+              type="button"
+              aria-pressed={selected}
+              onClick={(event) => preview.select(hit, event.currentTarget)}
+            >
+              <div className="zy-src">
+                <CitationTag n={hit.n} />
+                <span className="zy-path">{hit.path}:{hit.startLine}–{hit.endLine}</span>
+              </div>
+              <div className="zy-quote">{matchedExcerptLine(hit)}</div>
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
 }

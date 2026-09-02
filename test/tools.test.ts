@@ -115,7 +115,8 @@ describe('kb tools', { concurrency: false }, () => {
         warnings: [],
       }
       const rendered = search.output.render({}, meta)[0].text
-      assert.match(rendered, /\[1\] a\.md:1–3/)
+      assert.match(rendered, /`1` a\.md:1–3/)
+      assert.doesNotMatch(rendered, /\[1\]/)
       assert.match(rendered, /命中的正文/)
       assert.equal(search.output.presentationMeta?.({}, meta), meta)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })
