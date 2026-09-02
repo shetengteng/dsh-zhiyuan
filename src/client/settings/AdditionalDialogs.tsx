@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { Menu, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
 import { Field, Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
@@ -30,7 +30,7 @@ function localPathFromUri(rawUri: string): string {
   }
 }
 
-function droppedSourcePath(event: DragEvent<HTMLButtonElement>): string {
+function droppedSourcePath(event: DragEvent<HTMLDivElement>): string {
   const droppedFile = (event.dataTransfer.files.item(0) ?? event.dataTransfer.items[0]?.getAsFile()) as DroppedFile | null
   const filePath = droppedFile?.path?.trim()
   if (filePath) return filePath
@@ -54,11 +54,9 @@ export function ImportDialog(props: {
   const [sourceLabel, setSourceLabel] = useState('')
   const [sourceError, setSourceError] = useState('')
   const [dragging, setDragging] = useState(false)
-  const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
 
   const pick = async (kind: 'file' | 'dir') => {
     if (picking || props.busy) return
-    setSourceMenuOpen(false)
     setPicking(true)
     try {
       const path = await props.onPick(kind)
@@ -72,26 +70,44 @@ export function ImportDialog(props: {
     }
   }
 
-  const handleDragOver = (event: DragEvent<HTMLButtonElement>) => {
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = picking || props.busy ? 'none' : 'copy'
     if (!picking && !props.busy) setDragging(true)
   }
 
-  const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
     setDragging(false)
     if (picking || props.busy) return
-    setSourceMenuOpen(false)
     const path = droppedSourcePath(event)
     if (!path) {
-      setSourceError('当前环境无法读取拖入项的本机路径，请使用“选择目录”或“选择文件”')
+      setSourceError('当前环境无法读取拖入项的本机路径，请点击选择按钮打开系统选择器')
       return
     }
     setSourcePath(path)
     setSourceLabel(sourceDisplayName(path))
     setSourceError('')
   }
+
+  const sourceDropzone = (
+    <div
+      className={`zy-source-drop${dragging ? ' is-dragging' : ''}`}
+      role="group"
+      aria-label="导入源"
+      aria-busy={picking || props.busy}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+    >
+      <strong className="zy-source-copy">{sourceLabel ? `已选择：${sourceLabel}` : '拖拽文件或文件夹'}</strong>
+      <span className="zy-source-hint">{sourceLabel ? '可重新拖入，或点击按钮更换' : '只读取本机路径，不会修改源文件'}</span>
+      <div className="zy-source-actions">
+        <button className="zy-btn zy-source-action" type="button" disabled={picking || props.busy} onClick={() => void pick('dir')}>选择文件夹</button>
+        <button className="zy-btn zy-source-action" type="button" disabled={picking || props.busy} onClick={() => void pick('file')}>选择文件</button>
+      </div>
+    </div>
+  )
 
   return (
     <Modal
@@ -124,38 +140,9 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="拖拽文件或文件夹，或点击按钮后选择目录/文件。目前支持 md / txt / markdown。"
+          help="拖拽文件或文件夹，或点击下方按钮选择。目前支持 md / txt / markdown。"
         >
-          <Menu
-            open={sourceMenuOpen}
-            onClose={() => setSourceMenuOpen(false)}
-            items={[
-              { id: 'dir', label: '选择目录' },
-              { id: 'file', label: '选择文件' },
-            ]}
-            onSelect={(id: string) => {
-              if (id !== 'dir' && id !== 'file') return
-              void pick(id)
-            }}
-            align="start"
-            portal
-            anchor={(
-              <button
-                className={`zy-source-drop${dragging ? ' is-dragging' : ''}`}
-                type="button"
-                disabled={picking || props.busy}
-                aria-haspopup="menu"
-                aria-expanded={sourceMenuOpen}
-                onClick={() => setSourceMenuOpen((value) => !value)}
-                onDragOver={handleDragOver}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleDrop}
-              >
-                <strong className="zy-source-copy">{sourceLabel ? `已选择：${sourceLabel}` : '拖拽或点击选择文件/文件夹'}</strong>
-                <span className="zy-source-hint">{sourceLabel ? '可重新拖入，或点击按钮更换' : '只读取本机路径，不会修改源文件'}</span>
-              </button>
-            )}
-          />
+          {sourceDropzone}
           <Note text={sourceError} />
         </Field>
         <Field label="类目" help="空 = 库根。可输入新路径，不会因此新建知识库。">

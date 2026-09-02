@@ -102,12 +102,13 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-help{margin:4px 0 0;font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .zy-checks{display:flex;flex-direction:column;gap:8px;margin:8px 0 12px;font-size:13px}
 .zy-checks label{display:flex;align-items:center;gap:8px;cursor:pointer}
-.zy-source-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:76px;padding:12px;border:1px dashed var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-module-platform);color:inherit;font:inherit;text-align:center;cursor:pointer;appearance:none;transition:background .15s,border-color .15s}
-.zy-source-drop:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
+.zy-source-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:108px;padding:14px 12px;border:1px dashed var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-module-platform);color:inherit;font:inherit;text-align:center;transition:background .15s,border-color .15s}
+.zy-source-drop:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-source-drop.is-dragging{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary)}
-.zy-source-drop:disabled{opacity:.5;cursor:not-allowed}
-.zy-source-copy{font-size:13px;line-height:20px;font-weight:500}
+.zy-source-copy{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;font-weight:500}
 .zy-source-hint{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
+.zy-source-actions{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
+.zy-source-action{height:28px;padding:0 10px;border-radius:14px;font-size:12px;line-height:20px;white-space:nowrap}
 .zy-footbar{display:flex;justify-content:flex-end;gap:8px;width:100%}
 .zy-footbar .zy-danger{margin-right:auto}
 .zy-about{max-width:62ch;padding-bottom:24px}

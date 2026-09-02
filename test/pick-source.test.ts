@@ -13,6 +13,7 @@ test('normalizePickedPath 去换行和尾斜杠', () => {
   assert.equal(normalizePickedPath('/tmp/合同.md\n'), '/tmp/合同.md')
   assert.equal(normalizePickedPath('/tmp/notes/\n'), '/tmp/notes')
   assert.equal(normalizePickedPath('C:\\notes\\\r\n'), 'C:\\notes')
+  assert.equal(normalizePickedPath('C:\\\r\n'), 'C:\\')
   assert.equal(normalizePickedPath('/'), '/')
   assert.equal(normalizePickedPath('  '), '')
 })
@@ -22,6 +23,8 @@ test('各平台参数：文件走选文件，目录走选目录', () => {
   assert.match(macArgs('dir').join('\n'), /choose folder/)
   assert.match(winArgs('file').join('\n'), /OpenFileDialog/)
   assert.match(winArgs('dir').join('\n'), /FolderBrowserDialog/)
+  assert.match(winArgs('dir').join('\n'), /OutputEncoding/)
+  assert.match(winArgs('dir').join('\n'), /DialogResult\]::OK/)
   assert.ok(linuxArgs('file').includes('--file-selection'))
   assert.ok(linuxArgs('dir').includes('--directory'))
 })
@@ -74,4 +77,11 @@ test('pickSource：Windows 走 powershell', async () => {
     },
   })
   assert.deepEqual(picked, { path: 'D:\\notes' })
+})
+
+test('pickSource：未知平台不假设存在 Linux 选择器', async () => {
+  await assert.rejects(
+    () => pickSource('dir', { platform: 'freebsd', exec: async () => ({ stdout: '', stderr: '' }) }),
+    /当前平台 freebsd 暂不支持系统文件选择器/,
+  )
 })

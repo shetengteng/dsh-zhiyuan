@@ -15,7 +15,8 @@ const defaultExec: ExecFileFn = (file, args) =>
 
 export function normalizePickedPath(raw: string): string {
   let path = raw.replace(/\r?\n$/g, '').trim()
-  if (path.length > 1 && (path.endsWith('/') || path.endsWith('\\'))) path = path.slice(0, -1)
+  const isWindowsDriveRoot = /^[A-Za-z]:[\\/]$/.test(path)
+  if (path.length > 1 && !isWindowsDriveRoot && (path.endsWith('/') || path.endsWith('\\'))) path = path.slice(0, -1)
   return path
 }
 
@@ -26,9 +27,10 @@ export function macArgs(kind: PickKind): string[] {
 }
 
 export function winArgs(kind: PickKind): string[] {
+  const utf8 = '$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; '
   const script = kind === 'dir'
-    ? "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择要导入的文件夹'; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }"
-    : "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = 'Markdown/Text|*.md;*.txt;*.markdown|All|*.*'; $d.Title = '选择要导入的文件'; if ($d.ShowDialog() -eq 'OK') { $d.FileName }"
+    ? `${utf8}Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择要导入的文件夹'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $d.SelectedPath }`
+    : `${utf8}Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = 'Markdown/Text|*.md;*.txt;*.markdown|All|*.*'; $d.Title = '选择要导入的文件'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $d.FileName }`
   return ['-NoProfile', '-STA', '-Command', script]
 }
 
@@ -41,7 +43,8 @@ export function linuxArgs(kind: PickKind): string[] {
 function invokeArgs(kind: PickKind, platform: NodeJS.Platform): { file: string; args: string[] } {
   if (platform === 'darwin') return { file: 'osascript', args: macArgs(kind) }
   if (platform === 'win32') return { file: 'powershell.exe', args: winArgs(kind) }
-  return { file: 'zenity', args: linuxArgs(kind) }
+  if (platform === 'linux') return { file: 'zenity', args: linuxArgs(kind) }
+  throw new KbError('not_found', `当前平台 ${platform} 暂不支持系统文件选择器，请使用拖拽导入`)
 }
 
 function isMissingBin(error: unknown): boolean {

@@ -756,8 +756,8 @@ body{
     }
     .field textarea { min-height: 72px; resize: vertical; }
     .source-drop {
-      min-height: 76px;
-      padding: 12px;
+      min-height: 108px;
+      padding: 14px 12px;
       border: 1px dashed var(--dsw-alias-border-l2);
       border-radius: 12px;
       background: var(--dsw-alias-bg-module-platform);
@@ -770,16 +770,13 @@ body{
       box-sizing: border-box;
       color: inherit;
       font: inherit;
-      cursor: pointer;
     }
     .source-drop:hover { background: var(--dsw-alias-interactive-bg-hover); }
-    .source-drop:disabled { opacity: .5; cursor: not-allowed; }
     .source-drop.is-dragging { border-color: var(--dsw-alias-state-business-primary); background: var(--dsw-alias-state-business-tertiary); }
-    .source-drop strong { font-size: 13px; line-height: 20px; }
+    .source-drop strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 20px; }
     .source-drop small { margin-top: 2px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
-    .source-row { position: relative; display: flex; gap: 8px; margin-top: 8px; }
-    .source-menu { display: grid; gap: 4px; min-width: 160px; padding: 4px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 8px 24px #0002; }
-    .source-menu .btn { width: 100%; text-align: left; }
+    .source-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+    .source-action { height: 28px; padding: 0 10px; border-radius: 14px; font-size: 12px; line-height: 20px; }
     .checks { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 12px; font-size: 13px; }
     .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; }
     .dlg-foot .btn-danger { margin-right: auto; }
@@ -1086,7 +1083,7 @@ body{
                     <ol>
                       <li>先选好左侧的库。</li>
                       <li>点右侧「导入」。</li>
-                      <li>把文件或文件夹拖到「拖拽或点击选择文件/文件夹」按钮，或点击按钮后从菜单选择目录/文件。</li>
+                      <li>把文件或文件夹拖到拖拽框，或点击框中的「选择文件夹」「选择文件」按钮打开系统选择器。</li>
                       <li>指定类目，例如 <code>合同/2024</code>。没有这个文件夹会创建；不会因此新建一个知识库。</li>
                       <li>开始导入。内容相同的文件会跳过，不会覆盖。目前只导入 md/txt。</li>
                     </ol>
@@ -1260,14 +1257,12 @@ body{
       <h2>导入到 <span id="importTarget">work</span></h2>
       <div class="field">
         <label>源</label>
-        <button class="source-drop" id="sourceDrop" type="button" aria-haspopup="menu" aria-expanded="false">
-          <strong id="sourceName">拖拽或点击选择文件/文件夹</strong>
+        <div class="source-drop" id="sourceDrop" role="group" aria-label="导入源">
+          <strong id="sourceName">拖拽文件或文件夹</strong>
           <small>只读取本机路径，不会修改源文件</small>
-        </button>
-        <div class="source-row">
-          <div class="source-menu" id="sourceMenu" hidden>
-            <button class="btn" type="button" id="pickDir">选择目录</button>
-            <button class="btn" type="button" id="pickFile">选择文件</button>
+          <div class="source-actions">
+            <button class="btn source-action" type="button" id="pickDir">选择文件夹</button>
+            <button class="btn source-action" type="button" id="pickFile">选择文件</button>
           </div>
         </div>
         <p class="help">支持 md / txt / markdown。</p>
@@ -1423,13 +1418,8 @@ body{
     $("#openImport").addEventListener("click", () => { $("#importTarget").textContent = "work"; dlgI.showModal(); });
     $("#openImportLife").addEventListener("click", () => { $("#importTarget").textContent = "life"; dlgI.showModal(); });
     const sourceDrop = $("#sourceDrop");
-    const sourceMenu = $("#sourceMenu");
-    sourceDrop.addEventListener("click", () => {
-      sourceMenu.hidden = !sourceMenu.hidden;
-      sourceDrop.setAttribute("aria-expanded", String(!sourceMenu.hidden));
-    });
-    $("#pickDir").addEventListener("click", () => { sourceMenu.hidden = true; sourceDrop.setAttribute("aria-expanded", "false"); $("#dirPick").click(); });
-    $("#pickFile").addEventListener("click", () => { sourceMenu.hidden = true; sourceDrop.setAttribute("aria-expanded", "false"); $("#filePick").click(); });
+    $("#pickDir").addEventListener("click", () => $("#dirPick").click());
+    $("#pickFile").addEventListener("click", () => $("#filePick").click());
     sourceDrop.addEventListener("dragover", (event) => {
       event.preventDefault();
       sourceDrop.classList.add("is-dragging");
