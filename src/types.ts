@@ -50,9 +50,15 @@ export type SearchHit = {
   excerpt: string
 }
 
+export type SearchDocument = {
+  path: string
+  text: string
+}
+
 export type SearchResult = {
   hits: SearchHit[]
   warnings: string[]
+  documents: SearchDocument[]
 }
 
 export type SearchInput = {

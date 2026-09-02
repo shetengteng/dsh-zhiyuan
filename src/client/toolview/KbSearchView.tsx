@@ -1,4 +1,4 @@
-import type { SearchHit } from '../models.ts'
+import type { SearchDocument, SearchHit } from '../models.ts'
 import { matchedExcerptLine } from '../search-utils.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
 import { CitationTag } from '../CitationTag.tsx'
@@ -21,9 +21,31 @@ function firstTextContent(content: ToolResultBlock['content']): string {
 }
 
 function extractSearchHits(block?: ToolResultBlock): SearchHit[] {
-  const meta = block?.meta as { hits?: SearchHit[] } | undefined
+  const meta = asRecord(block?.meta)
   if (Array.isArray(meta?.hits)) return meta.hits.filter(isSearchHit)
   return []
+}
+
+function extractSearchDocuments(block?: ToolResultBlock): Map<string, string> {
+  const meta = asRecord(block?.meta)
+  if (!Array.isArray(meta?.documents)) return new Map()
+  const documents = new Map<string, string>()
+  for (const value of meta.documents) {
+    if (!isSearchDocument(value) || documents.has(value.path)) continue
+    documents.set(value.path, value.text)
+  }
+  return documents
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function isSearchDocument(value: unknown): value is SearchDocument {
+  const document = asRecord(value)
+  return typeof document?.path === 'string'
+    && document.path.trim().length > 0
+    && typeof document.text === 'string'
 }
 
 function isSearchHit(value: unknown): value is SearchHit {
@@ -50,6 +72,7 @@ export function createKbSearchView(preview: PreviewController) {
     const running = !block || block.kind !== 'tool-result'
     const failed = block?.kind === 'tool-result' && Boolean(block.isError)
     const hits = extractSearchHits(block)
+    const documents = extractSearchDocuments(block)
     const selectedHit = usePreviewSelection(preview)
 
     if (running) return <div className="zy-help">正在检索知识库…</div>
@@ -66,7 +89,7 @@ export function createKbSearchView(preview: PreviewController) {
               className={selected ? 'zy-hit is-selected' : 'zy-hit'}
               type="button"
               aria-pressed={selected}
-              onClick={(event) => preview.select(hit, event.currentTarget)}
+              onClick={(event) => preview.select(hit, event.currentTarget, documents.get(hit.path))}
             >
               <div className="zy-src">
                 <CitationTag n={hit.n} />

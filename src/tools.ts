@@ -153,10 +153,24 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
             },
           },
           warnings: { type: 'array', items: { type: 'string' } },
+          documents: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['path', 'text'],
+              properties: {
+                path: { type: 'string' },
+                text: { type: 'string' },
+              },
+            },
+          },
         },
       },
       render: (_args: unknown, value: unknown) => renderSearchResult(value),
-      presentationMeta: (_args: unknown, value: unknown) => value as Json,
+      presentationMeta: (args: unknown, value: unknown) => {
+        const baseId = asString(asRecord(args).baseId)?.trim()
+        return baseId ? { ...asRecord(value), baseId } : value as Json
+      },
     },
     presentCall: () => ({ card: 'generic', title: '知识库检索' }),
     presentResult: (_args: unknown, result: { isError: boolean }) => (

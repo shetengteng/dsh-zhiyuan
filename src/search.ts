@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT } from './identity.ts'
 import { markUsed, requireBase } from './bases.ts'
-import { baseDir, resolveDest } from './paths.ts'
-import type { SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
+import { assertInside, assertNoSymlinkEscape, baseDir, resolveDest } from './paths.ts'
+import type { SearchDocument, SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
 import { KbError } from './types.ts'
 
 export function mergeTerms(query: string, aliases: string[] | undefined): { terms: string[]; warnings: string[] } {
@@ -141,8 +142,6 @@ export class RipgrepSearchEngine implements SearchEngine {
     rgArgs.push('.')
     const stdout = await runRg(ripgrepBinary, rgArgs, input.rootDir)
     const matches = parseRg(stdout, input.rootDir)
-    const { readFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const rawHits: Array<SearchHit & { file: string }> = []
     for (const match of matches) {
       const absolutePath = join(input.rootDir, match.path)
@@ -160,6 +159,24 @@ export class RipgrepSearchEngine implements SearchEngine {
     }
     return diversify(mergeAdjacent(rawHits), input.topK)
   }
+}
+
+async function readSearchDocuments(rootDir: string, hits: SearchHit[]): Promise<SearchDocument[]> {
+  const documents: SearchDocument[] = []
+  const seen = new Set<string>()
+  for (const hit of hits) {
+    if (seen.has(hit.path)) continue
+    seen.add(hit.path)
+    const absolutePath = assertInside(rootDir, join(rootDir, hit.path))
+    assertNoSymlinkEscape(rootDir, absolutePath)
+    try {
+      documents.push({ path: hit.path, text: await readFile(absolutePath, 'utf8') })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
+      throw error
+    }
+  }
+  return documents
 }
 
 export async function searchBase(
@@ -182,6 +199,7 @@ export async function searchBase(
     }
   }
   const hits = await engine.search({ baseId: input.baseId, rootDir, terms, topK })
+  const documents = await readSearchDocuments(rootDir, hits)
   await markUsed(dataRoot, input.baseId)
-  return { hits, warnings }
+  return { hits, warnings, documents }
 }

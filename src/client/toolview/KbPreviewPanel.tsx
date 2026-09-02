@@ -3,9 +3,9 @@ import type { SearchHit } from '../models.ts'
 import { CitationTag } from '../CitationTag.tsx'
 import { matchedExcerptLine } from '../search-utils.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
-import { MdEditor } from '../settings/MdEditor.tsx'
+import { TiptapEditor } from '../settings/MdEditor.tsx'
 import type { PreviewController } from './preview-state.ts'
-import { usePreviewSelection } from './preview-state.ts'
+import { usePreviewState } from './preview-state.ts'
 import { widenPreviewDetailsPanel } from './preview-width.ts'
 
 type DetailsPanelProps = {
@@ -16,7 +16,8 @@ type DetailsPanelProps = {
 export function createKbPreviewPanel(preview: PreviewController) {
   return function KbPreviewPanel(props: DetailsPanelProps) {
     ensureSettingsStyles()
-    const selectedHit = usePreviewSelection(preview)
+    const previewState = usePreviewState(preview)
+    const selectedHit = previewState.selected
     const panelRef = useRef<HTMLElement>(null)
     const headRef = useRef<HTMLDivElement>(null)
 
@@ -25,9 +26,9 @@ export function createKbPreviewPanel(preview: PreviewController) {
     }, [preview, props.sessionId])
 
     useEffect(() => {
-      if (!selectedHit || !panelRef.current) return
+      if (!panelRef.current) return
       return widenPreviewDetailsPanel(panelRef.current)
-    }, [selectedHit])
+    }, [])
 
     useLayoutEffect(() => {
       const head = headRef.current
@@ -36,7 +37,7 @@ export function createKbPreviewPanel(preview: PreviewController) {
 
       const syncHeight = () => {
         const height = Math.round(mainHeader.getBoundingClientRect().height)
-        if (!Number.isFinite(height) || height < 45 || height > 180) return
+        if (!Number.isFinite(height) || height < 40 || height > 180) return
         head.style.setProperty('height', `${height}px`)
         head.style.setProperty('min-height', `${height}px`)
       }
@@ -80,7 +81,13 @@ export function createKbPreviewPanel(preview: PreviewController) {
           </div>
           <button className="zy-preview-close" type="button" aria-label="关闭预览" onClick={close}>×</button>
         </div>
-        {selectedHit ? <PreviewContent hit={selectedHit} /> : <PreviewEmpty />}
+        {selectedHit ? (
+          <PreviewContent
+            hit={selectedHit}
+            text={previewState.text ?? selectedHit.excerpt}
+            complete={previewState.complete}
+          />
+        ) : <PreviewEmpty />}
       </aside>
     )
   }
@@ -88,7 +95,8 @@ export function createKbPreviewPanel(preview: PreviewController) {
 
 function findConversationHeader(): HTMLElement | null {
   const scrollBody = document.querySelector<HTMLElement>('[data-conversation-scroll]')
-  const header = scrollBody?.previousElementSibling
+  const headerSlot = scrollBody?.previousElementSibling
+  const header = headerSlot?.matches('header') ? headerSlot : headerSlot?.querySelector('header')
   return header instanceof HTMLElement && header.tagName === 'HEADER' ? header : null
 }
 
@@ -105,14 +113,17 @@ function PreviewTitle(props: { hit: SearchHit }) {
   )
 }
 
-function PreviewContent(props: { hit: SearchHit }) {
+function PreviewContent(props: { hit: SearchHit; text: string; complete: boolean }) {
   const { hit } = props
   return (
     <div className="zy-preview-body">
-      <MdEditor
+      {!props.complete ? <div className="zy-preview-status" role="status">当前检索结果没有携带全文，显示命中片段</div> : null}
+      <TiptapEditor
         key={`${hit.path}-${hit.startLine}-${hit.endLine}-${hit.matchLine}`}
-        text={hit.excerpt}
-        focusLine={hit.matchLine - hit.startLine + 1}
+        text={props.text}
+        startLine={hit.startLine}
+        endLine={hit.endLine}
+        focusLine={hit.matchLine}
         highlightText={matchedExcerptLine(hit)}
         readonly
       />
@@ -124,7 +135,7 @@ function PreviewEmpty() {
   return (
     <div className="zy-preview-empty">
       <div className="zy-preview-empty-title">选择一条命中结果</div>
-      <p>点击对话中的引用卡片，在这里查看 Markdown 内容。</p>
+      <p>点击对话中的引用卡片，在这里查看完整文档内容。</p>
     </div>
   )
 }
