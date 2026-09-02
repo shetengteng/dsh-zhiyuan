@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useRef, useState, type DragEvent } from 'react'
+import { Menu, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SearchHit } from '../models.ts'
 import { Field, Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
@@ -11,6 +11,33 @@ function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFo
   return new FormData(event.currentTarget)
 }
 
+type DroppedFile = File & { path?: string }
+
+function sourceDisplayName(sourcePath: string): string {
+  const trimmedPath = sourcePath.replace(/[\\/]+$/, '')
+  return trimmedPath.split(/[\\/]/).pop() || trimmedPath
+}
+
+function localPathFromUri(rawUri: string): string {
+  try {
+    const uri = new URL(rawUri)
+    if (uri.protocol !== 'file:') return ''
+    const decodedPath = decodeURIComponent(uri.pathname)
+    if (uri.hostname && uri.hostname !== 'localhost') return `//${uri.hostname}${decodedPath}`
+    return /^\/[A-Za-z]:\//.test(decodedPath) ? decodedPath.slice(1) : decodedPath
+  } catch {
+    return ''
+  }
+}
+
+function droppedSourcePath(event: DragEvent<HTMLButtonElement>): string {
+  const droppedFile = (event.dataTransfer.files.item(0) ?? event.dataTransfer.items[0]?.getAsFile()) as DroppedFile | null
+  const filePath = droppedFile?.path?.trim()
+  if (filePath) return filePath
+  const uri = event.dataTransfer.getData('text/uri-list').split(/\r?\n/).find((line) => line.trim() && !line.startsWith('#'))
+  return uri ? localPathFromUri(uri) : ''
+}
+
 export function ImportDialog(props: {
   baseId: string
   error: string
@@ -20,20 +47,50 @@ export function ImportDialog(props: {
   onSubmit: (input: { sourcePath: string; destCategory: string; preserveTree: boolean; createMissing: boolean }) => void
 }) {
   const form = useRef<HTMLFormElement>(null)
-  const pathRef = useRef<HTMLInputElement>(null)
   const [createMissing, setCreateMissing] = useState(true)
   const [preserveTree, setPreserveTree] = useState(false)
   const [picking, setPicking] = useState(false)
+  const [sourcePath, setSourcePath] = useState('')
+  const [sourceLabel, setSourceLabel] = useState('')
+  const [sourceError, setSourceError] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
 
   const pick = async (kind: 'file' | 'dir') => {
     if (picking || props.busy) return
+    setSourceMenuOpen(false)
     setPicking(true)
     try {
       const path = await props.onPick(kind)
-      if (path && pathRef.current) pathRef.current.value = path
+      if (path) {
+        setSourcePath(path)
+        setSourceLabel(sourceDisplayName(path))
+        setSourceError('')
+      }
     } finally {
       setPicking(false)
     }
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = picking || props.busy ? 'none' : 'copy'
+    if (!picking && !props.busy) setDragging(true)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    setDragging(false)
+    if (picking || props.busy) return
+    setSourceMenuOpen(false)
+    const path = droppedSourcePath(event)
+    if (!path) {
+      setSourceError('当前环境无法读取拖入项的本机路径，请使用“选择目录”或“选择文件”')
+      return
+    }
+    setSourcePath(path)
+    setSourceLabel(sourceDisplayName(path))
+    setSourceError('')
   }
 
   return (
@@ -53,8 +110,12 @@ export function ImportDialog(props: {
         ref={form}
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
           const data = readFormData(event)
+          if (!sourcePath) {
+            setSourceError('请拖入文件或文件夹，或点击选择按钮')
+            return
+          }
           props.onSubmit({
-            sourcePath: String(data.get('sourcePath') ?? '').trim(),
+            sourcePath,
             destCategory: String(data.get('destCategory') ?? '').trim(),
             preserveTree,
             createMissing,
@@ -63,17 +124,39 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="点按钮打开系统对话框选本机目录或文件。也可以粘贴完整路径。目前 md/txt。"
+          help="拖拽文件或文件夹，或点击按钮后选择目录/文件。目前支持 md / txt / markdown。"
         >
-          <div className="zy-source">
-            <button className="zy-btn" type="button" disabled={picking || props.busy} onClick={() => void pick('dir')}>
-              选择文件夹
-            </button>
-            <button className="zy-btn" type="button" disabled={picking || props.busy} onClick={() => void pick('file')}>
-              选择文件
-            </button>
-          </div>
-          <input ref={pathRef} className="zy-box" name="sourcePath" placeholder="~/notes/合同" required />
+          <Menu
+            open={sourceMenuOpen}
+            onClose={() => setSourceMenuOpen(false)}
+            items={[
+              { id: 'dir', label: '选择目录' },
+              { id: 'file', label: '选择文件' },
+            ]}
+            onSelect={(id: string) => {
+              if (id !== 'dir' && id !== 'file') return
+              void pick(id)
+            }}
+            align="start"
+            portal
+            anchor={(
+              <button
+                className={`zy-source-drop${dragging ? ' is-dragging' : ''}`}
+                type="button"
+                disabled={picking || props.busy}
+                aria-haspopup="menu"
+                aria-expanded={sourceMenuOpen}
+                onClick={() => setSourceMenuOpen((value) => !value)}
+                onDragOver={handleDragOver}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+              >
+                <strong className="zy-source-copy">{sourceLabel ? `已选择：${sourceLabel}` : '拖拽或点击选择文件/文件夹'}</strong>
+                <span className="zy-source-hint">{sourceLabel ? '可重新拖入，或点击按钮更换' : '只读取本机路径，不会修改源文件'}</span>
+              </button>
+            )}
+          />
+          <Note text={sourceError} />
         </Field>
         <Field label="类目" help="空 = 库根。可输入新路径，不会因此新建知识库。">
           <input className="zy-box" name="destCategory" placeholder="合同/2024" />

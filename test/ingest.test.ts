@@ -92,7 +92,7 @@ test('非白名单后缀失败；源路径不存在失败', async () => {
     baseId: 'work',
     sourcePath: '20260607-02-Memex-popup转桌面-TODO.md',
     destCategory: '',
-  }), /完整本机路径/)
+  }), /导入弹框中的拖拽区域/)
   await rm(root, { recursive: true, force: true })
 })
 

@@ -102,7 +102,12 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-help{margin:4px 0 0;font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .zy-checks{display:flex;flex-direction:column;gap:8px;margin:8px 0 12px;font-size:13px}
 .zy-checks label{display:flex;align-items:center;gap:8px;cursor:pointer}
-.zy-source{display:flex;gap:8px;margin-bottom:8px}
+.zy-source-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:76px;padding:12px;border:1px dashed var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-module-platform);color:inherit;font:inherit;text-align:center;cursor:pointer;appearance:none;transition:background .15s,border-color .15s}
+.zy-source-drop:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
+.zy-source-drop.is-dragging{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary)}
+.zy-source-drop:disabled{opacity:.5;cursor:not-allowed}
+.zy-source-copy{font-size:13px;line-height:20px;font-weight:500}
+.zy-source-hint{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
 .zy-footbar{display:flex;justify-content:flex-end;gap:8px;width:100%}
 .zy-footbar .zy-danger{margin-right:auto}
 .zy-about{max-width:62ch;padding-bottom:24px}
@@ -128,7 +133,8 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-quote{font-size:13px;line-height:20px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .zy-ntag{font-family:var(--ds-font-family-code);font-size:12px;line-height:18px;background:var(--dsw-alias-markdown-citation);padding:0 5px;border-radius:4px;flex:none}
 .zy :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px}
+.zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px;max-height:calc(100vh - 32px)}
+.zy-modal-wide .zy-md-body{min-height:360px;max-height:min(72vh,720px)}
 .zy-modal-form{width:min(400px,calc(100% - 32px))}
 .zy-md{display:flex;flex-direction:column;min-height:0;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
 .zy-md-bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-module-platform);flex:none}

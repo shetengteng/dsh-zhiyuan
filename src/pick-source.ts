@@ -67,7 +67,7 @@ export async function pickSource(
     return { path }
   } catch (error) {
     if (isMissingBin(error)) {
-      throw new KbError('not_found', '本机没有可用的选文件对话框，请粘贴完整路径')
+      throw new KbError('not_found', '本机没有可用的选文件对话框，请使用拖拽区域，或检查系统文件选择器')
     }
     if (isCancelExit(error)) return { cancelled: true }
     throw error instanceof Error ? error : new Error(String(error))

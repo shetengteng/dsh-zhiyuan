@@ -755,8 +755,31 @@ body{
       background: var(--dsw-alias-bg-module-platform);
     }
     .field textarea { min-height: 72px; resize: vertical; }
-    .source-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .source-row .btn { flex: none; }
+    .source-drop {
+      min-height: 76px;
+      padding: 12px;
+      border: 1px dashed var(--dsw-alias-border-l2);
+      border-radius: 12px;
+      background: var(--dsw-alias-bg-module-platform);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+    .source-drop:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .source-drop:disabled { opacity: .5; cursor: not-allowed; }
+    .source-drop.is-dragging { border-color: var(--dsw-alias-state-business-primary); background: var(--dsw-alias-state-business-tertiary); }
+    .source-drop strong { font-size: 13px; line-height: 20px; }
+    .source-drop small { margin-top: 2px; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
+    .source-row { position: relative; display: flex; gap: 8px; margin-top: 8px; }
+    .source-menu { display: grid; gap: 4px; min-width: 160px; padding: 4px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 8px 24px #0002; }
+    .source-menu .btn { width: 100%; text-align: left; }
     .checks { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 12px; font-size: 13px; }
     .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; }
     .dlg-foot .btn-danger { margin-right: auto; }
@@ -770,7 +793,7 @@ body{
       color: var(--dsw-alias-state-error-primary);
     }
     .btn-danger:hover { background: var(--dsw-alias-interactive-bg-hover-danger); }
-    dialog.preview-dlg { width: min(640px, 92vw); }
+    dialog.preview-dlg { width: min(640px, 92vw); height: min(78vh, 760px); max-height: calc(100vh - 32px); }
     textarea.md-edit, pre.md-edit {
       min-height: min(48vh, 380px);
       max-height: min(60vh, 520px);
@@ -1063,7 +1086,7 @@ body{
                     <ol>
                       <li>先选好左侧的库。</li>
                       <li>点右侧「导入」。</li>
-                      <li>点「选择文件夹」或「选择文件」。也可以粘贴本机路径。</li>
+                      <li>把文件或文件夹拖到「拖拽或点击选择文件/文件夹」按钮，或点击按钮后从菜单选择目录/文件。</li>
                       <li>指定类目，例如 <code>合同/2024</code>。没有这个文件夹会创建；不会因此新建一个知识库。</li>
                       <li>开始导入。内容相同的文件会跳过，不会覆盖。目前只导入 md/txt。</li>
                     </ol>
@@ -1237,12 +1260,17 @@ body{
       <h2>导入到 <span id="importTarget">work</span></h2>
       <div class="field">
         <label>源</label>
+        <button class="source-drop" id="sourceDrop" type="button" aria-haspopup="menu" aria-expanded="false">
+          <strong id="sourceName">拖拽或点击选择文件/文件夹</strong>
+          <small>只读取本机路径，不会修改源文件</small>
+        </button>
         <div class="source-row">
-          <button class="btn" type="button" id="pickDir">选择文件夹</button>
-          <button class="btn" type="button" id="pickFile">选择文件</button>
+          <div class="source-menu" id="sourceMenu" hidden>
+            <button class="btn" type="button" id="pickDir">选择目录</button>
+            <button class="btn" type="button" id="pickFile">选择文件</button>
+          </div>
         </div>
-        <input id="srcPath" placeholder="或填写本机路径，如 ~/notes/合同" />
-        <p class="help">点按钮选本机目录或文件，不必手填。也可以粘贴路径。目前 md/txt。</p>
+        <p class="help">支持 md / txt / markdown。</p>
         <input id="dirPick" type="file" webkitdirectory hidden />
         <input id="filePick" type="file" accept=".md,.txt,.markdown,text/markdown,text/plain" hidden />
       </div>
@@ -1394,18 +1422,35 @@ body{
     });
     $("#openImport").addEventListener("click", () => { $("#importTarget").textContent = "work"; dlgI.showModal(); });
     $("#openImportLife").addEventListener("click", () => { $("#importTarget").textContent = "life"; dlgI.showModal(); });
-    $("#pickDir").addEventListener("click", () => $("#dirPick").click());
-    $("#pickFile").addEventListener("click", () => $("#filePick").click());
+    const sourceDrop = $("#sourceDrop");
+    const sourceMenu = $("#sourceMenu");
+    sourceDrop.addEventListener("click", () => {
+      sourceMenu.hidden = !sourceMenu.hidden;
+      sourceDrop.setAttribute("aria-expanded", String(!sourceMenu.hidden));
+    });
+    $("#pickDir").addEventListener("click", () => { sourceMenu.hidden = true; sourceDrop.setAttribute("aria-expanded", "false"); $("#dirPick").click(); });
+    $("#pickFile").addEventListener("click", () => { sourceMenu.hidden = true; sourceDrop.setAttribute("aria-expanded", "false"); $("#filePick").click(); });
+    sourceDrop.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      sourceDrop.classList.add("is-dragging");
+    });
+    sourceDrop.addEventListener("dragleave", () => sourceDrop.classList.remove("is-dragging"));
+    sourceDrop.addEventListener("drop", (event) => {
+      event.preventDefault();
+      sourceDrop.classList.remove("is-dragging");
+      const f = event.dataTransfer.files[0];
+      if (f) $("#sourceName").textContent = f.name;
+    });
     $("#dirPick").addEventListener("change", () => {
       const f = $("#dirPick").files[0];
       if (!f) return;
       const folder = (f.webkitRelativePath || f.name).split("/")[0];
-      $("#srcPath").value = folder + "/";
+      $("#sourceName").textContent = folder;
     });
     $("#filePick").addEventListener("change", () => {
       const f = $("#filePick").files[0];
       if (!f) return;
-      $("#srcPath").value = f.name;
+      $("#sourceName").textContent = f.name;
     });
 
     const dlgS = $("#dlgSearch");

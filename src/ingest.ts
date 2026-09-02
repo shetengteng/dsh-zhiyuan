@@ -80,7 +80,7 @@ function looksBareName(sourcePath: string): boolean {
 
 function missingSourceMessage(sourcePath: string): string {
   if (looksBareName(sourcePath)) {
-    return `源路径不存在：${sourcePath}。浏览器只给出了文件名，请点「选择文件」打开系统对话框，或粘贴完整本机路径`
+    return `源路径不存在：${sourcePath}。浏览器只给出了文件名，请使用导入弹框中的拖拽区域，或点击选择按钮打开系统对话框`
   }
   return `源路径不存在：${sourcePath}`
 }
