@@ -6,9 +6,11 @@ export function splitPhysicalLines(text: string): string[] {
   const lines: string[] = []
   let lineStart = 0
   for (let index = 0; index < text.length; index += 1) {
-    if (text[index] !== '\n') continue
+    const isLineFeed = text[index] === '\n'
+    const isStandaloneCarriageReturn = text[index] === '\r' && text[index + 1] !== '\n'
+    if (!isLineFeed && !isStandaloneCarriageReturn) continue
     const line = text.slice(lineStart, index)
-    lines.push(line.endsWith('\r') ? line.slice(0, -1) : line)
+    lines.push(isLineFeed && line.endsWith('\r') ? line.slice(0, -1) : line)
     lineStart = index + 1
   }
   if (lineStart < text.length || lines.length === 0) lines.push(text.slice(lineStart))

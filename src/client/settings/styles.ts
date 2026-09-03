@@ -151,6 +151,17 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-preview-body .zy-md-doc p{white-space:pre-wrap}
 .zy-preview-status{padding:10px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
 .zy-csv-preview{display:flex;flex-direction:column;min-height:0;height:100%}
+.zy-csv-editor-tools{display:flex;align-items:center;gap:8px;padding-top:10px}
+.zy-csv-header-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;max-height:132px;overflow:auto;padding-right:2px}
+.zy-csv-header-field{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:4px;align-items:end;font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.zy-csv-header-field span{grid-column:1/-1}
+.zy-csv-header-field .zy-box{height:32px;padding:5px 9px}
+.zy-csv-delete-column{height:32px;width:28px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:18px;line-height:20px;cursor:pointer}
+.zy-csv-delete-column:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.zy-csv-delete-column:disabled{opacity:.45;cursor:not-allowed}
+.zy-csv-grid{flex:1;min-height:280px;max-height:min(72vh,720px);margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.zy-csv-grid .ag-root-wrapper{border:0;border-radius:0}
+.zy-csv-grid .ag-row.zy-csv-grid-focus .ag-cell{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 18%,var(--dsw-alias-bg-layer-1))}
 .zy-csv-body{flex:1;min-height:280px;max-height:min(72vh,720px);overflow:auto;margin:10px 0 0;padding:14px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);font-family:var(--ds-font-family-code);font-size:13px;line-height:22px;white-space:pre;tab-size:4}
 .zy-csv-line{display:inline}
 .zy-csv-line mark{background:var(--dsw-specific-bubble-highlight);color:inherit}
@@ -160,7 +171,7 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-preview-panel :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
 .zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px;max-height:calc(100vh - 32px)}
 .zy-modal-wide .zy-md-body{min-height:360px;max-height:min(72vh,720px)}
-.zy-modal-wide .zy-csv-body{min-height:360px}
+.zy-modal-wide .zy-csv-body,.zy-modal-wide .zy-csv-grid{min-height:360px}
 .zy-modal-form{width:min(400px,calc(100% - 32px))}
 .zy-md{display:flex;flex-direction:column;min-height:0;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
 .zy-md-bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-module-platform);flex:none}

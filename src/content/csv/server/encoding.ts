@@ -64,7 +64,9 @@ function hasOverlongPhysicalLine(bytes: Buffer): boolean {
   let lineStart = 0
   let lineNumber = 1
   for (let index = 0; index < bytes.length; index += 1) {
-    if (bytes[index] !== 0x0a) continue
+    const isLineFeed = bytes[index] === 0x0a
+    const isStandaloneCarriageReturn = bytes[index] === 0x0d && bytes[index + 1] !== 0x0a
+    if (!isLineFeed && !isStandaloneCarriageReturn) continue
     if (lineContentBytes(bytes, lineStart, index, lineNumber) > CSV_MAX_PHYSICAL_LINE_BYTES) return true
     lineStart = index + 1
     lineNumber += 1
@@ -75,6 +77,15 @@ function hasOverlongPhysicalLine(bytes: Buffer): boolean {
 export async function readValidatedUtf8Csv(sourcePath: string, maxBytes: number): Promise<CsvValidation> {
   const bytes = await readBoundedBuffer(sourcePath, maxBytes)
   if (!bytes) {
+    return { ok: false, code: 'file_too_large', message: '文件超过大小上限，未导入' }
+  }
+
+  return validateUtf8CsvBytes(bytes, maxBytes)
+}
+
+/** Validates bytes before both import and in-place CSV writes. */
+export function validateUtf8CsvBytes(bytes: Buffer, maxBytes: number): CsvValidation {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || bytes.length > maxBytes) {
     return { ok: false, code: 'file_too_large', message: '文件超过大小上限，未导入' }
   }
 

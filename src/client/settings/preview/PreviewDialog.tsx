@@ -22,7 +22,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
   const fileName = props.preview.path.split('/').pop() || props.preview.path
   const displayPreview = props.preview.previewStatus === 'ready' || !props.fallbackText
     ? props.preview
-    : { ...props.preview, text: props.fallbackText }
+    : { ...props.preview, text: props.fallbackText, csv: undefined }
   const canEdit = props.editable && props.preview.capabilities.canEdit
   const hasActions = canEdit || props.deletable
   return (
@@ -44,7 +44,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
           ref={form}
           onSubmit={(event: { preventDefault: () => void }) => {
             event.preventDefault()
-            props.onSave?.(editorRef.current?.getMarkdown() ?? displayPreview.text)
+            props.onSave?.(editorRef.current?.getText() ?? displayPreview.text)
           }}
         >
           <EntryPreviewContent preview={displayPreview} mode="edit" editorRef={editorRef} />

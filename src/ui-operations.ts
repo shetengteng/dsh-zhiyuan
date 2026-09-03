@@ -1,6 +1,6 @@
 import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, requireBase, updateBase, writeEntry } from './bases.ts'
 import { readCatalog, writeCatalog } from './catalog.ts'
-import { EntryPreviewView, isEntryPreviewView, type EntryPreviewOptions } from './content/host-api.ts'
+import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, type EntryPreviewOptions } from './content/host-api.ts'
 import { ingest } from './ingest.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
@@ -46,8 +46,9 @@ function optionalStringArray(data: JsonRecord, field: string): string[] | undefi
 
 function optionalBoolean(data: JsonRecord, field: string, fallback: boolean): boolean {
   if (!hasField(data, field)) return fallback
-  if (typeof data[field] !== 'boolean') throw new KbError('missing_field', `${field} 必须是布尔值`)
-  return data[field]
+  const value = data[field]
+  if (typeof value !== 'boolean') throw new KbError('missing_field', `${field} 必须是布尔值`)
+  return value
 }
 
 function optionalPositiveInteger(data: JsonRecord, field: string): number | undefined {
@@ -60,9 +61,12 @@ function optionalPositiveInteger(data: JsonRecord, field: string): number | unde
 }
 
 function readPreviewOptions(data: JsonRecord): EntryPreviewOptions {
-  if (!hasField(data, 'view')) return {}
+  const readMode = hasField(data, 'readMode') ? data.readMode : EntryReadMode.Preview
+  if (!isEntryReadMode(readMode)) throw new KbError('invalid_preview', '读取模式无效')
+  if (!hasField(data, 'view')) return { readMode }
   if (!isEntryPreviewView(data.view)) throw new KbError('invalid_preview', '预览模式无效')
-  if (data.view === EntryPreviewView.Tree) return { view: data.view }
+  if (data.view === EntryPreviewView.Tree) return { view: data.view, readMode }
+  if (readMode === EntryReadMode.Edit) throw new KbError('invalid_preview', '搜索命中不能进入编辑模式')
   const matchLine = optionalPositiveInteger(data, 'matchLine')
   if (matchLine === undefined) throw new KbError('invalid_preview', '搜索预览缺少有效命中行')
   const matchColumnByte = optionalPositiveInteger(data, 'matchColumnByte')
@@ -70,7 +74,7 @@ function readPreviewOptions(data: JsonRecord): EntryPreviewOptions {
   if (sourceFingerprint !== undefined && sourceFingerprint.length > 128) {
     throw new KbError('invalid_preview', '搜索预览文件指纹无效')
   }
-  return { view: data.view, matchLine, matchColumnByte, sourceFingerprint }
+  return { view: data.view, readMode, matchLine, matchColumnByte, sourceFingerprint }
 }
 
 async function setPrefs(dataRoot: string, data: JsonRecord): Promise<unknown> {

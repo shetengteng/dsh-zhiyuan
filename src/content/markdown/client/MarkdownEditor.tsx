@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 export type TiptapEditorHandle = {
-  getMarkdown: () => string
+  getText: () => string
 }
 export type MdEditorHandle = TiptapEditorHandle
 
@@ -25,7 +25,7 @@ export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(fu
   const [tick, setTick] = useState(0)
 
   useImperativeHandle(ref, () => ({
-    getMarkdown: () => editorRef.current?.getMarkdown() ?? props.text,
+    getText: () => editorRef.current?.getMarkdown() ?? props.text,
   }), [props.text])
 
   useEffect(() => {

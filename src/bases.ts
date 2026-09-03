@@ -48,6 +48,22 @@ export async function countDocs(dataRoot: string, baseId: string): Promise<numbe
   return (await walkTextDocuments(baseDir(dataRoot, baseId))).length
 }
 
+async function textDocumentBytes(baseRoot: string): Promise<number> {
+  const paths = await walkTextDocuments(baseRoot)
+  let total = 0
+  for (const documentPath of paths) total += (await stat(documentPath)).size
+  return total
+}
+
+async function fileBytes(filePath: string): Promise<number> {
+  try {
+    return (await stat(filePath)).size
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 0
+    throw error
+  }
+}
+
 async function listBaseCategories(dataRoot: string, baseId: string): Promise<string[]> {
   const baseDirectory = baseDir(dataRoot, baseId)
   if (!(await directoryExists(baseDirectory))) return []
@@ -205,7 +221,16 @@ export async function writeEntry(dataRoot: string, baseId: string, relativePath:
   const baseRoot = baseDir(dataRoot, baseId)
   assertInside(baseRoot, absolutePath)
   assertNoSymlinkEscape(baseRoot, absolutePath)
-  await contentRegistry.writeEntry({ absolutePath, relativePath, text })
+  const catalog = await readCatalog(dataRoot)
+  const [baseBytes, entryBytes] = await Promise.all([textDocumentBytes(baseRoot), fileBytes(absolutePath)])
+  await contentRegistry.writeEntry({
+    absolutePath,
+    relativePath,
+    text,
+    maxFileBytes: catalog.prefs.maxFileBytes,
+    maxBaseBytes: catalog.prefs.maxBaseBytes,
+    baseBytesWithoutEntry: Math.max(0, baseBytes - entryBytes),
+  })
 }
 
 export async function deleteEntry(dataRoot: string, baseId: string, relativePath: string, confirm: boolean): Promise<void> {

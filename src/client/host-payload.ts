@@ -14,6 +14,25 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isCsvPreviewData(value: unknown): boolean {
+  const csv = asRecord(value)
+  return Boolean(csv)
+    && Array.isArray(csv.headers) && csv.headers.every((header) => typeof header === 'string')
+    && Array.isArray(csv.rows) && csv.rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === 'string'))
+    && isNonNegativeInteger(csv.totalRows)
+    && isNonNegativeInteger(csv.windowStartRow)
+    && isNonNegativeInteger(csv.windowEndRow)
+    && typeof csv.complete === 'boolean'
+    && (csv.focusedRow === undefined || isPositiveInteger(csv.focusedRow))
+    && csv.windowEndRow >= csv.windowStartRow
+    && csv.windowEndRow <= csv.totalRows
+    && (csv.focusedRow === undefined || csv.focusedRow <= csv.totalRows)
+}
+
 function isSearchHit(value: unknown): value is SearchHit {
   const hit = asRecord(value)
   return Boolean(hit)
@@ -36,6 +55,7 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
   const validView = isEntryPreviewView(entry?.view)
   const capabilities = asRecord(entry?.capabilities)
   const validCapabilities = typeof capabilities?.canEdit === 'boolean'
+  const validCsv = entry?.format !== 'csv' || isCsvPreviewData(entry.csv)
   const validTruncation = entry?.truncation === 'none'
     || entry?.truncation === 'before'
     || entry?.truncation === 'after'
@@ -46,9 +66,10 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
   if (entry && typeof entry.path === 'string' && typeof entry.text === 'string' && validFormat && validView
     && isPositiveInteger(entry.windowStartLine) && isPositiveInteger(entry.windowEndLine)
     && entry.windowEndLine >= entry.windowStartLine && validTruncation && typeof entry.totalChars === 'number'
-    && Number.isFinite(entry.totalChars) && validStatus && validCapabilities) {
+    && Number.isFinite(entry.totalChars) && validStatus && validCapabilities && validCsv) {
     return value as ReadEntryResult
   }
+  if (entry?.format === 'csv') throw new Error('Host 返回的预览数据无效')
   return parseLegacyMarkdownPreview(entry, legacyContext)
 }
 

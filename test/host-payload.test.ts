@@ -18,6 +18,31 @@ test('新版 Host preview payload 按原样通过', () => {
   assert.equal(parseReadEntry(payload), payload)
 })
 
+test('CSV preview 必须携带 record-aligned 表格数据', () => {
+  const payload = {
+    path: 'table.csv',
+    text: '名称,金额\n甲,120',
+    format: 'csv' as const,
+    view: 'tree' as const,
+    windowStartLine: 1,
+    windowEndLine: 2,
+    truncation: 'none' as const,
+    totalChars: 11,
+    previewStatus: 'ready' as const,
+    capabilities: { canEdit: true },
+    csv: {
+      headers: ['名称', '金额'],
+      rows: [['甲', '120']],
+      totalRows: 1,
+      windowStartRow: 1,
+      windowEndRow: 1,
+      complete: true,
+    },
+  }
+  assert.equal(parseReadEntry(payload), payload)
+  assert.throws(() => parseReadEntry({ ...payload, csv: { ...payload.csv, rows: [['甲', 120]] } }), /预览数据无效/)
+})
+
 test('旧 Host 的 Markdown read 响应仍能打开预览', () => {
   const preview = parseReadEntry({ path: 'notes/a.md', text: '# 标题\n正文' }, {
     view: 'search-hit',

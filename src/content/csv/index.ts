@@ -3,6 +3,7 @@ import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } fro
 import { prepareCsvImport } from './server/import.ts'
 import { readCsvPreview } from './server/preview.ts'
 import { readCsvForSearch } from './server/search.ts'
+import { writeCsvEntry } from './server/write.ts'
 
 const csvSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Csv,
@@ -13,9 +14,10 @@ const csvSourceHandler: SourceFormatHandler = {
 const csvEntryHandler: EntryFormatHandler = {
   format: EntryFormat.Csv,
   entryExtensions: ['.csv'],
-  canEdit: false,
+  canEdit: true,
   readPreview: readCsvPreview,
   readForSearch: readCsvForSearch,
+  writeEntry: writeCsvEntry,
 }
 
 /** CSV's only registration surface for the Host registry. */

@@ -138,7 +138,7 @@ export function createSettingsSection(
               }}
               onOpenEntry={(entryPath) => {
                 const request = previewRequests.current.start()
-                void call({ op: 'read', id: currentBaseId, path: entryPath, view: 'tree' }, request.signal).then((value) => {
+                void call({ op: 'read', id: currentBaseId, path: entryPath, view: 'tree', readMode: 'edit' }, request.signal).then((value) => {
                   if (!previewRequests.current.isCurrent(request.id)) return
                   const entry = parseReadEntry(value)
                   setPreview(entry)

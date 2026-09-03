@@ -59,10 +59,14 @@
     "@tiptap/pm": "^3.30.6",
     "@tiptap/starter-kit": "^3.30.6",
     "@vscode/ripgrep": "^1.18.0",
-    "esbuild": "^0.25.0"
+    "ag-grid-community": "35.3.1",
+    "ag-grid-react": "35.3.1",
+    "esbuild": "^0.25.0",
+    "papaparse": "5.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@types/papaparse": "5.5.2",
     "@types/react": "^18.3.0"
   },
   "peerDependencies": {

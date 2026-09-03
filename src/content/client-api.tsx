@@ -20,7 +20,14 @@ type PreviewRenderer = (props: EntryPreviewContentProps) => ReactNode
 
 const PREVIEW_RENDERERS: Record<ReadEntryResult['format'], PreviewRenderer> = {
   [EntryFormat.Markdown]: (props) => <MarkdownPreview {...toMarkdownPreviewProps(props)} />,
-  [EntryFormat.Csv]: (props) => <CsvPreview preview={props.preview} />,
+  [EntryFormat.Csv]: (props) => (
+    <CsvPreview
+      preview={props.preview}
+      mode={props.mode}
+      ref={props.editorRef}
+      showPreviewStatus={props.showPreviewStatus}
+    />
+  ),
 }
 
 /** Client-only preview dispatcher. It never reads local files or grants permissions. */

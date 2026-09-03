@@ -1,3 +1,5 @@
+import type { CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+
 export type CatalogPrefs = {
   defaultBaseId: string
   maxFileBytes: number
@@ -51,6 +53,7 @@ export type ReadEntryResult = {
   totalChars: number
   previewStatus: PreviewStatus
   capabilities: EntryCapabilities
+  csv?: CsvPreviewData
 }
 
 export type SearchHit = {
@@ -144,6 +147,7 @@ export type KbErrorCode =
   | 'csv_encoding_invalid'
   | 'csv_control_character'
   | 'csv_line_too_long'
+  | 'csv_parse_invalid'
   | 'not_found'
 
 export class KbError extends Error {
@@ -154,6 +158,4 @@ export class KbError extends Error {
     this.code = code
   }
 }
-import type { EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
-
-export type { EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+export type { CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'

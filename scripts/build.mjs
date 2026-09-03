@@ -30,7 +30,7 @@ await esbuild.build({
   platform: 'browser',
   target: 'es2020',
   jsx: 'automatic',
-  external: ['react', 'react/jsx-runtime', '@deepseek-ai/dsh-client-ui-primitives'],
+  external: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/dsh-client-ui-primitives'],
   logLevel: 'info',
 })
 

@@ -20,6 +20,9 @@ export type EntryPreviewContext = EntryPathContext & {
 
 export type EntryWriteContext = EntryPathContext & {
   text: string
+  maxFileBytes: number
+  maxBaseBytes: number
+  baseBytesWithoutEntry: number
 }
 
 export type SourceFormatHandler = {
