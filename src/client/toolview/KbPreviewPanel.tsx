@@ -26,9 +26,9 @@ export function createKbPreviewPanel(preview: PreviewController) {
     }, [preview, props.sessionId])
 
     useEffect(() => {
-      if (!panelRef.current) return
+      if (!selectedHit || !panelRef.current) return
       return widenPreviewDetailsPanel(panelRef.current)
-    }, [])
+    }, [selectedHit])
 
     useLayoutEffect(() => {
       const head = headRef.current

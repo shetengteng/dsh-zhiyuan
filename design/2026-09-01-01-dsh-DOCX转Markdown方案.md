@@ -134,25 +134,25 @@ type Converter = {
 | 输出名在 Ingest 复验 | `destName` 必须等于其 basename、不得含 `/`、`\\`、NUL 或 `.` / `..`，且扩展名在 `TEXT_EXTS`；不得因 xlsx sheet 名或未来 Converter 让路径逃出库根 |
 | 保留目录由 Ingest 统一拼 | Converter 只返回文件名。`preserveTree=true` 时，Ingest 用源相对目录加上 `destName`，故 `子/a.docx → 子/a.md`；不得让 Converter 接收或返回目标目录 |
 | 指纹哈希**写出字节** | 同内容 skip；换引擎后同一源可能再进一份 `name-2.md`，可接受 |
-| 多文件先算总字节再写 | 任一超 5 MB / 整批超 10 GB → 整份源失败、已算的不落盘；先预留全部目标名、写同目录临时文件，全部成功后再 rename；写/rename 失败时仅回滚本次新建文件 |
+| 多文件先算总字节再写 | 任一超 5 MB、单源转换产物合计超 20 MB、或整批超 10 GB → 整份源失败、已算的不落盘；先预留全部目标名、写同目录临时文件，全部成功后再 rename；写/rename 失败时仅回滚本次新建文件 |
 | 源只读、失败不落盘 | 与 04 一致。`ingestOne` 的返回模型须改为“一个源 + 多个 output 结果”，再由外层按 output 计 copied / renamed / skipped，不能沿用当前一源一 `IngestFileResult` 的假设 |
 | 警告给人看 | 将 `mammoth.messages` 映射为结构化 warning（code + 安全的用户文案）；成功项也可带 warning。设置页需在导入结束后显示摘要；工具输出也要带 warning，不能关闭弹框后丢失 |
 | 错误不回显库原文 | 对用户和工具返回稳定错误码及通用文案；不得把可含源路径、文档内容或内部实现的异常原文塞进 `reason` |
-| 超时与资源隔离 | Converter 运行在 Worker 或子进程，由 Host 父进程在 30s 后强制终止；`Promise.race` 不是超时实现。设内存上限，失败时无输出落盘 |
+| 超时与资源隔离 | Converter 一律运行在新 Node 子进程，Host 在 30s 后强制终止；`Promise.race` 不是超时实现。子进程的 V8 堆可设保守值，但它**不是** RSS 上限；父进程还须限制源、声明范围和 IPC 合计 20 MB。真正在各 OS 限制 RSS 的沙箱未落地前，不能把它宣传为已具备的安全保证 |
 
 `ingestOne` 分叉：
 
 ```
-后缀 ∈ TEXT_EXTS 且 ∉ CONVERT_EXTS  → 现逻辑（md/txt/markdown：copyFile）
-后缀 ∈ CONVERT_EXTS                 → converter.convert → 按 files[] 走指纹 / 改名 / writeFile
-否则                                → failed，reason 列出允许的源后缀
+registry 有对应 Converter  → converter.convert → 按 files[] 走指纹 / 改名 / writeFile
+后缀 ∈ TEXT_EXTS         → 现逻辑（md/txt/markdown：copyFile）
+否则                     → failed，reason 列出允许的源后缀
 ```
 
 文件夹混进 md 与 docx：md 仍拷；docx 走转换；失败项不挡同批。
 
 一个转换源可以有多个 output，因此结果模型须区分两层：源级 `status`（成功 / 全跳过 / 失败）和 output 级 `copied` / `renamed` / `skipped`。例如一本 xlsx 有两张表，一张与既有内容同指纹而另一张写入，源级为成功、output 级分别为 skipped 与 copied。DOCX 第一版恒一份 output，仍走同一模型，避免以后再破坏 API。
 
-xlsx / csv 已在 [03](./2026-09-02-03-dsh-XLSX与CSV进库方案.md) 写成 `ConvertedTable`。落地时把那份收成上面的 `ConvertOutcome`（`csvUtf8` 改名 `bytes`），不要并存两套类型。本档不实现表格，只把口留齐。
+xlsx / csv 已在 [03](./2026-09-02-03-dsh-XLSX与CSV进库方案.md) 对齐为同一个 `ConvertOutcome`。落地时只在 `convert/types.ts` 定义这一套类型，不要为表格再并存 `ConvertedTable` / `csvUtf8` 等平行接口。本档不实现表格，只把口留齐。
 
 以后若加 PDF：新开一个 Converter，注册 `.pdf`，仍返回 `ConvertOutcome`。本档不为它预留空壳、不装解析器。
 
@@ -165,9 +165,9 @@ convertDocx(sourcePath: string): Promise<ConvertOutcome>
 // 恒为 1 个文件：destName = basename 去 .docx 加 .md
 ```
 
-实现要点（都关在 `src/convert/docx.ts`，ingest 看不见 mammoth）：
+实现要点（都关在 `src/convert/docx/`，ingest 看不见 mammoth）：
 
-1. 父进程先以扩展名、常规文件和 5 MB 压缩源体积做快速拒绝；解析 Worker/子进程内再执行 `mammoth.convertToHtml({ path }, { styleMap, externalFileAccess: false, convertImage })`。
+1. 父进程先以扩展名、常规文件和 5 MB 压缩源体积做快速拒绝；解析专属子进程内再执行 `mammoth.convertToHtml({ path }, { styleMap, externalFileAccess: false, convertImage })`。
 2. `@joplin/turndown` + Joplin `tables` / `strikethrough` → markdown 字符串；增加规则移除 `img` 和任何不在 allowlist 的链接。第一版只保留 `https:` 与 `mailto:`，丢弃 `javascript:`、`data:`、`file:` 及未知协议。
 3. `files: [{ destName, bytes: Buffer.from(md, 'utf8'), warnings }]`
 4. 以结构化错误和 warning 回给 ingest；不回显库错误原文。
@@ -182,29 +182,65 @@ DOCX 是 ZIP，且 `mammoth` 不对源文档做通用安全清洗。导入源即
 
 - `externalFileAccess` 显式固定为 `false`；不读取文档引用的库外文件。
 - 解析和转换后的 Markdown 都不得直通不受控渲染器。Host 在写盘前执行链接协议 allowlist 和图片/原始 HTML 清理；Client 的 Markdown 渲染器仍须保持自身的 XSS 防护，不能成为唯一防线。
-- Worker/子进程只接收已校验的绝对源路径与固定转换选项；父进程负责超时、资源限制和终止。不得把不可信字段拼进 shell，也不执行文档内宏、OLE、外部命令或脚本。
+- 子进程只接收已校验的绝对源路径、固定 descriptor 和固定转换选项；父进程用 `child_process.fork` 启动包内入口，禁用 shell，且不传用户控制的 module、参数或 `execArgv`。不得把不可信字段拼进命令，也不执行文档内宏、OLE、外部命令或脚本。
+- IPC 仅允许已定义的 request / diagnostics / `destName + bytes` / done 帧；父进程在接受每帧前复验类型、文件名和字节数，并累计限制为 20 MB。子进程不写库；父进程收到完整、受限的结果后才交给 `ingest-output`。
 - 失败不创建库内正文；转换 warning 不改变成功状态，但必须在 UI 与 `kb_ingest` 结果中可见。源文件更新后若写出字节变化，现有“同名不同指纹改名”语义仍产生 `name-2.md`，不伪装成覆盖更新。
 
 ---
 
 ## 7. 模块怎么切
 
-目标文件 ≤300 行。入口只装配。
+目标文件 ≤300 行。格式库只允许出现在各格式的子进程入口；普通文本导入路径、注册表和 `ingest.ts` 都不 import `mammoth`、XLSX/PDF 库或任何格式解析器。
+
+```text
+src/
+├── ingest.ts                    # 遍历源、聚合源级结果；不处理格式细节
+├── ingest-output.ts             # 输出名复验、配额/哈希预检、临时写入、rename、回滚
+└── convert/
+    ├── types.ts                 # ConverterDescriptor / ConvertOutcome / diagnostics
+    ├── registry.ts              # 受信任的 ext → descriptor 静态表
+    ├── run-isolated.ts          # Host 侧 fork、30s 终止、V8/IPC 限制
+    ├── worker-protocol.ts       # 父进程与转换子进程共用的有限消息类型
+    ├── html/
+    │   ├── md-from-html.ts      # @joplin/turndown + GFM 配置
+    │   └── output-policy.ts     # 链接 allowlist、移除图片和原始 HTML
+    ├── docx/
+    │   ├── style-map.ts         # 中英 Heading 1～6
+    │   └── worker.ts            # DOCX 子进程入口；仅此处 import mammoth
+    ├── csv/
+    │   ├── encoding.ts          # BOM/UTF-8/UTF-16/GB18030 的严格解码与文本校验
+    │   └── worker.ts            # CSV 子进程入口；仅转换编码、不 import XLSX 库
+    └── xlsx/
+        ├── sheet-to-csv.ts      # 限制 worksheet 范围后调用库的 sheet_to_csv
+        └── worker.ts            # XLSX 子进程入口；仅此处 import 经审计的 XLSX 库
+```
+
+Host 调用方向固定为：`ingest.ts → registry.ts → run-isolated.ts → 格式专属子进程 → ingest-output.ts`。`registry.ts` 只暴露内部硬编码的 descriptor（包括 `id`、`sourceExts`、对应子进程产物名），不得接收用户给的模块路径、库名或入口文件名；因此扩展名只能选择受信任的实现，不能驱动动态 import 或 shell。
+
+每种已支持格式各有一个单独的子进程构建产物，而不是一个会 import 全部解析库的总入口：DOCX、CSV、XLSX 分别为 `lib/convert-docx-worker.js`、`lib/convert-csv-worker.js`、`lib/convert-xlsx-worker.js`。`run-isolated.ts` 用 `child_process.fork(fileURLToPath(new URL('./convert-<id>-worker.js', import.meta.url)))` 启动由 registry 选出的受信任产物，并固定 `serialization: 'advanced'`、stdio IPC 与非用户控制的 `execArgv`；不使用 shell。这样 XLSX 的依赖不会进入普通 Markdown、CSV 或 DOCX 路径；将来启用 PDF 时，才新增 `src/convert/pdf/worker.ts` 和 `lib/convert-pdf-worker.js`，PDF 可以选用完全不同的库。
 
 | 文件 | 职责 |
 |------|------|
 | `src/convert/types.ts` | `ConvertedFile` / `ConvertOutcome` / `Converter` |
 | `src/convert/registry.ts` | `sourceExt → Converter`；导出 `CONVERT_EXTS` |
-| `src/convert/md-from-html.ts` | turndown + GFM；与 docx 解耦，以后 HTML 源可复用 |
-| `src/convert/docx.ts` | Worker/子进程内 mammoth + 中英 styleMap + 丢图；实现 `Converter` |
-| `src/convert/worker.ts`（或等价子进程入口） | 只解析转换、返回 bytes / 结构化 warnings；不写库、不调 Client、不执行 shell |
+| `src/convert/run-isolated.ts` / `worker-protocol.ts` | Host 侧子进程隔离、硬终止及固定、限长 IPC 契约；不 import 格式库 |
+| `src/convert/html/md-from-html.ts` / `output-policy.ts` | Joplin Turndown + GFM；链接/图片/原始 HTML 策略；与 DOCX 解耦 |
+| `src/convert/docx/style-map.ts` / `worker.ts` | 中英 styleMap；Worker 内 mammoth + 丢图；实现 DOCX 的隔离转换 |
+| `src/convert/csv/encoding.ts` / `worker.ts` | 严格解码、换行与文本安全校验；不 import XLSX 库；实现 CSV 的隔离转换 |
+| `src/convert/xlsx/sheet-to-csv.ts` / `worker.ts` | 限制 sheet 范围后转 CSV；Worker 内唯一 import 经过审计的 XLSX 库 |
+| `src/ingest-output.ts` | 输出名复验、预检、原子写入与回滚；copy 和 convert 共用 |
 | `src/identity.ts` | `TEXT_EXTS` 仍只表示**库内可检索后缀**；`CONVERT_EXTS` 从 registry 来，不要在这里手写一份 |
-| `src/ingest.ts` | §4 分叉；输出名复验、预检配额、临时写入 / 回滚、体积 / 哈希 / 改名；**不 import mammoth** |
-| `src/pick-source.ts` | 文件对话框加上 `*.docx` |
-| `src/client/settings/PrefsPage.tsx` | DOCX 勾上（disabled checked，与 md 一样表示「已开」） |
-| `src/client/settings/SettingsSection.tsx` / `AdditionalDialogs.tsx` | 导入完成后显示 copied / skipped / failed 与每项 warning，不要直接关闭后丢弃结果 |
+| `src/ingest.ts` | §4 分叉、遍历和源级结果聚合；**不 import mammoth** |
+| `src/search-csv.ts` | RFC 4180 解析与物理行号映射、列名 excerpt；属于检索展示，不放进 Converter |
+| `src/search.ts` | 统一使用 `SEARCH_GLOBS`；仅分派 CSV excerpt 格式化 |
+| `src/pick-source.ts` | 文件对话框加上 `*.docx;*.csv;*.xlsx` |
+| `src/client/settings/PrefsPage.tsx` | DOCX、CSV、XLSX 勾上（disabled checked，与 md 一样表示「已开」） |
+| `src/client/settings/SettingsSection.tsx` / `AdditionalDialogs.tsx` | 导入完成后显示 copied / skipped / failed 与每项 warning；支持格式文案含 docx/csv/xlsx |
+| `scripts/build.mjs` / `package.json` | 分别构建并随包发布三个 Worker；未来每种格式各增加一个 Worker 产物，不能只写 `src` 文件 |
 
 不要：`src/parsers/*` 预留 PDF 空壳；不要 `chunks` 表；不要 Client 调 mammoth。
+
+测试文件维持当前 `test/*.test.ts` 的扁平发现规则：新增 `test/convert-docx.test.ts`、`test/convert-csv.test.ts`、`test/convert-xlsx.test.ts`、`test/convert-runner.test.ts`、`test/ingest-output.test.ts`、`test/search-csv.test.ts`，不要新建 `test/convert/` 却忘记同步修改 test script。PDF 开档时再增加同级 `test/convert-pdf.test.ts` 与 PDF fixture。
 
 ---
 

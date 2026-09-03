@@ -1,7 +1,8 @@
-const PREVIEW_DETAILS_DEFAULT = 520
-const PREVIEW_DETAILS_MAX = 960
+const PREVIEW_DETAILS_WIDTH = 520
 const DETAILS_MIN_WIDTH = 300
 const CENTER_MIN_WIDTH = 640
+const DSH_DEFAULT_DETAILS_WIDTH = 360
+const DEFAULT_WIDTH_SLACK = 24
 
 type InlineStyleValue = {
   value: string
@@ -13,18 +14,12 @@ type LayoutFrame = {
   detailsColumn: HTMLElement
 }
 
-type LayoutMetrics = {
-  frame: number
-  sidebar: number
-  details: number
-}
-
 /**
  * DSH 0.1.1-rc.2 exposes details open/close, but not a details-width action.
- * Host drag is clamped to 300–520px. While this preview is mounted, apply a
- * 520px default, then take over the details handle so the column can grow to
- * 960px (or whatever remains after the 640px center floor). Restore inline
- * values when the preview is released.
+ * Widen the host's third column from the default 360px while this preview is
+ * mounted, then stay out of the way: the host already allows dragging
+ * 300–520px. Re-apply only when the host resets to that default column.
+ * Restore inline values when the preview is released.
  */
 export function widenPreviewDetailsPanel(panel: HTMLElement): () => void {
   const layout = findLayoutFrame(panel)
@@ -36,42 +31,37 @@ export function widenPreviewDetailsPanel(panel: HTMLElement): () => void {
   const originalHandleLeft = handle ? rememberInlineStyle(handle, 'left') : undefined
   let appliedGrid = ''
   let appliedHandleLeft = ''
-  let preferredWidth: number | null = null
   let disposed = false
   let scheduled = false
-  let dragging = false
-  let stopDrag: (() => void) | undefined
+  let released = false
 
-  const apply = (nextWidth?: number) => {
-    if (disposed) return
+  const apply = () => {
+    if (disposed || released) return
     const metrics = readMetrics(frame, detailsColumn)
     if (!metrics || metrics.details <= 0) return
 
-    const maxWidth = detailsCeiling(metrics)
-    if (!Number.isFinite(maxWidth) || maxWidth < DETAILS_MIN_WIDTH) return
+    const availableDetails = metrics.frame - metrics.sidebar - CENTER_MIN_WIDTH
+    const target = Math.min(PREVIEW_DETAILS_WIDTH, availableDetails)
+    if (!Number.isFinite(target) || target < DETAILS_MIN_WIDTH || target <= metrics.details + 1) return
+    if (metrics.details > DSH_DEFAULT_DETAILS_WIDTH + DEFAULT_WIDTH_SLACK) return
 
-    const requested = nextWidth ?? preferredWidth ?? PREVIEW_DETAILS_DEFAULT
-    const target = clampWidth(requested, DETAILS_MIN_WIDTH, maxWidth)
-    writeColumn(frame, handle, metrics, target)
-  }
-
-  const writeColumn = (nextFrame: HTMLElement, nextHandle: HTMLElement | null, metrics: LayoutMetrics, target: number) => {
     const nextGrid = `${metrics.sidebar}px minmax(0, 1fr) ${target}px`
-    if (nextFrame.style.getPropertyValue('grid-template-columns') !== nextGrid || nextFrame.style.getPropertyPriority('grid-template-columns') !== 'important') {
-      nextFrame.style.setProperty('grid-template-columns', nextGrid, 'important')
+    if (frame.style.getPropertyValue('grid-template-columns') !== nextGrid || frame.style.getPropertyPriority('grid-template-columns') !== 'important') {
+      frame.style.setProperty('grid-template-columns', nextGrid, 'important')
       appliedGrid = nextGrid
     }
 
-    if (!nextHandle) return
-    const nextHandleLeft = `${metrics.frame - target}px`
-    if (nextHandle.style.getPropertyValue('left') !== nextHandleLeft || nextHandle.style.getPropertyPriority('left') !== 'important') {
-      nextHandle.style.setProperty('left', nextHandleLeft, 'important')
-      appliedHandleLeft = nextHandleLeft
+    if (handle) {
+      const nextHandleLeft = `${metrics.frame - target}px`
+      if (handle.style.getPropertyValue('left') !== nextHandleLeft || handle.style.getPropertyPriority('left') !== 'important') {
+        handle.style.setProperty('left', nextHandleLeft, 'important')
+        appliedHandleLeft = nextHandleLeft
+      }
     }
   }
 
   const schedule = () => {
-    if (scheduled || disposed || dragging) return
+    if (scheduled || disposed || released) return
     scheduled = true
     queueMicrotask(() => {
       scheduled = false
@@ -79,71 +69,37 @@ export function widenPreviewDetailsPanel(panel: HTMLElement): () => void {
     })
   }
 
-  const onHandlePointerDown = (event: PointerEvent) => {
-    if (disposed || event.button !== 0) return
-    const metrics = readMetrics(frame, detailsColumn)
-    if (!metrics || metrics.details <= 0) return
-
-    event.preventDefault()
-    event.stopImmediatePropagation()
-    dragging = true
-    const originX = event.clientX
-    const originWidth = metrics.details
-    frame.setAttribute('data-dragging', '')
-    handle?.setAttribute('data-dragging', 'true')
-
-    const onMove = (moveEvent: PointerEvent) => {
-      if (disposed) return
-      preferredWidth = clampWidth(originWidth - (moveEvent.clientX - originX), DETAILS_MIN_WIDTH, PREVIEW_DETAILS_MAX)
-      apply(preferredWidth)
-    }
-
-    const onRelease = () => {
-      stopDrag?.()
-    }
-
-    stopDrag = () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onRelease)
-      window.removeEventListener('pointercancel', onRelease)
-      stopDrag = undefined
-      dragging = false
-      frame.removeAttribute('data-dragging')
-      handle?.removeAttribute('data-dragging')
-    }
-
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onRelease)
-    window.addEventListener('pointercancel', onRelease)
-  }
-
   const mutationObserver = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(schedule)
   mutationObserver?.observe(frame, { attributes: true, attributeFilter: ['style'] })
-  const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
+  const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(apply)
   resizeObserver?.observe(frame)
 
-  handle?.addEventListener('pointerdown', onHandlePointerDown, true)
+  const releaseToHost = () => {
+    if (disposed || released) return
+    released = true
+    mutationObserver?.disconnect()
+    resizeObserver?.disconnect()
+    if (appliedGrid && frame.style.getPropertyValue('grid-template-columns') === appliedGrid) {
+      frame.style.setProperty('grid-template-columns', appliedGrid)
+    }
+    if (handle && appliedHandleLeft && handle.style.getPropertyValue('left') === appliedHandleLeft) {
+      handle.style.setProperty('left', appliedHandleLeft)
+    }
+  }
+
+  handle?.addEventListener('pointerdown', releaseToHost, true)
   apply()
-  const animationFrame = typeof requestAnimationFrame === 'undefined' ? undefined : requestAnimationFrame(() => apply())
+  const animationFrame = typeof requestAnimationFrame === 'undefined' ? undefined : requestAnimationFrame(apply)
 
   return () => {
     disposed = true
     if (animationFrame !== undefined) cancelAnimationFrame(animationFrame)
-    handle?.removeEventListener('pointerdown', onHandlePointerDown, true)
-    stopDrag?.()
+    handle?.removeEventListener('pointerdown', releaseToHost, true)
     mutationObserver?.disconnect()
     resizeObserver?.disconnect()
     restoreInlineStyle(frame, 'grid-template-columns', originalGrid, appliedGrid)
     if (handle && originalHandleLeft !== undefined) restoreInlineStyle(handle, 'left', originalHandleLeft, appliedHandleLeft)
   }
-}
-
-function detailsCeiling(metrics: LayoutMetrics): number {
-  return Math.min(PREVIEW_DETAILS_MAX, metrics.frame - metrics.sidebar - CENTER_MIN_WIDTH)
-}
-
-function clampWidth(px: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, Math.round(px)))
 }
 
 function findLayoutFrame(panel: HTMLElement): LayoutFrame | null {
@@ -159,7 +115,7 @@ function findLayoutFrame(panel: HTMLElement): LayoutFrame | null {
   return null
 }
 
-function readMetrics(frame: HTMLElement, detailsColumn: HTMLElement): LayoutMetrics | null {
+function readMetrics(frame: HTMLElement, detailsColumn: HTMLElement): { frame: number; sidebar: number; details: number } | null {
   const frameWidth = Math.round(frame.getBoundingClientRect().width)
   const sidebar = frame.firstElementChild instanceof HTMLElement ? Math.round(frame.firstElementChild.getBoundingClientRect().width) : 0
   const details = Math.round(detailsColumn.getBoundingClientRect().width)
