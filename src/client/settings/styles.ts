@@ -159,7 +159,7 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-csv-delete-column{height:32px;width:28px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:18px;line-height:20px;cursor:pointer}
 .zy-csv-delete-column:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 .zy-csv-delete-column:disabled{opacity:.45;cursor:not-allowed}
-.zy-csv-grid{flex:1;min-height:280px;max-height:min(72vh,720px);margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.zy-csv-grid{height:min(72vh,720px);min-height:280px;margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
 .zy-csv-grid .ag-root-wrapper{border:0;border-radius:0}
 .zy-csv-grid .ag-row.zy-csv-grid-focus .ag-cell{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 18%,var(--dsw-alias-bg-layer-1))}
 .zy-csv-body{flex:1;min-height:280px;max-height:min(72vh,720px);overflow:auto;margin:10px 0 0;padding:14px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);font-family:var(--ds-font-family-code);font-size:13px;line-height:22px;white-space:pre;tab-size:4}
