@@ -1,9 +1,9 @@
-import type { SearchDocument, SearchHit } from '../models.ts'
+import type { SearchHit } from '../models.ts'
 import { matchedExcerptLine } from '../search-utils.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
 import { CitationTag } from '../CitationTag.tsx'
-import type { PreviewController } from './preview-state.ts'
-import { isSamePreviewHit, usePreviewSelection } from './preview-state.ts'
+import type { PreviewController } from './preview/preview-state.ts'
+import { isSamePreviewHit, usePreviewSelection } from './preview/preview-state.ts'
 
 type ToolResultBlock = {
   kind?: string
@@ -26,26 +26,13 @@ function extractSearchHits(block?: ToolResultBlock): SearchHit[] {
   return []
 }
 
-function extractSearchDocuments(block?: ToolResultBlock): Map<string, string> {
-  const meta = asRecord(block?.meta)
-  if (!Array.isArray(meta?.documents)) return new Map()
-  const documents = new Map<string, string>()
-  for (const value of meta.documents) {
-    if (!isSearchDocument(value) || documents.has(value.path)) continue
-    documents.set(value.path, value.text)
-  }
-  return documents
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
-function isSearchDocument(value: unknown): value is SearchDocument {
-  const document = asRecord(value)
-  return typeof document?.path === 'string'
-    && document.path.trim().length > 0
-    && typeof document.text === 'string'
+function extractBaseId(block?: ToolResultBlock): string {
+  const baseId = asRecord(block?.meta)?.baseId
+  return typeof baseId === 'string' ? baseId : ''
 }
 
 function isSearchHit(value: unknown): value is SearchHit {
@@ -62,6 +49,8 @@ function isSearchHit(value: unknown): value is SearchHit {
     && hit.matchLine >= hit.startLine
     && hit.matchLine <= hit.endLine
     && typeof hit.excerpt === 'string'
+    && (hit.matchColumnByte === undefined || (Number.isInteger(hit.matchColumnByte) && hit.matchColumnByte >= 1))
+    && (hit.sourceFingerprint === undefined || typeof hit.sourceFingerprint === 'string')
 }
 
 export function createKbSearchView(preview: PreviewController) {
@@ -72,7 +61,7 @@ export function createKbSearchView(preview: PreviewController) {
     const running = !block || block.kind !== 'tool-result'
     const failed = block?.kind === 'tool-result' && Boolean(block.isError)
     const hits = extractSearchHits(block)
-    const documents = extractSearchDocuments(block)
+    const baseId = extractBaseId(block)
     const selectedHit = usePreviewSelection(preview)
 
     if (running) return <div className="zy-help">正在检索知识库…</div>
@@ -89,7 +78,7 @@ export function createKbSearchView(preview: PreviewController) {
               className={selected ? 'zy-hit is-selected' : 'zy-hit'}
               type="button"
               aria-pressed={selected}
-              onClick={(event) => preview.select(hit, event.currentTarget, documents.get(hit.path))}
+              onClick={(event) => preview.select({ baseId, hit }, event.currentTarget)}
             >
               <div className="zy-src">
                 <CitationTag n={hit.n} />

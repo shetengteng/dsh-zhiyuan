@@ -1,0 +1,44 @@
+import type { EntryFormat, EntryPreviewOptions, SourceFormat } from './api.ts'
+import type { PreparedEntry } from './shared/ingest-output.ts'
+import type { SearchDocument } from './shared/search-document.ts'
+import type { ReadEntryResult } from '../types.ts'
+
+export type PrepareImportContext = {
+  sourcePath: string
+  sourceName: string
+  maxFileBytes: number
+}
+
+export type EntryPathContext = {
+  absolutePath: string
+  relativePath: string
+}
+
+export type EntryPreviewContext = EntryPathContext & {
+  options: EntryPreviewOptions
+}
+
+export type EntryWriteContext = EntryPathContext & {
+  text: string
+}
+
+export type SourceFormatHandler = {
+  sourceFormat: SourceFormat
+  sourceExtensions: readonly string[]
+  prepareImport: (context: PrepareImportContext) => Promise<PreparedEntry>
+}
+
+export type EntryFormatHandler = {
+  format: EntryFormat
+  entryExtensions: readonly string[]
+  canEdit: boolean
+  readPreview: (context: EntryPreviewContext) => Promise<ReadEntryResult>
+  readForSearch: (context: EntryPathContext) => Promise<SearchDocument>
+  writeEntry?: (context: EntryWriteContext) => Promise<void>
+}
+
+/** Internal registration contract for one file-type module. */
+export type ContentFormatModule = {
+  sourceHandlers: readonly SourceFormatHandler[]
+  entryHandlers: readonly EntryFormatHandler[]
+}

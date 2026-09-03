@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile, mkdir, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -64,7 +64,18 @@ test('write/read/deleteEntry 与 listTree；删除需确认', async () => {
   const root = await sandbox()
   const base = await createBase(root, { title: '工作库', description: '描述' })
   await writeEntry(root, base.id, '合同/2024/a.md', 'hello')
-  assert.deepEqual(await readEntry(root, base.id, '合同/2024/a.md'), { path: '合同/2024/a.md', text: 'hello' })
+  assert.deepEqual(await readEntry(root, base.id, '合同/2024/a.md'), {
+    path: '合同/2024/a.md',
+    text: 'hello',
+    format: 'markdown',
+    view: 'tree',
+    windowStartLine: 1,
+    windowEndLine: 1,
+    truncation: 'none',
+    totalChars: 5,
+    previewStatus: 'ready',
+    capabilities: { canEdit: true },
+  })
   const tree = await listTree(root, base.id)
   assert.equal(tree[0].name, '合同')
   assert.equal(tree[0].kind, 'dir')
@@ -92,5 +103,19 @@ test('导入路径不调 createBase：缺库报错', async () => {
     sourcePath: src,
     destCategory: '合同/2024',
   }), /先建库/)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('writeEntry 遇到逃出库根的符号链接会拒绝', async () => {
+  const root = await sandbox()
+  const base = await createBase(root, { title: '工作库', description: '描述' })
+  const outside = join(root, 'outside')
+  await mkdir(outside)
+  await symlink(outside, join(root, 'bases', base.id, 'linked'))
+  await assert.rejects(
+    () => writeEntry(root, base.id, 'linked/escape.md', '不能写出库根'),
+    (error: unknown) => error instanceof KbError && error.code === 'path_escape',
+  )
+  assert.equal(await readFile(join(outside, 'escape.md')).then(() => true, () => false), false)
   await rm(root, { recursive: true, force: true })
 })

@@ -95,10 +95,7 @@ test('一次多词、截段、打散同一篇', async () => {
   assert.ok(hit.matchLine >= hit.startLine && hit.matchLine <= hit.endLine)
   assert.match(hit.excerpt.split('\n')[hit.matchLine - hit.startLine] ?? '', /违约|termination|解约/)
   assert.equal(hit.excerpt.split('\n').length, hit.endLine - hit.startLine + 1)
-  assert.deepEqual(result.documents, [{
-    path: hit.path,
-    text: body,
-  }])
+  assert.equal('documents' in result, false)
   await rm(root, { recursive: true, force: true })
 })
 

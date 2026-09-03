@@ -36,9 +36,21 @@ export type TreeNode = {
   children?: TreeNode[]
 }
 
+export type CsvPreviewView = EntryPreviewView
+
 export type ReadEntryResult = {
   path: string
   text: string
+  format: EntryFormat
+  view: EntryPreviewView
+  windowStartLine: number
+  windowEndLine: number
+  focusLine?: number
+  focusColumnByte?: number
+  truncation: PreviewTruncation
+  totalChars: number
+  previewStatus: PreviewStatus
+  capabilities: EntryCapabilities
 }
 
 export type SearchHit = {
@@ -48,17 +60,13 @@ export type SearchHit = {
   endLine: number
   matchLine: number
   excerpt: string
-}
-
-export type SearchDocument = {
-  path: string
-  text: string
+  matchColumnByte?: number
+  sourceFingerprint?: string
 }
 
 export type SearchResult = {
   hits: SearchHit[]
   warnings: string[]
-  documents: SearchDocument[]
 }
 
 export type SearchInput = {
@@ -83,8 +91,12 @@ export type IngestInput = {
 
 export type IngestFileResult = {
   relPath: string
+  sourceRelPath: string
+  destinationPath?: string
   status: 'copied' | 'skipped' | 'renamed' | 'failed'
+  code?: 'ext_denied' | 'file_too_large' | 'quota' | 'path_escape' | 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'io_failed'
   reason?: string
+  writtenBytes?: number
 }
 
 export type IngestResult = {
@@ -125,6 +137,13 @@ export type KbErrorCode =
   | 'confirm_required'
   | 'quota'
   | 'ext_denied'
+  | 'file_too_large'
+  | 'read_only_format'
+  | 'invalid_preview'
+  | 'preview_too_large'
+  | 'csv_encoding_invalid'
+  | 'csv_control_character'
+  | 'csv_line_too_long'
   | 'not_found'
 
 export class KbError extends Error {
@@ -135,3 +154,6 @@ export class KbError extends Error {
     this.code = code
   }
 }
+import type { EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+
+export type { EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'

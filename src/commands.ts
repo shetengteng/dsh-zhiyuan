@@ -7,6 +7,7 @@ import { resolveDataRoot } from './paths.ts'
 import { pickSource } from './pick-source.ts'
 import { searchBase } from './search.ts'
 import { flagBool, flagString, parseFlags, splitAliases, tokenize } from './command-parse.ts'
+import { EntryPreviewView, isEntryPreviewView, type EntryPreviewOptions } from './content/host-api.ts'
 import { KbError } from './types.ts'
 
 type CommandResult = { kind: 'success'; text?: string } | { kind: 'error'; text: string }
@@ -17,6 +18,32 @@ function ok(value: unknown): CommandResult {
 
 function fail(error: unknown): CommandResult {
   return { kind: 'error', text: error instanceof Error ? error.message : String(error) }
+}
+
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1
+}
+
+function readPreviewOptions(data: Record<string, unknown>): EntryPreviewOptions {
+  if (data.view === undefined) return {}
+  if (!isEntryPreviewView(data.view)) {
+    throw new KbError('invalid_preview', '预览模式无效')
+  }
+  const view = data.view
+  if (view === EntryPreviewView.Tree) return { view }
+  if (!positiveInteger(data.matchLine)) throw new KbError('invalid_preview', '搜索预览缺少有效命中行')
+  if (data.matchColumnByte !== undefined && !positiveInteger(data.matchColumnByte)) {
+    throw new KbError('invalid_preview', '搜索预览命中列无效')
+  }
+  if (data.sourceFingerprint !== undefined && (typeof data.sourceFingerprint !== 'string' || data.sourceFingerprint.length > 128)) {
+    throw new KbError('invalid_preview', '搜索预览文件指纹无效')
+  }
+  return {
+    view,
+    matchLine: data.matchLine,
+    matchColumnByte: data.matchColumnByte as number | undefined,
+    sourceFingerprint: data.sourceFingerprint as string | undefined,
+  }
 }
 
 async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
@@ -44,7 +71,7 @@ async function handleCall(payload: string, jobs: JobRunner): Promise<unknown> {
     case 'tree':
       return listTree(dataRoot, String(data.id ?? ''))
     case 'read':
-      return readEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''))
+      return readEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''), readPreviewOptions(data))
     case 'write':
       await writeEntry(dataRoot, String(data.id ?? ''), String(data.path ?? ''), String(data.text ?? ''))
       return { ok: true }

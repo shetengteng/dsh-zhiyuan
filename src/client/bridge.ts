@@ -79,12 +79,13 @@ export async function kbCall(
   sessions: SessionsHandle | undefined,
   workspaces: WorkspacesHandle | undefined,
   payload: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const execute = remote?.commands?.execute
   if (typeof execute !== 'function') throw new Error('断连：没有命令通道')
   const sessionId = await resolveSession(sessions, workspaces)
   const line = `/kb call ${JSON.stringify(payload)}`
-  const result = unwrapCommandResult(await execute(sessionId, line, []))
+  const result = unwrapCommandResult(await execute(sessionId, line, [], signal))
   if (result.kind === 'error') throw new Error(result.text || '命令失败')
   return result.text ? JSON.parse(result.text) : null
 }

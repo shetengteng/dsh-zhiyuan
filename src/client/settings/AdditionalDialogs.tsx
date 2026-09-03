@@ -4,7 +4,6 @@ import type { SearchHit } from '../models.ts'
 import { matchedExcerptLine } from '../search-utils.ts'
 import { Field, Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
-import { MdEditor, type MdEditorHandle } from './MdEditor.tsx'
 
 /** Import, search, and preview dialogs for the settings workbench. */
 function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
@@ -141,7 +140,7 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="拖拽文件或文件夹，或点击下方按钮选择。目前支持 md / txt / markdown。"
+          help="拖拽文件或文件夹，或点击下方按钮选择。支持 md / txt / markdown / UTF-8 csv；CSV 导入后只读。"
         >
           {sourceDropzone}
           <Note text={sourceError} />
@@ -217,54 +216,5 @@ function HitMark(props: { text: string; query: string }) {
       <mark>{props.text.slice(matchStart, matchStart + queryText.length)}</mark>
       {props.text.slice(matchStart + queryText.length)}
     </>
-  )
-}
-
-export function PreviewDialog(props: {
-  entryPath: string
-  text: string
-  startLine?: number
-  endLine?: number
-  focusLine?: number
-  readonly: boolean
-  error: string
-  busy: boolean
-  onClose: () => void
-  onSave?: (text: string) => void
-  onDelete?: () => void
-}) {
-  const form = useRef<HTMLFormElement>(null)
-  const editorRef = useRef<MdEditorHandle>(null)
-  const fileName = props.entryPath.split('/').pop() || props.entryPath
-  return (
-    <Modal
-      open
-      onClose={props.onClose}
-      title={fileName}
-      className="zy-modal-wide"
-      footer={props.readonly ? undefined : (
-        <div className="zy-footbar">
-          <button className="zy-btn zy-danger" type="button" onClick={props.onDelete}>删除</button>
-          <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
-          <button className="zy-btn zy-primary" type="button" disabled={props.busy} onClick={() => form.current?.requestSubmit()}>保存</button>
-        </div>
-      )}
-    >
-      {props.readonly ? (
-        <MdEditor key={props.entryPath} text={props.text} readonly startLine={props.startLine} endLine={props.endLine} focusLine={props.focusLine} />
-      ) : (
-        <form
-          ref={form}
-          onSubmit={(event: { preventDefault: () => void }) => {
-            event.preventDefault()
-            if (!props.onSave) return
-            props.onSave(editorRef.current?.getMarkdown() ?? props.text)
-          }}
-        >
-          <MdEditor ref={editorRef} key={props.entryPath} text={props.text} readonly={false} />
-        </form>
-      )}
-      <Note text={props.error} />
-    </Modal>
   )
 }

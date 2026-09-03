@@ -1,31 +1,18 @@
-import { createHash } from 'node:crypto'
-import { createReadStream, existsSync } from 'node:fs'
-import { copyFile, mkdir, readdir, stat } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
-import { CATEGORY_WARN_DEPTH, TEXT_EXTS } from './identity.ts'
+import { CATEGORY_WARN_DEPTH } from './identity.ts'
 import { requireBase } from './bases.ts'
 import { readCatalog, rememberLastDest } from './catalog.ts'
+import { contentRegistry } from './content/host-api.ts'
+import { sha256File } from './content/shared/file-hash.ts'
+import { writePreparedEntry } from './content/shared/ingest-output.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, expandUserPath, resolveDest } from './paths.ts'
 import type { IngestFileResult, IngestInput, IngestResult } from './types.ts'
 import { KbError } from './types.ts'
 
-function extensionOf(name: string): string {
-  return extname(name).toLowerCase()
-}
-
 function isTextFile(name: string): boolean {
-  return TEXT_EXTS.has(extensionOf(name))
-}
-
-async function sha256File(path: string): Promise<string> {
-  const hash = createHash('sha256')
-  await new Promise<void>((resolve, reject) => {
-    const stream = createReadStream(path)
-    stream.on('data', (chunk) => hash.update(chunk))
-    stream.on('error', reject)
-    stream.on('end', () => resolve())
-  })
-  return hash.digest('hex')
+  return contentRegistry.isStoredEntryPath(name)
 }
 
 async function walkSource(source: string): Promise<string[]> {
@@ -90,6 +77,22 @@ function relativeSourcePath(sourceRoot: string, file: string, preserveTree: bool
   return relative(sourceRoot, file).split(sep).join('/')
 }
 
+function outputRelativePath(sourceRelativePath: string, sourceName: string, outputName: string): string {
+  if (sourceRelativePath === sourceName) return outputName
+  return join(dirname(sourceRelativePath), outputName).split(sep).join('/')
+}
+
+function isIngestFailureCode(code: string): code is NonNullable<IngestFileResult['code']> {
+  return code === 'ext_denied'
+    || code === 'file_too_large'
+    || code === 'quota'
+    || code === 'path_escape'
+    || code === 'csv_encoding_invalid'
+    || code === 'csv_control_character'
+    || code === 'csv_line_too_long'
+    || code === 'io_failed'
+}
+
 export async function ingest(dataRoot: string, input: IngestInput): Promise<IngestResult> {
   await requireBase(dataRoot, input.baseId)
   const catalog = await readCatalog(dataRoot)
@@ -144,7 +147,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
       result.copied.push(fileResult.relPath)
       if (fileResult.status === 'renamed') result.renamed.push(fileResult.relPath)
       if (fileResult.relPath.includes('/')) createdDirs.add(dirname(fileResult.relPath).split(sep).join('/'))
-      addedBytes += (await stat(join(baseRoot, fileResult.relPath))).size
+      addedBytes += fileResult.writtenBytes ?? 0
     }
   }
   result.createdDirs = [...createdDirs].filter(Boolean)
@@ -164,22 +167,68 @@ async function ingestOne(args: {
   currentBytes: number
 }): Promise<IngestFileResult> {
   const name = basename(args.file)
-  if (!isTextFile(name)) {
-    return { relPath: name, status: 'failed', reason: '只支持 .md / .txt / .markdown' }
-  }
-  const size = (await stat(args.file)).size
-  if (size > args.maxFileBytes) {
-    return { relPath: name, status: 'failed', reason: `单文件超过 ${args.maxFileBytes} 字节` }
-  }
-  if (args.currentBytes + size > args.maxBaseBytes) {
-    return { relPath: name, status: 'failed', reason: '本批导入将超过单库文字上限' }
-  }
-  const digest = await sha256File(args.file)
-  if (args.hashes.has(digest)) {
-    return { relPath: args.hashes.get(digest) ?? name, status: 'skipped', reason: '同指纹已在库中' }
-  }
   const sourceRelativePath = relativeSourcePath(args.sourceRoot, args.file, args.preserveTree)
-  const intendedPath = join(args.destinationAbsolute, sourceRelativePath)
+  const failed = (code: NonNullable<IngestFileResult['code']>, reason: string): IngestFileResult => ({
+    relPath: sourceRelativePath,
+    sourceRelPath: sourceRelativePath,
+    status: 'failed',
+    code,
+    reason,
+  })
+
+  try {
+    return await ingestOneUnsafe(args, name, sourceRelativePath, failed)
+  } catch (error) {
+    if (error instanceof KbError) {
+      if (isIngestFailureCode(error.code)) return failed(error.code, error.message)
+      return failed('io_failed', '文件处理失败，请检查权限或磁盘空间')
+    }
+    return failed('io_failed', '文件处理失败，请检查权限或磁盘空间')
+  }
+}
+
+async function ingestOneUnsafe(
+  args: {
+    file: string
+    sourceRoot: string
+    destinationAbsolute: string
+    preserveTree: boolean
+    baseRoot: string
+    hashes: Map<string, string>
+    maxFileBytes: number
+    maxBaseBytes: number
+    currentBytes: number
+  },
+  name: string,
+  sourceRelativePath: string,
+  failed: (code: NonNullable<IngestFileResult['code']>, reason: string) => IngestFileResult,
+): Promise<IngestFileResult> {
+  if (!contentRegistry.sourceFormatForPath(name)) {
+    return failed('ext_denied', `只支持 ${contentRegistry.sourceExtensions().join(' / ')}`)
+  }
+  const prepared = await contentRegistry.prepareImport({
+    sourcePath: args.file,
+    sourceName: name,
+    maxFileBytes: args.maxFileBytes,
+  })
+  if (prepared.byteLength > args.maxFileBytes) {
+    return failed('file_too_large', `单文件超过 ${args.maxFileBytes} 字节`)
+  }
+  if (args.currentBytes + prepared.byteLength > args.maxBaseBytes) {
+    return failed('quota', '本批导入将超过单库文字上限')
+  }
+  if (args.hashes.has(prepared.digest)) {
+    return {
+      relPath: args.hashes.get(prepared.digest) ?? sourceRelativePath,
+      sourceRelPath: sourceRelativePath,
+      status: 'skipped',
+      reason: '同指纹已在库中',
+    }
+  }
+  if (!prepared.outputName || basename(prepared.outputName) !== prepared.outputName) {
+    return failed('io_failed', '转换产物名无效')
+  }
+  const intendedPath = join(args.destinationAbsolute, outputRelativePath(sourceRelativePath, name, prepared.outputName))
   assertInside(args.baseRoot, intendedPath)
   assertNoSymlinkEscape(args.baseRoot, dirname(intendedPath))
   await mkdir(dirname(intendedPath), { recursive: true })
@@ -189,8 +238,14 @@ async function ingestOne(args: {
     destinationPath = join(dirname(intendedPath), uniqueName(dirname(intendedPath), basename(intendedPath)))
     status = 'renamed'
   }
-  await copyFile(args.file, destinationPath)
+  const writtenBytes = await writePreparedEntry(destinationPath, prepared)
   const relativeDestinationPath = relative(args.baseRoot, destinationPath).split(sep).join('/')
-  args.hashes.set(digest, relativeDestinationPath)
-  return { relPath: relativeDestinationPath, status }
+  args.hashes.set(prepared.digest, relativeDestinationPath)
+  return {
+    relPath: relativeDestinationPath,
+    sourceRelPath: sourceRelativePath,
+    destinationPath: relativeDestinationPath,
+    status,
+    writtenBytes: writtenBytes || prepared.byteLength,
+  }
 }

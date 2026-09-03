@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT } from './identity.ts'
 import { markUsed, requireBase } from './bases.ts'
+import { contentRegistry } from './content/host-api.ts'
+import type { SearchDocument } from './content/shared/search-document.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, resolveDest } from './paths.ts'
-import type { SearchDocument, SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
+import type { SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
 import { KbError } from './types.ts'
 
 export function mergeTerms(query: string, aliases: string[] | undefined): { terms: string[]; warnings: string[] } {
@@ -25,34 +26,38 @@ export function mergeTerms(query: string, aliases: string[] | undefined): { term
   return { terms, warnings }
 }
 
-type RipgrepMatch = { path: string; line: number; text: string }
-
+type RipgrepMatch = { path: string; line: number; columnByte: number }
 function parseRg(stdout: string, rootDir: string): RipgrepMatch[] {
   const matches: RipgrepMatch[] = []
-  let currentPath = ''
   for (const raw of stdout.split(/\r?\n/)) {
-    if (!raw) {
-      currentPath = ''
+    if (!raw.trim()) continue
+    let value: unknown
+    try {
+      value = JSON.parse(raw) as unknown
+    } catch {
       continue
     }
-    if (raw === '--') continue
-    const lineMatch = raw.match(/^(.*?):(\d+):(.*)$/)
-    const contextMatch = raw.match(/^(.*?)-(\d+)-(.*)$/)
-    const match = lineMatch ?? contextMatch
-    if (!match) continue
-    const printedPath = match[1]
+    const record = asRecord(value)
+    if (record?.type !== 'match') continue
+    const data = asRecord(record.data)
+    const pathData = asRecord(data?.path)
+    const printedPath = typeof pathData?.text === 'string' ? pathData.text : ''
+    const line = typeof data?.line_number === 'number' ? data.line_number : 0
+    const submatches = Array.isArray(data?.submatches) ? data.submatches : []
+    const firstSubmatch = asRecord(submatches[0])
+    const start = typeof firstSubmatch?.start === 'number' ? firstSubmatch.start : 0
+    if (!printedPath || !Number.isInteger(line) || line < 1 || !Number.isInteger(start) || start < 0) continue
     const absolutePath = isAbsolute(printedPath) ? printedPath : join(rootDir, printedPath)
     const relativePath = relative(rootDir, absolutePath).split(sep).join('/')
-    currentPath = relativePath || currentPath
-    if (lineMatch) matches.push({ path: currentPath || relativePath, line: Number(lineMatch[2]), text: lineMatch[3] })
+    if (relativePath && !relativePath.startsWith('../') && relativePath !== '..') {
+      matches.push({ path: relativePath, line, columnByte: start + 1 })
+    }
   }
   return matches
 }
 
-function clipAround(lines: string[], center: number, radius: number): { start: number; end: number; excerpt: string } {
-  const start = Math.max(1, center - radius)
-  const end = Math.min(lines.length, center + radius)
-  return { start, end, excerpt: lines.slice(start - 1, end).join('\n') }
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
 function mergeExcerpts(first: SearchHit, second: SearchHit, startLine: number, endLine: number): string {
@@ -82,7 +87,12 @@ function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchH
       previousHit.excerpt = mergeExcerpts(previousHit, hit, startLine, endLine)
       previousHit.startLine = startLine
       previousHit.endLine = endLine
-      previousHit.matchLine = Math.min(previousHit.matchLine, hit.matchLine)
+      if (hit.matchLine < previousHit.matchLine
+        || (hit.matchLine === previousHit.matchLine
+          && (hit.matchColumnByte ?? Number.MAX_SAFE_INTEGER) < (previousHit.matchColumnByte ?? Number.MAX_SAFE_INTEGER))) {
+        previousHit.matchLine = hit.matchLine
+        previousHit.matchColumnByte = hit.matchColumnByte
+      }
       continue
     }
     mergedHits.push({ ...hit })
@@ -108,6 +118,8 @@ export function diversify(hits: Array<SearchHit & { file: string }>, topK: numbe
     endLine: hit.endLine,
     matchLine: hit.matchLine,
     excerpt: hit.excerpt,
+    matchColumnByte: hit.matchColumnByte,
+    sourceFingerprint: hit.sourceFingerprint,
   }))
 }
 
@@ -137,46 +149,39 @@ export class RipgrepSearchEngine implements SearchEngine {
   async search(input: SearchInput): Promise<SearchHit[]> {
     if (!existsSync(input.rootDir)) return []
     const ripgrepBinary = await resolveRg()
-    const rgArgs = ['-n', '-C', String(SEARCH_CONTEXT), '--glob', '*.md', '--glob', '*.txt', '--glob', '*.markdown']
+    const rgArgs = ['--json', '--column', '--glob-case-insensitive']
+    for (const glob of contentRegistry.searchGlobs()) rgArgs.push('--glob', glob)
     for (const term of input.terms) rgArgs.push('-e', term)
     rgArgs.push('.')
     const stdout = await runRg(ripgrepBinary, rgArgs, input.rootDir)
     const matches = parseRg(stdout, input.rootDir)
     const rawHits: Array<SearchHit & { file: string }> = []
+    const fileCache = new Map<string, SearchDocument>()
     for (const match of matches) {
       const absolutePath = join(input.rootDir, match.path)
-      const lines = existsSync(absolutePath) ? (await readFile(absolutePath, 'utf8')).split(/\r?\n/) : [match.text]
-      const clip = clipAround(lines, match.line, SEARCH_CONTEXT)
+      const safePath = assertInside(input.rootDir, absolutePath)
+      assertNoSymlinkEscape(input.rootDir, safePath)
+      let file = fileCache.get(match.path)
+      if (!file) {
+        file = await contentRegistry.readForSearch({ absolutePath: safePath, relativePath: match.path })
+        fileCache.set(match.path, file)
+      }
+      const clip = file.excerptAt(match.line, SEARCH_CONTEXT)
+      const matchColumnByte = file.normalizeColumnByte(match.line, match.columnByte)
       rawHits.push({
         n: 0,
         file: match.path,
         path: match.path,
-        startLine: clip.start,
-        endLine: clip.end,
-        matchLine: match.line,
+        startLine: clip.startLine,
+        endLine: clip.endLine,
+        matchLine: Math.min(Math.max(match.line, clip.startLine), clip.endLine),
         excerpt: clip.excerpt,
+        matchColumnByte,
+        sourceFingerprint: file.fingerprint,
       })
     }
     return diversify(mergeAdjacent(rawHits), input.topK)
   }
-}
-
-async function readSearchDocuments(rootDir: string, hits: SearchHit[]): Promise<SearchDocument[]> {
-  const documents: SearchDocument[] = []
-  const seen = new Set<string>()
-  for (const hit of hits) {
-    if (seen.has(hit.path)) continue
-    seen.add(hit.path)
-    const absolutePath = assertInside(rootDir, join(rootDir, hit.path))
-    assertNoSymlinkEscape(rootDir, absolutePath)
-    try {
-      documents.push({ path: hit.path, text: await readFile(absolutePath, 'utf8') })
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
-      throw error
-    }
-  }
-  return documents
 }
 
 export async function searchBase(
@@ -199,7 +204,6 @@ export async function searchBase(
     }
   }
   const hits = await engine.search({ baseId: input.baseId, rootDir, terms, topK })
-  const documents = await readSearchDocuments(rootDir, hits)
   await markUsed(dataRoot, input.baseId)
-  return { hits, warnings, documents }
+  return { hits, warnings }
 }

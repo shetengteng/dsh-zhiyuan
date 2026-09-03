@@ -113,17 +113,17 @@ describe('kb tools', { concurrency: false }, () => {
       const meta = {
         hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\n命中的正文\n第三行' }],
         warnings: [],
-        documents: [{ path: 'a.md', text: '# 全文\n\n命中的正文' }],
       }
       const rendered = search.output.render({}, meta)[0].text
       assert.match(rendered, /`1` a\.md:1–3/)
       assert.doesNotMatch(rendered, /\[1\]/)
       assert.match(rendered, /命中的正文/)
-      assert.equal(search.output.presentationMeta?.({}, meta), meta)
-      const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; hits?: unknown[]; documents?: unknown[] }
+      assert.deepEqual(search.output.presentationMeta?.({}, meta), meta)
+      const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; hits?: unknown[]; warnings?: unknown[]; documents?: unknown[] }
       assert.equal(presentation.baseId, base.id)
       assert.equal(presentation.hits, meta.hits)
-      assert.equal(presentation.documents, meta.documents)
+      assert.deepEqual(presentation.warnings, meta.warnings)
+      assert.equal(presentation.documents, undefined)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })
       assert.deepEqual(search.presentResult?.({}, { isError: false }), { card: 'generic', title: '知识库命中' })
       assert.deepEqual(search.presentResult?.({}, { isError: true }), { card: 'generic', title: '检索失败' })

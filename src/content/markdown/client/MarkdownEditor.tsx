@@ -4,7 +4,9 @@ import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
-export type TiptapEditorHandle = { getMarkdown: () => string }
+export type TiptapEditorHandle = {
+  getMarkdown: () => string
+}
 export type MdEditorHandle = TiptapEditorHandle
 
 export type TiptapEditorProps = {

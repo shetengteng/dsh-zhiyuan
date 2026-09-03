@@ -1,5 +1,6 @@
 import { execFile as execFileCb } from 'node:child_process'
 import { promisify } from 'node:util'
+import { contentRegistry } from './content/host-api.ts'
 import { KbError } from './types.ts'
 
 export type PickKind = 'file' | 'dir'
@@ -28,9 +29,10 @@ export function macArgs(kind: PickKind): string[] {
 
 export function winArgs(kind: PickKind): string[] {
   const utf8 = '$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; '
+  const sourceFilter = `可导入文件|${contentRegistry.sourceExtensions().map((extension) => `*${extension}`).join(';')}|All|*.*`
   const script = kind === 'dir'
     ? `${utf8}Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择要导入的文件夹'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $d.SelectedPath }`
-    : `${utf8}Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = 'Markdown/Text|*.md;*.txt;*.markdown|All|*.*'; $d.Title = '选择要导入的文件'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $d.FileName }`
+    : `${utf8}Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.OpenFileDialog; $d.Filter = '${sourceFilter}'; $d.Title = '选择要导入的文件'; if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $d.FileName }`
   return ['-NoProfile', '-STA', '-Command', script]
 }
 

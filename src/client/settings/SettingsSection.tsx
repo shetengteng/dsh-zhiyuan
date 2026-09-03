@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL } from '../../identity.ts'
 import { kbCall, kbStatus, type Remote, type SessionsHandle, type WorkspacesHandle } from '../bridge.ts'
-import type { BaseSummary, DialogKind, JobStatus, Prefs, ReadEntryResult, SearchHit, TreeNode } from '../models.ts'
+import type { BaseSummary, DialogKind, IngestResult, JobStatus, Prefs, ReadEntryResult, SearchHit, TreeNode } from '../models.ts'
+import { parseIngestResult, parseReadEntry, parseSearchResult } from '../host-payload.ts'
+import { createPreviewRequestManager } from './preview/preview-request.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ConfirmDialog, CreateDialog, EditDialog } from './Dialogs.tsx'
 import { BasePage } from './BasePage.tsx'
-import { ImportDialog, PreviewDialog, SearchDialog } from './AdditionalDialogs.tsx'
+import { ImportDialog, SearchDialog } from './AdditionalDialogs.tsx'
+import { PreviewDialog } from './preview/PreviewDialog.tsx'
 import { PrefsPage } from './PrefsPage.tsx'
 import { SectionIcon } from './SectionIcon.tsx'
 import { ensureSettingsStyles } from './styles.ts'
@@ -36,11 +39,15 @@ export function createSettingsSection(
     const [searched, setSearched] = useState(false)
     const [searchBusy, setSearchBusy] = useState(false)
     const [previewOrigin, setPreviewOrigin] = useState('tree' as 'tree' | 'search')
-    const [preview, setPreview] = useState({ entryPath: '', text: '', readonly: false, startLine: 0, endLine: 0, focusLine: 0 })
+    const [preview, setPreview] = useState<ReadEntryResult | null>(null)
+    const [previewFallback, setPreviewFallback] = useState('')
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
+    const previewRequests = useRef(createPreviewRequestManager())
 
     const currentBase = bases.find((item) => item.id === currentBaseId)
-    const call = (payload: Record<string, unknown>) => kbCall(remote, sessions, workspaces, payload)
+    const call = (payload: Record<string, unknown>, signal?: AbortSignal) => kbCall(remote, sessions, workspaces, payload, signal)
+
+    useEffect(() => () => previewRequests.current.cancel(), [])
 
     const refresh = async (baseId?: string) => {
       setPending(true)
@@ -63,13 +70,14 @@ export function createSettingsSection(
 
     useEffect(() => { void refresh() }, [])
 
-    const run = async (work: () => Promise<void>) => {
+    const run = async <T,>(work: () => Promise<T>, after?: (value: T) => void) => {
       setError('')
       setPending(true)
       try {
-        await work()
+        const value = await work()
         setDialog(null)
         await refresh(currentBaseId)
+        after?.(value)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
@@ -131,12 +139,19 @@ export function createSettingsSection(
                 setDialog('confirm')
               }}
               onOpenEntry={(entryPath) => {
-                void call({ op: 'read', id: currentBaseId, path: entryPath }).then((value) => {
-                  const entry = value as ReadEntryResult
-                  setPreview({ entryPath: entry.path, text: entry.text, readonly: false, startLine: 0, endLine: 0, focusLine: 0 })
+                const request = previewRequests.current.start()
+                void call({ op: 'read', id: currentBaseId, path: entryPath, view: 'tree' }, request.signal).then((value) => {
+                  if (!previewRequests.current.isCurrent(request.id)) return
+                  const entry = parseReadEntry(value)
+                  setPreview(entry)
+                  setPreviewFallback('')
                   setPreviewOrigin('tree')
                   setDialog('preview')
-                }).catch((err) => setNote(err instanceof Error ? err.message : String(err)))
+                }).catch((err) => {
+                  if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) setNote(err instanceof Error ? err.message : String(err))
+                }).finally(() => {
+                  previewRequests.current.clear(request.id)
+                })
               }}
               onDeleteEntry={(entryPath, kind) => {
                 setConfirm({
@@ -183,7 +198,10 @@ export function createSettingsSection(
                 return ''
               }
             }}
-            onSubmit={(input) => void run(() => call({ op: 'ingest', ...input, baseId: currentBase.id }).then(() => undefined))}
+            onSubmit={(input) => void run(
+              () => call({ op: 'ingest', ...input, baseId: currentBase.id }).then(parseIngestResult),
+              (result) => setNote(formatIngestNotice(result)),
+            )}
           />
         ) : null}
         {dialog === 'search' && currentBase ? (
@@ -200,7 +218,7 @@ export function createSettingsSection(
               setSearchBusy(true)
               setError('')
               void call({ op: 'search', baseId: currentBase.id, query: next }).then((value) => {
-                const result = value as { hits: SearchHit[]; warnings?: string[] }
+                const result = parseSearchResult(value)
                 setHits(result.hits)
                 setError(result.warnings?.join(' ') ?? '')
                 setSearched(true)
@@ -211,31 +229,44 @@ export function createSettingsSection(
               }).finally(() => setSearchBusy(false))
             }}
             onOpenHit={(hit) => {
-              void call({ op: 'read', id: currentBase.id, path: hit.path }).then((value) => {
-                const entry = value as ReadEntryResult
-                setPreview({ entryPath: entry.path, text: entry.text, readonly: true, startLine: hit.startLine, endLine: hit.endLine, focusLine: hit.matchLine })
+              const request = previewRequests.current.start()
+              void call({
+                op: 'read',
+                id: currentBase.id,
+                path: hit.path,
+                view: 'search-hit',
+                matchLine: hit.matchLine,
+                matchColumnByte: hit.matchColumnByte,
+                sourceFingerprint: hit.sourceFingerprint,
+              }, request.signal).then((value) => {
+                if (!previewRequests.current.isCurrent(request.id)) return
+                const entry = parseReadEntry(value, { view: 'search-hit', matchLine: hit.matchLine })
+                setPreview(entry)
+                setPreviewFallback(hit.excerpt)
                 setPreviewOrigin('search')
                 setDialog('preview')
-              }).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+              }).catch((err) => {
+                if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) setError(err instanceof Error ? err.message : String(err))
+              }).finally(() => {
+                previewRequests.current.clear(request.id)
+              })
             }}
           />
         ) : null}
-        {dialog === 'preview' ? (
+        {dialog === 'preview' && preview ? (
           <PreviewDialog
-            entryPath={preview.entryPath}
-            text={preview.text}
-            startLine={preview.startLine}
-            endLine={preview.endLine}
-            focusLine={preview.focusLine}
-            readonly={preview.readonly}
+            preview={preview}
+            editable={previewOrigin === 'tree' && preview.capabilities.canEdit}
+            deletable={previewOrigin === 'tree'}
             error={error}
             busy={pending}
-            onClose={() => setDialog(previewOrigin === 'search' ? 'search' : null)}
-            onSave={(text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.entryPath, text }).then(() => undefined))}
+            fallbackText={previewFallback || undefined}
+            onClose={() => { previewRequests.current.cancel(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
+            onSave={(text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, text }).then(() => undefined))}
             onDelete={() => {
               setConfirm({
-                message: `删除文件「${preview.entryPath}」？`,
-                run: () => run(() => call({ op: 'deleteEntry', id: currentBaseId, path: preview.entryPath, confirm: true }).then(() => undefined)),
+                message: `删除文件「${preview.path}」？`,
+                run: () => run(() => call({ op: 'deleteEntry', id: currentBaseId, path: preview.path, confirm: true }).then(() => undefined)),
               })
               setDialog('confirm')
             }}
@@ -247,4 +278,14 @@ export function createSettingsSection(
       </div>
     )
   }
+}
+
+function formatIngestNotice(result: IngestResult): string {
+  if (!result.failed) return `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}`
+  const details = result.files
+    .filter((item) => item.status === 'failed')
+    .slice(0, 2)
+    .map((item) => `${item.sourceRelPath}：${item.reason ?? '处理失败'}`)
+    .join('；')
+  return `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}，失败 ${result.failed}${details ? `。${details}` : ''}`
 }

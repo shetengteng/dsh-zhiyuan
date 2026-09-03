@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import type { SearchHit } from '../models.ts'
-import { CitationTag } from '../CitationTag.tsx'
-import { matchedExcerptLine } from '../search-utils.ts'
-import { ensureSettingsStyles } from '../settings/styles.ts'
-import { TiptapEditor } from '../settings/MdEditor.tsx'
+import type { ReadEntryResult, SearchHit } from '../../models.ts'
+import { CitationTag } from '../../CitationTag.tsx'
+import { matchedExcerptLine } from '../../search-utils.ts'
+import { ensureSettingsStyles } from '../../settings/styles.ts'
+import { EntryPreviewContent } from '../../../content/client-api.tsx'
 import type { PreviewController } from './preview-state.ts'
 import { usePreviewState } from './preview-state.ts'
 import { widenPreviewDetailsPanel } from './preview-width.ts'
@@ -84,8 +84,9 @@ export function createKbPreviewPanel(preview: PreviewController) {
         {selectedHit ? (
           <PreviewContent
             hit={selectedHit}
-            text={previewState.text ?? selectedHit.excerpt}
-            complete={previewState.complete}
+            preview={previewState.preview}
+            status={previewState.status}
+            error={previewState.error}
           />
         ) : <PreviewEmpty />}
       </aside>
@@ -113,20 +114,29 @@ function PreviewTitle(props: { hit: SearchHit }) {
   )
 }
 
-function PreviewContent(props: { hit: SearchHit; text: string; complete: boolean }) {
+function PreviewContent(props: { hit: SearchHit; preview: ReadEntryResult | null; status: 'idle' | 'loading' | 'ready' | 'error'; error: string }) {
   const { hit } = props
+  if (props.status === 'loading') {
+    return <FallbackPreview hit={hit} status="正在加载命中附近…" />
+  }
+  if (props.status === 'error' || !props.preview) {
+    return <FallbackPreview hit={hit} status={props.error || '预览加载失败，显示命中片段'} />
+  }
+  if (props.preview.previewStatus !== 'ready') {
+    return <FallbackPreview hit={hit} status={props.preview.previewStatus === 'stale' ? '文件已变化，显示命中片段' : '命中位置已失效，显示命中片段'} />
+  }
   return (
     <div className="zy-preview-body">
-      {!props.complete ? <div className="zy-preview-status" role="status">当前检索结果没有携带全文，显示命中片段</div> : null}
-      <TiptapEditor
-        key={`${hit.path}-${hit.startLine}-${hit.endLine}-${hit.matchLine}`}
-        text={props.text}
-        startLine={hit.startLine}
-        endLine={hit.endLine}
-        focusLine={hit.matchLine}
-        highlightText={matchedExcerptLine(hit)}
-        readonly
-      />
+      <EntryPreviewContent preview={props.preview} mode="read" highlightText={matchedExcerptLine(hit)} />
+    </div>
+  )
+}
+
+function FallbackPreview(props: { hit: SearchHit; status: string }) {
+  return (
+    <div className="zy-preview-body">
+      <div className="zy-preview-status" role="status">{props.status}</div>
+      <pre className="zy-pre">{matchedExcerptLine(props.hit)}</pre>
     </div>
   )
 }
@@ -135,7 +145,7 @@ function PreviewEmpty() {
   return (
     <div className="zy-preview-empty">
       <div className="zy-preview-empty-title">选择一条命中结果</div>
-      <p>点击对话中的引用卡片，在这里查看完整文档内容。</p>
+      <p>点击对话中的引用卡片，在这里查看命中附近的原文。</p>
     </div>
   )
 }

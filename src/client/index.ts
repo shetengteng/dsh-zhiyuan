@@ -1,9 +1,10 @@
 import { createSettingsSection } from './settings/SettingsSection.tsx'
-import { createKbPreviewPanel } from './toolview/KbPreviewPanel.tsx'
+import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
-import { createPreviewController } from './toolview/preview-state.ts'
+import { createPreviewController, type PreviewSelection } from './toolview/preview/preview-state.ts'
 import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL } from '../identity.ts'
-import type { Remote, SessionsHandle, WorkspacesHandle } from './bridge.ts'
+import { kbCall, type Remote, type SessionsHandle, type WorkspacesHandle } from './bridge.ts'
+import { parseReadEntry } from './host-payload.ts'
 import { installZhiyuanNavIcon } from './nav-icon.ts'
 import { disposeSettingsStyles } from './settings/styles.ts'
 
@@ -27,7 +28,19 @@ export function apply(ctx: {
   workspaces?: WorkspacesHandle
 }): void {
   console.log('[zhiyuan] client loaded')
-  const preview = createPreviewController(ctx.layout)
+  const loadPreview = async (selection: PreviewSelection, signal: AbortSignal) => {
+    const value = await kbCall(ctx.remote, ctx.sessions, ctx.workspaces, {
+      op: 'read',
+      id: selection.baseId,
+      path: selection.hit.path,
+      view: 'search-hit',
+      matchLine: selection.hit.matchLine,
+      matchColumnByte: selection.hit.matchColumnByte,
+      sourceFingerprint: selection.hit.sourceFingerprint,
+    }, signal)
+    return parseReadEntry(value, { view: 'search-hit', matchLine: selection.hit.matchLine })
+  }
+  const preview = createPreviewController(ctx.layout, loadPreview)
   const KbSearchView = createKbSearchView(preview)
   const KbPreviewPanel = createKbPreviewPanel(preview)
 
@@ -56,6 +69,7 @@ export function apply(ctx: {
     ctx.effect(() => {
       const offNav = installZhiyuanNavIcon(() => SECTION_LABEL)
       return () => {
+        preview.dispose()
         offNav()
         disposeSettingsStyles()
         console.log('[zhiyuan] client unloaded')

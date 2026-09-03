@@ -1,8 +1,8 @@
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { dirname, join, relative, sep } from 'node:path'
-import { TEXT_EXTS } from './identity.ts'
+import { join, relative, sep } from 'node:path'
 import { cleanAliases, readCatalog, removeBase, upsertBase, writeCatalog } from './catalog.ts'
+import { contentRegistry, type EntryPreviewOptions } from './content/host-api.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, basesRoot, resolveDest } from './paths.ts'
 import type { BaseCard, BaseSummary, Catalog, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
 import { KbError } from './types.ts'
@@ -39,14 +39,9 @@ async function walkTextDocuments(directoryPath: string): Promise<string[]> {
   for (const entry of entries) {
     const entryPath = join(directoryPath, entry.name)
     if (entry.isDirectory()) documentPaths.push(...await walkTextDocuments(entryPath))
-    else if (TEXT_EXTS.has(extensionOf(entry.name))) documentPaths.push(entryPath)
+    else if (entry.isFile() && contentRegistry.isStoredEntryPath(entry.name)) documentPaths.push(entryPath)
   }
   return documentPaths
-}
-
-function extensionOf(name: string): string {
-  const index = name.lastIndexOf('.')
-  return index >= 0 ? name.slice(index).toLowerCase() : ''
 }
 
 export async function countDocs(dataRoot: string, baseId: string): Promise<number> {
@@ -165,7 +160,7 @@ async function walkTree(baseRoot: string, directoryPath: string): Promise<TreeNo
       nodes.push({ name: entry.name, kind: 'dir', path: relativePath, children: await walkTree(baseRoot, absolutePath) })
       continue
     }
-    if (!TEXT_EXTS.has(extensionOf(entry.name))) continue
+    if (!entry.isFile() || !contentRegistry.isStoredEntryPath(entry.name)) continue
     const info = await stat(absolutePath)
     nodes.push({ name: entry.name, kind: 'file', path: relativePath, size: info.size, mtime: info.mtimeMs })
   }
@@ -179,12 +174,18 @@ export async function listTree(dataRoot: string, baseId: string): Promise<TreeNo
   return walkTree(baseRoot, baseRoot)
 }
 
-export async function readEntry(dataRoot: string, baseId: string, relativePath: string): Promise<ReadEntryResult> {
+export async function readEntry(
+  dataRoot: string,
+  baseId: string,
+  relativePath: string,
+  options: EntryPreviewOptions = {},
+): Promise<ReadEntryResult> {
   await requireBase(dataRoot, baseId)
   const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
-  assertNoSymlinkEscape(baseDir(dataRoot, baseId), absolutePath)
+  const baseRoot = baseDir(dataRoot, baseId)
+  assertNoSymlinkEscape(baseRoot, absolutePath)
   try {
-    return { path: relativePath, text: await readFile(absolutePath, 'utf8') }
+    return await contentRegistry.readPreview({ absolutePath, relativePath, options })
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new KbError('not_found', `文件不存在：${relativePath}`)
@@ -196,9 +197,10 @@ export async function readEntry(dataRoot: string, baseId: string, relativePath: 
 export async function writeEntry(dataRoot: string, baseId: string, relativePath: string, text: string): Promise<void> {
   await requireBase(dataRoot, baseId)
   const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
-  assertInside(baseDir(dataRoot, baseId), absolutePath)
-  await mkdir(dirname(absolutePath), { recursive: true })
-  await writeFile(absolutePath, text, 'utf8')
+  const baseRoot = baseDir(dataRoot, baseId)
+  assertInside(baseRoot, absolutePath)
+  assertNoSymlinkEscape(baseRoot, absolutePath)
+  await contentRegistry.writeEntry({ absolutePath, relativePath, text })
 }
 
 export async function deleteEntry(dataRoot: string, baseId: string, relativePath: string, confirm: boolean): Promise<void> {

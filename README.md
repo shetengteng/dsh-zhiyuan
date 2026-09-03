@@ -16,7 +16,7 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 
 ## 它做什么
 
-人显式新建知识库，把本机 `.md` / `.txt` / `.markdown` 拷进指定库和类目；查询时先选库，再用 3～8 个关键词一次 grep。命中带文件路径、行号和片段编号，交给当前对话模型写答案。
+人显式新建知识库，把本机 `.md` / `.txt` / `.markdown` 或严格 UTF-8 `.csv` 导入指定库和类目；查询时先选库，再用 3～8 个关键词一次 grep。命中带文件路径、行号和片段编号，交给当前对话模型写答案。CSV 在库内只读展示。
 
 - **正文只在文件夹里。** 导入是拷贝，不是记外链，也不把全文写入数据库。
 - **类目就是子文件夹。** 例如 `bases/<uuid>/合同/2024/供应商合同.md`。
@@ -31,7 +31,7 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 |------|------|
 | SQLite FTS / 切段建目录 | 个人量级当场 grep；约 2000 篇或需要排序时再开 |
 | 导入时自动选库 / 建库 / 归类 | 放错库 = 漏斗永远扫不到 |
-| PDF / DOCX / 监视源目录 | 第一版只承诺 md/txt |
+| PDF / DOCX / XLSX / 监视源目录 | 当前版本只承诺 md/txt/UTF-8 CSV；转码与 XLSX 属于后续阶段 |
 | 网上嵌入 / 假向量 / `kb_ask` | 破坏离线，也不在本阶段 |
 | 主左侧一级「知识库」、对话顶栏芯片 | 没有官方座位或会再长一套管理 UI |
 | 把当前项目 grep 冒充知识库 | 项目检索 ≠ 已导入资料 |
@@ -78,7 +78,7 @@ dsh web
 
 `catalog.json` 没有也能扫 `bases/` 列出库；没有卡片时描述为空，模型容易选错库，所以创建入口必须写描述。
 
-工作台「偏好」可改：默认库、单文件上限（默认 5 MB）、单库文字上限（默认 10 GB）。解析器：md/txt 可用，其余置灰。
+工作台「偏好」可改：默认库、单文件上限（默认 5 MB）、单库文字上限（默认 10 GB）。解析器：md/txt 与 UTF-8 CSV 可用，其余置灰。
 
 库卡片字段：`id` / `title` / `description` / `aliases`。`id` 由系统自动生成 UUID，创建后不可改，也不在创建/编辑表单中展示；`title` 必须唯一。
 

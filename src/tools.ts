@@ -39,6 +39,21 @@ function text(value: string) {
   return [{ type: 'text' as const, text: value }]
 }
 
+function renderIngestResult(value: unknown) {
+  const result = asRecord(value)
+  const copied = Array.isArray(result?.copied) ? result.copied.filter((item): item is string => typeof item === 'string') : []
+  const skipped = typeof result?.skipped === 'number' ? result.skipped : 0
+  const failed = typeof result?.failed === 'number' ? result.failed : 0
+  const files = Array.isArray(result?.files) ? result.files : []
+  const failedFiles = files
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => Boolean(item) && item.status === 'failed')
+    .slice(0, 5)
+    .map((item) => `${typeof item.sourceRelPath === 'string' ? item.sourceRelPath : String(item.relPath ?? '文件')}：${typeof item.reason === 'string' ? item.reason : '处理失败'}`)
+  const summary = `导入 ${copied.length} · 跳过 ${skipped} · 失败 ${failed}`
+  return text(failedFiles.length ? `${summary}\n${failedFiles.join('\n')}` : summary)
+}
+
 function renderSearchResult(value: unknown) {
   const result = value as { hits?: SearchHit[]; warnings?: string[] } | undefined
   const hits = Array.isArray(result?.hits) ? result.hits : []
@@ -81,7 +96,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_ingest',
-    description: '把本机 md/txt 拷进已有知识库的指定类目。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
+    description: '把本机 md/txt/UTF-8 csv 导入已有知识库的指定类目。CSV 导入后只读。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
     parameters: {
       type: 'object',
       required: ['baseId', 'sourcePath'],
@@ -95,11 +110,18 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       },
     },
     output: {
-      schema: { type: 'object' },
-      render: (_args: unknown, value: unknown) => {
-        const r = value as { copied?: string[]; skipped?: number; failed?: number }
-        return text(`导入 ${r.copied?.length ?? 0} · 跳过 ${r.skipped ?? 0} · 失败 ${r.failed ?? 0}`)
+      schema: {
+        type: 'object',
+        properties: {
+          copied: { type: 'array', items: { type: 'string' } },
+          renamed: { type: 'array', items: { type: 'string' } },
+          skipped: { type: 'integer' },
+          failed: { type: 'integer' },
+          files: { type: 'array' },
+          warnings: { type: 'array', items: { type: 'string' } },
+        },
       },
+      render: (_args: unknown, value: unknown) => renderIngestResult(value),
     },
     execute: async (args: unknown) => {
       const input = asRecord(args)
@@ -120,7 +142,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_search',
-    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和行号。必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
+    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。支持 UTF-8 CSV；必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
     parameters: {
       type: 'object',
       required: ['baseId', 'query'],
@@ -149,27 +171,25 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
                 endLine: { type: 'integer' },
                 matchLine: { type: 'integer' },
                 excerpt: { type: 'string' },
+                matchColumnByte: { type: 'integer', description: 'UI 预览使用的 UTF-8 字节列' },
+                sourceFingerprint: { type: 'string', description: 'UI 预览用的源文件指纹' },
               },
             },
           },
           warnings: { type: 'array', items: { type: 'string' } },
-          documents: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: ['path', 'text'],
-              properties: {
-                path: { type: 'string' },
-                text: { type: 'string' },
-              },
-            },
-          },
         },
       },
       render: (_args: unknown, value: unknown) => renderSearchResult(value),
       presentationMeta: (args: unknown, value: unknown) => {
-        const baseId = asString(asRecord(args).baseId)?.trim()
-        return baseId ? { ...asRecord(value), baseId } : value as Json
+        const baseId = asString(asRecord(args)?.baseId)?.trim()
+        const result = asRecord(value)
+        if (!result) return value as Json
+        const safeResult: Json = {
+          hits: Array.isArray(result.hits) ? result.hits : [],
+          warnings: Array.isArray(result.warnings) ? result.warnings : [],
+        }
+        if (baseId) safeResult.baseId = baseId
+        return safeResult
       },
     },
     presentCall: () => ({ card: 'generic', title: '知识库检索' }),
