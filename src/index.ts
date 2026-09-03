@@ -4,6 +4,7 @@ import { registerKbCommands } from './commands.ts'
 import { registerKbTools } from './tools.ts'
 import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skill.ts'
 import { clearDataRootCache, resolveDataRoot } from './paths.ts'
+import { registerKnowledgePrivateRpc } from './private-rpc.ts'
 
 export const name = PACKAGE_NAME
 
@@ -33,6 +34,9 @@ export function apply(ctx: HostCtx): void {
 
   ctx.inject(['commands'], (scoped) => {
     track(registerKbCommands(scoped as { commands: { register: (def: unknown) => () => void } }, jobs))
+  })
+  ctx.inject(['connection'], (scoped) => {
+    void registerKnowledgePrivateRpc(scoped as Parameters<typeof registerKnowledgePrivateRpc>[0], jobs)
   })
   ctx.inject(['tools'], (scoped) => {
     track(registerKbTools(scoped as { tools: { register: (def: unknown) => () => void } }, jobs))

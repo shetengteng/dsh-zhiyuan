@@ -60,6 +60,19 @@ test('updateBase 不能改 id；deleteBase 需确认', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+test('deleteBase 只删除已知的 bases 直接子目录', async () => {
+  const root = await sandbox()
+  const outside = join(root, 'outside')
+  await mkdir(outside)
+  await writeFile(join(outside, 'keep.md'), '不能删除')
+  await assert.rejects(
+    () => deleteBase(root, '../outside', true),
+    (error: unknown) => error instanceof KbError && error.code === 'base_missing',
+  )
+  assert.equal(await readFile(join(outside, 'keep.md'), 'utf8'), '不能删除')
+  await rm(root, { recursive: true, force: true })
+})
+
 test('write/read/deleteEntry 与 listTree；删除需确认', async () => {
   const root = await sandbox()
   const base = await createBase(root, { title: '工作库', description: '描述' })

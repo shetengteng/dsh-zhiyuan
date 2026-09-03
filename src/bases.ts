@@ -131,7 +131,12 @@ export async function updateBase(dataRoot: string, id: string, patch: UpdateBase
 export async function deleteBase(dataRoot: string, id: string, confirm: boolean): Promise<void> {
   if (!confirm) throw new KbError('confirm_required', '删除知识库需要确认')
   const catalog = await readCatalog(dataRoot)
-  await rm(baseDir(dataRoot, id), { recursive: true, force: true })
+  const knownBaseIds = new Set([...catalog.bases.map((card) => card.id), ...await scanBaseIds(dataRoot)])
+  if (!knownBaseIds.has(id)) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
+  const basesDirectory = basesRoot(dataRoot)
+  const targetBaseDirectory = assertInside(basesDirectory, baseDir(dataRoot, id))
+  assertNoSymlinkEscape(basesDirectory, targetBaseDirectory)
+  await rm(targetBaseDirectory, { recursive: true, force: true })
   await writeCatalog(dataRoot, removeBase(catalog, id))
 }
 

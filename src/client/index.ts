@@ -3,13 +3,13 @@ import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
 import { createPreviewController, type PreviewSelection } from './toolview/preview/preview-state.ts'
 import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL } from '../identity.ts'
-import { kbCall, type Remote, type SessionsHandle, type WorkspacesHandle } from './bridge.ts'
+import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './host-payload.ts'
 import { installZhiyuanNavIcon } from './nav-icon.ts'
 import { disposeSettingsStyles } from './settings/styles.ts'
 
 export const name = PACKAGE_NAME
-export const inject = ['slots', 'layout', 'remote', 'remote.commands', 'sessions', 'workspaces']
+export const inject = ['slots', 'layout', 'connection']
 
 type LayoutActions = {
   openDetails: () => void
@@ -23,13 +23,11 @@ export function apply(ctx: {
   }
   layout: LayoutActions
   effect?: (setup: () => (() => void) | void) => void
-  remote?: Remote
-  sessions?: SessionsHandle
-  workspaces?: WorkspacesHandle
+  connection?: KnowledgePrivateConnection
 }): void {
   console.log('[zhiyuan] client loaded')
   const loadPreview = async (selection: PreviewSelection, signal: AbortSignal) => {
-    const value = await kbCall(ctx.remote, ctx.sessions, ctx.workspaces, {
+    const value = await callKnowledgeHost(ctx.connection, {
       op: 'read',
       id: selection.baseId,
       path: selection.hit.path,
@@ -50,7 +48,7 @@ export function apply(ctx: {
     order: 35,
     label: () => SECTION_LABEL,
     registrant: PACKAGE_NAME,
-  }, createSettingsSection(ctx.remote, ctx.sessions, ctx.workspaces)))
+  }, createSettingsSection(ctx.connection)))
 
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
     name: 'tool.call.toolview',

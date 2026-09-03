@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL } from '../../identity.ts'
-import { kbCall, kbStatus, type Remote, type SessionsHandle, type WorkspacesHandle } from '../bridge.ts'
+import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
 import type { BaseSummary, DialogKind, IngestResult, JobStatus, Prefs, ReadEntryResult, SearchHit, TreeNode } from '../models.ts'
 import { parseIngestResult, parseReadEntry, parseSearchResult } from '../host-payload.ts'
 import { createPreviewRequestManager } from './preview/preview-request.ts'
@@ -18,9 +18,7 @@ type SettingsTab = 'bases' | 'prefs' | 'about'
 
 /** Creates the settings section and wires UI actions to the Host bridge. */
 export function createSettingsSection(
-  remote?: Remote,
-  sessions?: SessionsHandle,
-  workspaces?: WorkspacesHandle,
+  connection?: KnowledgePrivateConnection,
 ) {
   return function ZhiyuanSettings() {
     ensureSettingsStyles()
@@ -45,7 +43,7 @@ export function createSettingsSection(
     const previewRequests = useRef(createPreviewRequestManager())
 
     const currentBase = bases.find((item) => item.id === currentBaseId)
-    const call = (payload: Record<string, unknown>, signal?: AbortSignal) => kbCall(remote, sessions, workspaces, payload, signal)
+    const call = (payload: Record<string, unknown>, signal?: AbortSignal) => callKnowledgeHost(connection, payload, signal)
 
     useEffect(() => () => previewRequests.current.cancel(), [])
 
@@ -60,7 +58,7 @@ export function createSettingsSection(
         if (nextBaseId) setTree(await call({ op: 'tree', id: nextBaseId }) as TreeNode[])
         else setTree([])
         setPrefs(await call({ op: 'prefs' }) as Prefs)
-        setJob(await kbStatus(remote, sessions, workspaces) as JobStatus)
+        setJob(await getKnowledgeJobStatus(connection) as JobStatus)
       } catch (err) {
         setNote(err instanceof Error ? err.message : String(err))
       } finally {

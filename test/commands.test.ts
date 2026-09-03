@@ -224,7 +224,7 @@ describe('kb call', { concurrency: false }, () => {
     })
   })
 
-  test('prefs / setPrefs 只改给出的字段', async () => {
+  test('prefs / setPrefs 只改给出的字段，并拒绝非法偏好', async () => {
     await withRoot(async (_root, run) => {
       const created = json(await run(callLine({ op: 'create', title: '工作库', description: '描述' }))) as { id: string }
       const prefs = json(await run(callLine({ op: 'prefs' }))) as { defaultBaseId: string; maxFileBytes: number }
@@ -237,10 +237,17 @@ describe('kb call', { concurrency: false }, () => {
       assert.equal(updated.maxFileBytes, 1024)
       assert.equal(updated.defaultBaseId, created.id)
       assert.ok(updated.maxBaseBytes > 1024)
-      const ignored = json(await run(callLine({ op: 'setPrefs', maxFileBytes: 'nope', defaultBaseId: 1 }))) as {
-        maxFileBytes: number
-      }
-      assert.equal(ignored.maxFileBytes, 1024)
+      const invalid = await run(callLine({ op: 'setPrefs', maxFileBytes: 'nope' }))
+      assert.equal(invalid.kind, 'error')
+      assert.match(invalid.text ?? '', /maxFileBytes/)
+      const invalidDefault = await run(callLine({ op: 'setPrefs', defaultBaseId: 1 }))
+      assert.equal(invalidDefault.kind, 'error')
+      assert.match(invalidDefault.text ?? '', /defaultBaseId/)
+      const tooLarge = await run(callLine({ op: 'setPrefs', maxBaseBytes: Number.MAX_SAFE_INTEGER }))
+      assert.equal(tooLarge.kind, 'error')
+      assert.match(tooLarge.text ?? '', /额度/)
+      const afterInvalid = json(await run(callLine({ op: 'prefs' }))) as { maxFileBytes: number }
+      assert.equal(afterInvalid.maxFileBytes, 1024)
     })
   })
 

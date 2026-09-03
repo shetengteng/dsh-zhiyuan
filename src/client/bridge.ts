@@ -1,104 +1,51 @@
-export type Remote = {
-  commands?: {
-    execute: (sessionId: string, line: string, images: readonly unknown[], signal?: AbortSignal) => Promise<unknown>
+import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../private-rpc-contract.ts'
+
+type RpcResult = {
+  ok: true
+  value: unknown
+} | {
+  ok: false
+  error: { message?: string; code?: string }
+}
+
+export type KnowledgePrivateConnection = {
+  rpc?: {
+    call: (channel: string, endpoint: string, payload: unknown, signal?: AbortSignal) => Promise<unknown>
   }
 }
 
-export type SessionsHandle = {
-  open: (id: string) => void
-  create?: (opts?: { workspaceId?: string }) => Promise<string>
-  list?: { getSnapshot?: () => { current?: string } }
-}
-
-export type WorkspacesHandle = {
-  connectWorkspace: (workspaceId: string) => Promise<string>
-  list?: { getSnapshot?: () => { recentWorkspaceId?: string; items?: readonly { workspaceId: string }[] } }
-}
-
-export function unwrapCommandResult(exec: unknown): { kind?: string; text?: string } {
-  const remote = exec as {
-    ok?: boolean
-    error?: { code?: string; message?: string }
-    value?: { result?: { kind?: string; text?: string } }
-    result?: { kind?: string; text?: string }
-    kind?: string
-    text?: string
-  } | undefined
-  if (remote && typeof remote === 'object' && 'ok' in remote) {
-    if (!remote.ok) throw new Error(remote.error?.message || remote.error?.code || '命令失败')
-    const result = remote.value?.result
-    if (!result) throw new Error('Host 未注册 /kb，或当前没有会话')
-    return result
+function unwrapPrivateResult(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !('ok' in value)) {
+    throw new Error('Host RPC 返回无效')
   }
-  return remote?.result ?? remote ?? {}
+  const result = value as RpcResult
+  if (result.ok) return result.value
+  throw new Error(result.error?.message || result.error?.code || '知源请求失败')
 }
 
-function listedSession(sessions?: SessionsHandle): string | undefined {
-  try {
-    return sessions?.list?.getSnapshot?.()?.current
-  } catch {
-    return undefined
-  }
+function requireRpc(connection?: KnowledgePrivateConnection): NonNullable<KnowledgePrivateConnection['rpc']> {
+  const rpc = connection?.rpc
+  if (typeof rpc?.call !== 'function') throw new Error('断连：知源私有 RPC 不可用')
+  return rpc
 }
 
-function recentWorkspace(workspaces?: WorkspacesHandle): string | undefined {
-  try {
-    const snap = workspaces?.list?.getSnapshot?.()
-    return snap?.recentWorkspaceId ?? snap?.items?.[0]?.workspaceId
-  } catch {
-    return undefined
-  }
-}
-
-export async function resolveSession(
-  sessions?: SessionsHandle,
-  workspaces?: WorkspacesHandle,
-): Promise<string> {
-  const currentSessionId = listedSession(sessions)
-  if (currentSessionId) return currentSessionId
-  const workspaceId = recentWorkspace(workspaces)
-  if (workspaceId && typeof workspaces?.connectWorkspace === 'function') {
-    const sessionId = await workspaces.connectWorkspace(workspaceId)
-    if (sessionId) {
-      sessions?.open?.(sessionId)
-      return sessionId
-    }
-  }
-  if (typeof sessions?.create === 'function') {
-    const sessionId = await sessions.create({})
-    if (sessionId) {
-      sessions.open?.(sessionId)
-      return sessionId
-    }
-  }
-  throw new Error('当前没有会话，无法联系主进程')
-}
-
-export async function kbCall(
-  remote: Remote | undefined,
-  sessions: SessionsHandle | undefined,
-  workspaces: WorkspacesHandle | undefined,
+export async function callKnowledgeHost(
+  connection: KnowledgePrivateConnection | undefined,
   payload: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  const execute = remote?.commands?.execute
-  if (typeof execute !== 'function') throw new Error('断连：没有命令通道')
-  const sessionId = await resolveSession(sessions, workspaces)
-  const line = `/kb call ${JSON.stringify(payload)}`
-  const result = unwrapCommandResult(await execute(sessionId, line, [], signal))
-  if (result.kind === 'error') throw new Error(result.text || '命令失败')
-  return result.text ? JSON.parse(result.text) : null
+  return unwrapPrivateResult(await requireRpc(connection).call(
+    KNOWLEDGE_RPC_CHANNEL,
+    KNOWLEDGE_OPERATION_ENDPOINT,
+    payload,
+    signal,
+  ))
 }
 
-export async function kbStatus(
-  remote: Remote | undefined,
-  sessions: SessionsHandle | undefined,
-  workspaces: WorkspacesHandle | undefined,
-): Promise<unknown> {
-  const execute = remote?.commands?.execute
-  if (typeof execute !== 'function') throw new Error('断连：没有命令通道')
-  const sessionId = await resolveSession(sessions, workspaces)
-  const result = unwrapCommandResult(await execute(sessionId, '/kb status', []))
-  if (result.kind === 'error') throw new Error(result.text || '命令失败')
-  return result.text ? JSON.parse(result.text) : { running: false, failed: [] }
+export async function getKnowledgeJobStatus(connection: KnowledgePrivateConnection | undefined): Promise<unknown> {
+  return unwrapPrivateResult(await requireRpc(connection).call(
+    KNOWLEDGE_RPC_CHANNEL,
+    KNOWLEDGE_STATUS_ENDPOINT,
+    {},
+  ))
 }
