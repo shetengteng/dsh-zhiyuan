@@ -47,6 +47,30 @@ export type CsvPreviewData = {
   windowEndRow: number
   complete: boolean
   focusedRow?: number
+  revision?: string
+}
+
+/** One bounded page used by the lightweight CSV table editor. */
+export type CsvEditorPage = CsvPreviewData & {
+  revision: string
+}
+
+export type CsvHeaderChange = {
+  column: number
+  value: string
+}
+
+export type CsvCellChange = {
+  row: number
+  column: number
+  value: string
+}
+
+/** Sparse changes against a single content-addressed version of a CSV file. */
+export type CsvEntryPatch = {
+  revision: string
+  headerChanges: CsvHeaderChange[]
+  cellChanges: CsvCellChange[]
 }
 
 export type EntryPreviewOptions = {

@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
-import { CSV_PREVIEW_MAX_CHARS, SEARCH_CONTEXT } from '../../../identity.ts'
-import type { CsvPreviewData, PreviewTruncation } from '../../api.ts'
+import { CSV_PREVIEW_MAX_CHARS, CSV_PREVIEW_MAX_ROWS, SEARCH_CONTEXT } from '../../../identity.ts'
+import type { CsvEditorPage, CsvPreviewData, PreviewTruncation } from '../../api.ts'
 import { KbError } from '../../../types.ts'
 
 type CsvRecordRange = {
@@ -59,7 +59,7 @@ export function serializeCsvDocument(document: CsvDocument): string {
   return Papa.unparse([document.headers, ...document.records.map((record) => record.cells)], { newline: '\n' })
 }
 
-/** Selects a bounded logical-record window, or the full document for editing. */
+/** Selects a bounded logical-record window for a read-only preview. */
 export function createCsvPreviewWindow(
   document: CsvDocument,
   includeAllRows: boolean,
@@ -91,6 +91,30 @@ export function createCsvPreviewWindow(
     windowStartLine: firstRecord.startLine,
     windowEndLine: lastRecord.endLine,
     truncation: truncationForRows(selection, totalRows),
+  }
+}
+
+/** Selects a fixed-size record page for the CSV editor without copying the whole file to the Client. */
+export function createCsvEditorPage(
+  document: CsvDocument,
+  requestedStartRow: number,
+  requestedPageSize: number,
+  revision: string,
+): CsvEditorPage {
+  const totalRows = document.records.length
+  const pageSize = Math.max(1, requestedPageSize)
+  const startIndex = totalRows ? Math.min(Math.max(0, requestedStartRow - 1), totalRows - 1) : 0
+  const rows = document.records.slice(startIndex, startIndex + pageSize).map((record) => [...record.cells])
+  const windowStartRow = rows.length ? startIndex + 1 : 0
+  const windowEndRow = rows.length ? startIndex + rows.length : 0
+  return {
+    headers: [...document.headers],
+    rows,
+    totalRows,
+    windowStartRow,
+    windowEndRow,
+    complete: windowEndRow === totalRows,
+    revision,
   }
 }
 
@@ -167,7 +191,7 @@ function selectRecordRange(records: CsvDataRecord[], includeAllRows: boolean, fo
   if (includeAllRows) return { start: 0, end: records.length - 1 }
   let start = focusedIndex === undefined ? 0 : Math.max(0, focusedIndex - SEARCH_CONTEXT)
   let end = focusedIndex === undefined ? records.length - 1 : Math.min(records.length - 1, focusedIndex + SEARCH_CONTEXT)
-  while (start < end && selectionLength(records, start, end) > CSV_PREVIEW_MAX_CHARS) {
+  while (start < end && (selectionLength(records, start, end) > CSV_PREVIEW_MAX_CHARS || end - start + 1 > CSV_PREVIEW_MAX_ROWS)) {
     if (focusedIndex === undefined || end - focusedIndex >= focusedIndex - start) end -= 1
     else start += 1
   }

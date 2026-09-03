@@ -1,4 +1,4 @@
-import type { EntryFormat, EntryPreviewOptions, SourceFormat } from './api.ts'
+import type { CsvEditorPage, CsvEntryPatch, EntryFormat, EntryPreviewOptions, SourceFormat } from './api.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../types.ts'
@@ -25,6 +25,18 @@ export type EntryWriteContext = EntryPathContext & {
   baseBytesWithoutEntry: number
 }
 
+export type EntryCsvPageContext = EntryPathContext & {
+  startRow: number
+  pageSize: number
+}
+
+export type EntryCsvPatchContext = EntryPathContext & {
+  patch: CsvEntryPatch
+  maxFileBytes: number
+  maxBaseBytes: number
+  baseBytesWithoutEntry: number
+}
+
 export type SourceFormatHandler = {
   sourceFormat: SourceFormat
   sourceExtensions: readonly string[]
@@ -38,6 +50,8 @@ export type EntryFormatHandler = {
   readPreview: (context: EntryPreviewContext) => Promise<ReadEntryResult>
   readForSearch: (context: EntryPathContext) => Promise<SearchDocument>
   writeEntry?: (context: EntryWriteContext) => Promise<void>
+  readCsvEditorPage?: (context: EntryCsvPageContext) => Promise<CsvEditorPage>
+  writeCsvPatch?: (context: EntryCsvPatchContext) => Promise<void>
 }
 
 /** Internal registration contract for one file-type module. */

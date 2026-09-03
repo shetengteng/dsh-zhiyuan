@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL } from '../../identity.ts'
 import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
 import type { BaseSummary, DialogKind, IngestResult, JobStatus, Prefs, ReadEntryResult, SearchHit, TreeNode } from '../models.ts'
-import { parseIngestResult, parseReadEntry, parseSearchResult } from '../host-payload.ts'
+import { parseCsvEditorPage, parseIngestResult, parseReadEntry, parseSearchResult } from '../host-payload.ts'
 import { createPreviewRequestManager } from './preview/preview-request.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -260,7 +260,9 @@ export function createSettingsSection(
             busy={pending}
             fallbackText={previewFallback || undefined}
             onClose={() => { previewRequests.current.cancel(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
-            onSave={(text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, text }).then(() => undefined))}
+            onSave={preview.format === 'markdown' ? (text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, text }).then(() => undefined)) : undefined}
+            onSaveCsv={(patch) => void run(() => call({ op: 'writeCsvPatch', id: currentBaseId, path: preview.path, patch }).then(() => undefined))}
+            onLoadCsvPage={(startRow) => call({ op: 'readCsvPage', id: currentBaseId, path: preview.path, startRow }).then(parseCsvEditorPage)}
             onDelete={() => {
               setConfirm({
                 message: `删除文件「${preview.path}」？`,

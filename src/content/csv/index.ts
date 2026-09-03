@@ -1,6 +1,7 @@
 import { EntryFormat, SourceFormat } from '../api.ts'
 import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } from '../host-contract.ts'
 import { prepareCsvImport } from './server/import.ts'
+import { readCsvEditorPage, writeCsvEditorPatch } from './server/editor.ts'
 import { readCsvPreview } from './server/preview.ts'
 import { readCsvForSearch } from './server/search.ts'
 import { writeCsvEntry } from './server/write.ts'
@@ -18,6 +19,8 @@ const csvEntryHandler: EntryFormatHandler = {
   readPreview: readCsvPreview,
   readForSearch: readCsvForSearch,
   writeEntry: writeCsvEntry,
+  readCsvEditorPage,
+  writeCsvPatch: writeCsvEditorPatch,
 }
 
 /** CSV's only registration surface for the Host registry. */

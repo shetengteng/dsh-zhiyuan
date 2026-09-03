@@ -1,185 +1,228 @@
-import { ClientSideRowModelModule, TextEditorModule, themeQuartz, type ColDef } from 'ag-grid-community'
-import { AgGridProvider, AgGridReact } from 'ag-grid-react'
-import Papa from 'papaparse'
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { TableVirtuoso } from 'react-virtuoso'
+import type { CsvCellChange, CsvEditorPage, CsvEntryPatch } from '../../api.ts'
 import type { ReadEntryResult } from '../../../client/models.ts'
-
-type CsvGridRow = {
-  id: string
-  sourceRow: number
-  cells: string[]
-}
 
 export type CsvEditorHandle = {
   getText: () => string
+  getCsvPatch?: () => CsvEntryPatch | undefined
 }
 
 export type CsvPreviewProps = {
   preview: ReadEntryResult
   mode: 'read' | 'edit'
   showPreviewStatus?: boolean
+  onLoadPage?: (startRow: number) => Promise<CsvEditorPage>
 }
 
-const GRID_MODULES = [ClientSideRowModelModule, TextEditorModule]
-const CSV_GRID_THEME = themeQuartz.withParams({
-  backgroundColor: 'var(--dsw-alias-bg-layer-1)',
-  foregroundColor: 'var(--dsw-alias-label-primary)',
-  borderColor: 'var(--dsw-alias-border-l2)',
-  headerBackgroundColor: 'var(--dsw-alias-bg-module-platform)',
-  fontFamily: 'var(--ds-font-family)',
-  headerHeight: 34,
-  rowHeight: 34,
-  cellHorizontalPadding: 12,
-  wrapperBorderRadius: 10,
-})
+type ActiveEdit = {
+  row: number
+  column: number
+  originalValue: string
+  value: string
+  isHeader: boolean
+}
 
-/** The shared CSV preview/editor. It only renders Host-parsed, record-aligned data. */
+type CsvChanges = {
+  headers: Map<number, string>
+  cells: Map<string, CsvCellChange>
+}
+
+const EMPTY_CHANGES: CsvChanges = { headers: new Map(), cells: new Map() }
+
+/** A virtualized native table for lightweight CSV viewing and in-cell editing. */
 export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function CsvPreview(props, ref) {
-  const [draft, setDraft] = useState(() => createDraft(props.preview))
-  const [selectedRowId, setSelectedRowId] = useState('')
-  const nextRowId = useRef(0)
   const csv = props.preview.csv
-  const editable = props.mode === 'edit' && Boolean(csv?.complete)
+  const [page, setPage] = useState<CsvEditorPage | undefined>(() => editorPage(csv))
+  const [changes, setChanges] = useState<CsvChanges>(EMPTY_CHANGES)
+  const [activeEdit, setActiveEdit] = useState<ActiveEdit | null>(null)
+  const [pageBusy, setPageBusy] = useState(false)
+  const [pageError, setPageError] = useState('')
+  const requestId = useRef(0)
+  const cancelledEdit = useRef<ActiveEdit | null>(null)
+  const editable = props.mode === 'edit' && Boolean(page?.revision)
 
   useEffect(() => {
-    setDraft(createDraft(props.preview))
-    setSelectedRowId('')
-    nextRowId.current = 0
-  }, [props.preview.path, props.preview.csv])
+    requestId.current += 1
+    setPage(editorPage(csv))
+    setChanges(EMPTY_CHANGES)
+    setActiveEdit(null)
+    setPageBusy(false)
+    setPageError('')
+  }, [props.preview.path, csv?.revision])
+
+  useEffect(() => () => { requestId.current += 1 }, [])
 
   useImperativeHandle(ref, () => ({
-    getText: () => csv ? serializeCsv(draft.headers, draft.rows) : props.preview.text,
-  }), [csv, draft.headers, draft.rows, props.preview.text])
+    getText: () => props.preview.text,
+    getCsvPatch: () => page?.revision ? buildPatch(page.revision, withActiveEdit(changes, activeEdit)) : undefined,
+  }), [activeEdit, changes, page?.revision, props.preview.text])
 
-  const columnDefs = useMemo<ColDef<CsvGridRow>[]>(() => draft.headers.map((header, index) => ({
-    colId: `column-${index}`,
-    headerName: header || `列 ${index + 1}`,
-    minWidth: 132,
-    flex: 1,
-    resizable: true,
-    sortable: !editable,
-    editable,
-    valueGetter: (params) => params.data?.cells[index] ?? '',
-    valueSetter: (params) => {
-      if (!params.data) return false
-      const nextValue = typeof params.newValue === 'string' ? params.newValue : String(params.newValue ?? '')
-      const nextCells = [...params.data.cells]
-      nextCells[index] = nextValue
-      params.data.cells = nextCells
-      setDraft((current) => ({
-        ...current,
-        rows: current.rows.map((row) => row.id === params.data?.id ? { ...row, cells: nextCells } : row),
-      }))
-      return true
-    },
-  })), [draft.headers, editable])
+  if (!csv || !page) return <RawCsvFallback preview={props.preview} showPreviewStatus={props.showPreviewStatus} />
 
-  if (!csv) return <RawCsvFallback preview={props.preview} />
-
-  const onAddRow = () => {
-    nextRowId.current += 1
-    setDraft((current) => ({
-      ...current,
-      rows: [...current.rows, { id: `added-${nextRowId.current}`, sourceRow: 0, cells: current.headers.map(() => '') }],
-    }))
-  }
-  const onDeleteSelectedRow = () => {
-    if (!selectedRowId) return
-    setDraft((current) => ({ ...current, rows: current.rows.filter((row) => row.id !== selectedRowId) }))
-    setSelectedRowId('')
-  }
-  const onAddColumn = () => {
-    setDraft((current) => ({
-      headers: [...current.headers, ''],
-      rows: current.rows.map((row) => ({ ...row, cells: [...row.cells, ''] })),
-    }))
-  }
-  const onUpdateHeader = (index: number, value: string) => {
-    setDraft((current) => ({ ...current, headers: current.headers.map((header, cursor) => cursor === index ? value : header) }))
-  }
-  const onDeleteColumn = (index: number) => {
-    if (draft.headers.length <= 1) return
-    setDraft((current) => ({
-      headers: current.headers.filter((_header, cursor) => cursor !== index),
-      rows: current.rows.map((row) => ({ ...row, cells: row.cells.filter((_cell, cursor) => cursor !== index) })),
-    }))
+  const currentValue = (row: number, column: number, source: string, isHeader: boolean): string => {
+    if (isHeader) return changes.headers.get(column) ?? source
+    return changes.cells.get(cellKey(row, column))?.value ?? source
   }
 
+  const persistEdit = (edit: ActiveEdit) => setChanges((current) => storeEdit(current, edit))
+  const beginEdit = (edit: ActiveEdit) => {
+    if (!editable) return
+    if (activeEdit) persistEdit(activeEdit)
+    setActiveEdit(edit)
+  }
+  const finishEdit = () => {
+    if (cancelledEdit.current === activeEdit) {
+      cancelledEdit.current = null
+      return
+    }
+    if (activeEdit) persistEdit(activeEdit)
+    setActiveEdit(null)
+  }
+  const cancelEdit = () => {
+    cancelledEdit.current = activeEdit
+    setActiveEdit(null)
+  }
+
+  const loadPage = async (startRow: number): Promise<void> => {
+    if (!props.onLoadPage || pageBusy) return
+    const nextRequest = requestId.current + 1
+    requestId.current = nextRequest
+    setPageBusy(true)
+    setPageError('')
+    try {
+      const nextPage = await props.onLoadPage(startRow)
+      if (requestId.current === nextRequest) {
+        if (activeEdit) persistEdit(activeEdit)
+        setActiveEdit(null)
+        if (nextPage.revision !== page.revision) {
+          setChanges(EMPTY_CHANGES)
+          setPageError('文件已变化，未保存的表格修改已清除')
+        }
+        setPage(nextPage)
+      }
+    } catch (error) {
+      if (requestId.current === nextRequest) setPageError(error instanceof Error ? error.message : '读取 CSV 分页失败')
+    } finally {
+      if (requestId.current === nextRequest) setPageBusy(false)
+    }
+  }
+
+  const startRow = page.windowStartRow || 1
+  const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
+  const nextStartRow = page.windowEndRow + 1
   return (
     <div className="zy-csv-preview">
-      <div className="zy-preview-status" role="status">{statusText(props.preview)}</div>
+      {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
       {editable ? (
-        <div className="zy-csv-editor-tools" aria-label="CSV 表格编辑工具">
-          <button className="zy-btn" type="button" onClick={onAddRow}>新增行</button>
-          <button className="zy-btn" type="button" disabled={!selectedRowId} onClick={onDeleteSelectedRow}>删除当前行</button>
-          <button className="zy-btn" type="button" onClick={onAddColumn}>新增列</button>
+        <div className="zy-csv-page-tools" aria-label="CSV 分页工具">
+          <span className="zy-csv-page-status" aria-live="polite">第 {page.windowStartRow || 0}–{page.windowEndRow || 0} 行，共 {page.totalRows} 行</span>
+          <button className="zy-btn" type="button" disabled={pageBusy || page.windowStartRow <= 1} onClick={() => void loadPage(previousStartRow)}>上一页</button>
+          <button className="zy-btn" type="button" disabled={pageBusy || page.windowEndRow >= page.totalRows} onClick={() => void loadPage(nextStartRow)}>下一页</button>
         </div>
       ) : null}
-      {editable ? (
-        <div className="zy-csv-header-fields" aria-label="CSV 表头编辑">
-          {draft.headers.map((header, index) => (
-            <label className="zy-csv-header-field" key={`header-${index}`}>
-              <span>第 {index + 1} 列</span>
-              <input
-                className="zy-box"
-                aria-label={`第 ${index + 1} 列表头`}
-                value={header}
-                placeholder={`列 ${index + 1}`}
-                onChange={(event) => onUpdateHeader(index, event.currentTarget.value)}
-              />
-              <button
-                className="zy-csv-delete-column"
-                type="button"
-                aria-label={`删除第 ${index + 1} 列`}
-                disabled={draft.headers.length <= 1}
-                onClick={() => onDeleteColumn(index)}
-              >×</button>
-            </label>
-          ))}
-        </div>
-      ) : null}
-      <div className="zy-csv-grid" aria-label={editable ? 'CSV 编辑表格' : 'CSV 只读预览'}>
-        <AgGridProvider modules={GRID_MODULES}>
-          <AgGridReact<CsvGridRow>
-            theme={CSV_GRID_THEME}
-            rowData={draft.rows}
-            columnDefs={columnDefs}
-            getRowId={(params) => params.data.id}
-            suppressMovableColumns
-            singleClickEdit={editable}
-            stopEditingWhenCellsLoseFocus
-            onRowClicked={(event) => setSelectedRowId(event.data?.id ?? '')}
-            getRowClass={(params) => (
-              params.data?.sourceRow === csv.focusedRow ? 'zy-csv-grid-focus' : undefined
-            )}
-          />
-        </AgGridProvider>
+      {pageError ? <div className="zy-csv-page-error" role="alert">{pageError}</div> : null}
+      <div className="zy-csv-grid" aria-label={editable ? 'CSV 表格编辑器' : 'CSV 表格预览'}>
+        <TableVirtuoso
+          className="zy-csv-table"
+          data={page.rows}
+          computeItemKey={(index) => startRow + index}
+          fixedHeaderContent={() => (
+            <tr>
+              <th className="zy-csv-row-number" scope="col">行</th>
+              {page.headers.map((header, column) => {
+                const value = currentValue(0, column, header, true)
+                return <th key={`header-${column}`} scope="col">{renderCell(value, 0, column, true)}</th>
+              })}
+            </tr>
+          )}
+          itemContent={(index, row) => {
+            const rowNumber = startRow + index
+            return (
+              <>
+                <th className={rowNumber === csv.focusedRow ? 'zy-csv-row-number zy-csv-row-focus' : 'zy-csv-row-number'} scope="row">{rowNumber}</th>
+                {page.headers.map((_header, column) => (
+                  <td key={`${rowNumber}-${column}`} className={rowNumber === csv.focusedRow ? 'zy-csv-row-focus' : undefined}>
+                    {renderCell(currentValue(rowNumber, column, row[column] ?? '', false), rowNumber, column, false)}
+                  </td>
+                ))}
+              </>
+            )
+          }}
+        />
       </div>
     </div>
   )
+
+  function renderCell(value: string, row: number, column: number, isHeader: boolean) {
+    const isActive = activeEdit?.row === row && activeEdit.column === column && activeEdit.isHeader === isHeader
+    if (isActive) {
+      const commonProps = {
+        value: activeEdit.value,
+        autoFocus: true,
+        'aria-label': isHeader ? `编辑第 ${column + 1} 列表头` : `编辑第 ${row} 行第 ${column + 1} 列`,
+        onChange: (event: { currentTarget: { value: string } }) => setActiveEdit((current) => current ? { ...current, value: event.currentTarget.value } : current),
+        onBlur: finishEdit,
+        onKeyDown: (event: { key: string; shiftKey: boolean; preventDefault: () => void }) => {
+          if (event.key === 'Escape') cancelEdit()
+          if (event.key === 'Enter' && (isHeader || !event.shiftKey)) {
+            event.preventDefault()
+            finishEdit()
+          }
+        },
+      }
+      return isHeader ? <input className="zy-csv-cell-input" {...commonProps} /> : <textarea className="zy-csv-cell-input" rows={1} {...commonProps} />
+    }
+    if (!editable) return <span className="zy-csv-cell-text">{value}</span>
+    return (
+      <button
+        className="zy-csv-cell-button"
+        type="button"
+        onClick={() => beginEdit({ row, column, originalValue: value, value, isHeader })}
+      >{value || ' '}</button>
+    )
+  }
 })
 
-function createDraft(preview: ReadEntryResult): { headers: string[]; rows: CsvGridRow[] } {
-  const csv = preview.csv
-  if (!csv) return { headers: [], rows: [] }
+function editorPage(csv: ReadEntryResult['csv']): CsvEditorPage | undefined {
+  return csv?.revision ? csv : undefined
+}
+
+function withActiveEdit(changes: CsvChanges, activeEdit: ActiveEdit | null): CsvChanges {
+  return activeEdit ? storeEdit(changes, activeEdit) : changes
+}
+
+function storeEdit(changes: CsvChanges, edit: ActiveEdit): CsvChanges {
+  const headers = new Map(changes.headers)
+  const cells = new Map(changes.cells)
+  if (edit.isHeader) {
+    if (edit.value === edit.originalValue) headers.delete(edit.column)
+    else headers.set(edit.column, edit.value)
+  } else {
+    const key = cellKey(edit.row, edit.column)
+    if (edit.value === edit.originalValue) cells.delete(key)
+    else cells.set(key, { row: edit.row, column: edit.column, value: edit.value })
+  }
+  return { headers, cells }
+}
+
+function buildPatch(revision: string, changes: CsvChanges): CsvEntryPatch | undefined {
+  if (!changes.headers.size && !changes.cells.size) return undefined
   return {
-    headers: [...csv.headers],
-    rows: csv.rows.map((cells, index) => ({
-      id: `source-${csv.windowStartRow + index}`,
-      sourceRow: csv.windowStartRow + index,
-      cells: [...cells],
-    })),
+    revision,
+    headerChanges: [...changes.headers].sort(([left], [right]) => left - right).map(([column, value]) => ({ column, value })),
+    cellChanges: [...changes.cells.values()].sort((left, right) => left.row - right.row || left.column - right.column),
   }
 }
 
-function serializeCsv(headers: string[], rows: CsvGridRow[]): string {
-  return Papa.unparse([headers, ...rows.map((row) => row.cells)], { newline: '\n' })
+function cellKey(row: number, column: number): string {
+  return `${row}:${column}`
 }
 
-function RawCsvFallback(props: { preview: ReadEntryResult }) {
+function RawCsvFallback(props: { preview: ReadEntryResult; showPreviewStatus?: boolean }) {
   return (
     <div className="zy-csv-preview">
-      <div className="zy-preview-status" role="status">{statusText(props.preview)}</div>
+      {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
       <pre className="zy-csv-body" aria-label="CSV 预览文本">{props.preview.text}</pre>
     </div>
   )
@@ -188,9 +231,7 @@ function RawCsvFallback(props: { preview: ReadEntryResult }) {
 function statusText(preview: ReadEntryResult): string {
   const csv = preview.csv
   const location = preview.view === 'search-hit' ? '显示命中附近' : '显示文件开头'
-  const rows = csv?.complete
-    ? `；已加载全部 ${csv.totalRows} 行数据`
-    : csv ? `；显示第 ${csv.windowStartRow}–${csv.windowEndRow} 行，共 ${csv.totalRows} 行` : ''
+  const rows = csv ? `；显示第 ${csv.windowStartRow}–${csv.windowEndRow} 行，共 ${csv.totalRows} 行` : ''
   const truncation = preview.truncation === 'both'
     ? '，前后均有省略'
     : preview.truncation === 'before'

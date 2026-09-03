@@ -151,20 +151,21 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-preview-body .zy-md-doc p{white-space:pre-wrap}
 .zy-preview-status{padding:10px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
 .zy-csv-preview{display:flex;flex-direction:column;min-height:0;height:100%}
-.zy-csv-editor-tools{display:flex;align-items:center;gap:8px;padding-top:10px}
-.zy-csv-header-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;max-height:132px;overflow:auto;padding-right:2px}
-.zy-csv-header-field{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:4px;align-items:end;font-size:12px;color:var(--dsw-alias-label-tertiary)}
-.zy-csv-header-field span{grid-column:1/-1}
-.zy-csv-header-field .zy-box{height:32px;padding:5px 9px}
-.zy-csv-delete-column{height:32px;width:28px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;font-size:18px;line-height:20px;cursor:pointer}
-.zy-csv-delete-column:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
-.zy-csv-delete-column:disabled{opacity:.45;cursor:not-allowed}
+.zy-csv-page-tools{display:flex;align-items:center;gap:8px;padding-top:10px}
+.zy-csv-page-status{margin-right:auto;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}
+.zy-csv-page-error{margin-top:8px;color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px}
 .zy-csv-grid{height:min(72vh,720px);min-height:280px;margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
-.zy-csv-grid .ag-root-wrapper{border:0;border-radius:0}
-.zy-csv-grid .ag-row.zy-csv-grid-focus .ag-cell{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 18%,var(--dsw-alias-bg-layer-1))}
+.zy-csv-table{height:100%}
+.zy-csv-table table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;line-height:20px}
+.zy-csv-table th,.zy-csv-table td{min-width:132px;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l2);border-right:1px solid var(--dsw-alias-border-l2);vertical-align:top;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
+.zy-csv-table thead th{position:relative;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-primary);font-weight:600}
+.zy-csv-table .zy-csv-row-number{width:48px;min-width:48px;color:var(--dsw-alias-label-tertiary);text-align:right;font-variant-numeric:tabular-nums}
+.zy-csv-table .zy-csv-row-focus{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 18%,var(--dsw-alias-bg-layer-1))}
+.zy-csv-cell-text{display:block;min-height:20px;color:var(--dsw-alias-label-primary)}
+.zy-csv-cell-button{display:block;width:100%;min-height:20px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;line-height:inherit;text-align:inherit;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text}
+.zy-csv-cell-button:focus-visible,.zy-csv-cell-input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+.zy-csv-cell-input{box-sizing:border-box;display:block;width:100%;min-height:20px;padding:0;resize:vertical;border:0;border-radius:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;line-height:20px;outline:none;appearance:none}
 .zy-csv-body{flex:1;min-height:280px;max-height:min(72vh,720px);overflow:auto;margin:10px 0 0;padding:14px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);font-family:var(--ds-font-family-code);font-size:13px;line-height:22px;white-space:pre;tab-size:4}
-.zy-csv-line{display:inline}
-.zy-csv-line mark{background:var(--dsw-specific-bubble-highlight);color:inherit}
 .zy-preview-empty{margin:auto;max-width:28ch;padding:24px 20px;text-align:center;color:var(--dsw-alias-label-tertiary)}
 .zy-preview-empty-title{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500;line-height:20px}
 .zy-preview-empty p{margin:6px 0 0;font-size:12px;line-height:18px}

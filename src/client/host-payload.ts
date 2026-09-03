@@ -1,4 +1,5 @@
 import type { IngestResult, ReadEntryResult, SearchHit, SearchResult } from './models.ts'
+import type { CsvEditorPage, CsvPreviewData } from '../content/api.ts'
 import { isEntryFormat, isEntryPreviewView } from '../content/api.ts'
 
 export type LegacyPreviewContext = {
@@ -18,7 +19,7 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
-function isCsvPreviewData(value: unknown): boolean {
+function isCsvPreviewData(value: unknown): value is CsvPreviewData {
   const csv = asRecord(value)
   return Boolean(csv)
     && Array.isArray(csv.headers) && csv.headers.every((header) => typeof header === 'string')
@@ -28,9 +29,15 @@ function isCsvPreviewData(value: unknown): boolean {
     && isNonNegativeInteger(csv.windowEndRow)
     && typeof csv.complete === 'boolean'
     && (csv.focusedRow === undefined || isPositiveInteger(csv.focusedRow))
+    && (csv.revision === undefined || typeof csv.revision === 'string' && /^[a-f0-9]{64}$/u.test(csv.revision))
     && csv.windowEndRow >= csv.windowStartRow
     && csv.windowEndRow <= csv.totalRows
     && (csv.focusedRow === undefined || csv.focusedRow <= csv.totalRows)
+}
+
+function isCsvEditorPage(value: unknown): value is CsvEditorPage {
+  const page = asRecord(value)
+  return isCsvPreviewData(page) && typeof page?.revision === 'string'
 }
 
 function isSearchHit(value: unknown): value is SearchHit {
@@ -71,6 +78,12 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
   }
   if (entry?.format === 'csv') throw new Error('Host 返回的预览数据无效')
   return parseLegacyMarkdownPreview(entry, legacyContext)
+}
+
+/** Narrows a bounded CSV editor page returned by the loopback Host RPC. */
+export function parseCsvEditorPage(value: unknown): CsvEditorPage {
+  if (!isCsvEditorPage(value)) throw new Error('Host 返回的 CSV 分页数据无效')
+  return value
 }
 
 function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, context: LegacyPreviewContext): ReadEntryResult {

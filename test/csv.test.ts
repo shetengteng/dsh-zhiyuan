@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, readEntry, writeEntry } from '../src/bases.ts'
+import { createBase, readCsvEditorPage, readEntry, writeCsvPatch, writeEntry } from '../src/bases.ts'
 import { readCatalog, writeCatalog } from '../src/catalog.ts'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/identity.ts'
 import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
@@ -48,7 +48,9 @@ test('UTF-8 CSV 保留原字节、可搜索、表格预览和编辑', async () =
     assert.equal(preview.focusLine, 2)
     assert.equal(preview.focusColumnByte, 4)
     assert.doesNotMatch(preview.text, /^\uFEFF/)
-    assert.deepEqual(preview.csv, {
+    const { revision, ...previewCsv } = preview.csv ?? {}
+    assert.match(revision ?? '', /^[a-f0-9]{64}$/)
+    assert.deepEqual(previewCsv, {
       headers: ['名称', '金额'],
       rows: [['甲公司', '120']],
       totalRows: 1,
@@ -60,6 +62,7 @@ test('UTF-8 CSV 保留原字节、可搜索、表格预览和编辑', async () =
 
     const editable = await readEntry(root, base.id, 'table.CSV', { view: 'tree', readMode: 'edit' })
     assert.equal(editable.csv?.complete, true)
+    assert.match(editable.csv?.revision ?? '', /^[a-f0-9]{64}$/)
     await writeEntry(root, base.id, 'table.CSV', '名称,金额\n乙公司,"98,000"')
     const written = await readFile(join(root, 'bases', base.id, 'table.CSV'))
     assert.deepEqual(written.subarray(0, 3), Buffer.from([0xef, 0xbb, 0xbf]))
@@ -67,6 +70,57 @@ test('UTF-8 CSV 保留原字节、可搜索、表格预览和编辑', async () =
     await assert.rejects(() => writeEntry(root, base.id, 'table.CSV', '名称,金额\n"未闭合'), (error: unknown) => (
       error instanceof KbError && error.code === 'csv_parse_invalid'
     ))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越界修改', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '分页', description: 'CSV 分页编辑测试' })
+    const rows = Array.from({ length: 650 }, (_, index) => `原始${index + 1},${index + 1}`).join('\n')
+    await writeEntry(root, base.id, 'large.csv', `名称,编号\n${rows}`)
+
+    const readOnly = await readEntry(root, base.id, 'large.csv')
+    assert.equal(readOnly.csv?.rows.length, 500)
+    assert.equal(readOnly.csv?.totalRows, 650)
+    assert.equal(readOnly.csv?.complete, false)
+
+    const initial = await readEntry(root, base.id, 'large.csv', { view: 'tree', readMode: 'edit' })
+    assert.equal(initial.csv?.rows.length, 200)
+    assert.equal(initial.csv?.windowStartRow, 1)
+    assert.equal(initial.csv?.windowEndRow, 200)
+    assert.equal(initial.csv?.totalRows, 650)
+    const revision = initial.csv?.revision
+    if (!revision) throw new Error('CSV 编辑预览缺少版本标识')
+
+    const secondPage = await readCsvEditorPage(root, base.id, 'large.csv', 201, 200)
+    assert.equal(secondPage.rows.length, 200)
+    assert.equal(secondPage.windowStartRow, 201)
+    assert.equal(secondPage.windowEndRow, 400)
+    assert.equal(secondPage.rows[0]?.[0], '原始201')
+
+    await assert.rejects(() => writeCsvPatch(root, base.id, 'large.csv', {
+      revision,
+      headerChanges: [],
+      cellChanges: [{ row: 651, column: 0, value: '越界' }],
+    }), (error: unknown) => error instanceof KbError && error.code === 'csv_patch_invalid')
+
+    await writeCsvPatch(root, base.id, 'large.csv', {
+      revision,
+      headerChanges: [{ column: 0, value: '新名称' }],
+      cellChanges: [{ row: 201, column: 0, value: '已修改201' }],
+    })
+    const written = await readFile(join(root, 'bases', base.id, 'large.csv'), 'utf8')
+    assert.match(written, /^\uFEFF新名称,编号\n原始1,1/m)
+    assert.match(written, /已修改201,201/)
+
+    await assert.rejects(() => writeCsvPatch(root, base.id, 'large.csv', {
+      revision,
+      headerChanges: [],
+      cellChanges: [{ row: 1, column: 0, value: '过期' }],
+    }), (error: unknown) => error instanceof KbError && error.code === 'csv_revision_conflict')
   } finally {
     await rm(root, { recursive: true, force: true })
   }

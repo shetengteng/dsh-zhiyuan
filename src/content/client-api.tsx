@@ -2,11 +2,14 @@ import type { ReactNode, RefObject } from 'react'
 import { EntryFormat } from './api.ts'
 import { CsvPreview } from './csv/client/CsvPreview.tsx'
 import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/MarkdownPreview.tsx'
-import type { MdEditorHandle } from './markdown/client/MarkdownEditor.tsx'
 import type { ReadEntryResult } from '../client/models.ts'
+import type { CsvEditorPage, CsvEntryPatch } from './api.ts'
 
 /** Client-facing editor handle; its concrete editor remains format-private. */
-export type EntryEditorHandle = MdEditorHandle
+export type EntryEditorHandle = {
+  getText: () => string
+  getCsvPatch?: () => CsvEntryPatch | undefined
+}
 
 export type EntryPreviewContentProps = {
   preview: ReadEntryResult
@@ -14,6 +17,7 @@ export type EntryPreviewContentProps = {
   editorRef?: RefObject<EntryEditorHandle | null>
   highlightText?: string
   showPreviewStatus?: boolean
+  onLoadCsvPage?: (startRow: number) => Promise<CsvEditorPage>
 }
 
 type PreviewRenderer = (props: EntryPreviewContentProps) => ReactNode
@@ -26,6 +30,7 @@ const PREVIEW_RENDERERS: Record<ReadEntryResult['format'], PreviewRenderer> = {
       mode={props.mode}
       ref={props.editorRef}
       showPreviewStatus={props.showPreviewStatus}
+      onLoadPage={props.onLoadCsvPage}
     />
   ),
 }

@@ -148,6 +148,8 @@ export type KbErrorCode =
   | 'csv_control_character'
   | 'csv_line_too_long'
   | 'csv_parse_invalid'
+  | 'csv_patch_invalid'
+  | 'csv_revision_conflict'
   | 'not_found'
 
 export class KbError extends Error {
@@ -158,4 +160,4 @@ export class KbError extends Error {
     this.code = code
   }
 }
-export type { CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+export type { CsvCellChange, CsvEditorPage, CsvEntryPatch, CsvHeaderChange, CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'

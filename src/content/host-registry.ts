@@ -2,8 +2,9 @@ import { extname } from 'node:path'
 import { EntryFormat } from './api.ts'
 import { csvContentFormat } from './csv/index.ts'
 import { markdownContentFormat } from './markdown/index.ts'
-import type { ContentFormatModule, EntryFormatHandler, EntryPathContext, EntryPreviewContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
+import type { ContentFormatModule, EntryCsvPageContext, EntryCsvPatchContext, EntryFormatHandler, EntryPathContext, EntryPreviewContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
 import type { SourceFormat, EntryFormat as EntryFormatValue } from './api.ts'
+import type { CsvEditorPage } from './api.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../types.ts'
@@ -78,5 +79,19 @@ export const contentRegistry = {
       throw new KbError('read_only_format', `${label} 只读，不能在知源中修改`)
     }
     await handler.writeEntry(context)
+  },
+  readCsvEditorPage: async (context: EntryCsvPageContext): Promise<CsvEditorPage> => {
+    const handler = entryHandlerForPath(context.relativePath)
+    if (handler.format !== EntryFormat.Csv || !handler.readCsvEditorPage) {
+      throw new KbError('read_only_format', '该文件不支持 CSV 表格分页读取')
+    }
+    return handler.readCsvEditorPage(context)
+  },
+  writeCsvPatch: async (context: EntryCsvPatchContext): Promise<void> => {
+    const handler = entryHandlerForPath(context.relativePath)
+    if (handler.format !== EntryFormat.Csv || !handler.canEdit || !handler.writeCsvPatch) {
+      throw new KbError('read_only_format', '该文件不支持 CSV 表格编辑')
+    }
+    await handler.writeCsvPatch(context)
   },
 }

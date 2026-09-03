@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseReadEntry } from '../src/client/host-payload.ts'
+import { parseCsvEditorPage, parseReadEntry } from '../src/client/host-payload.ts'
 
 test('新版 Host preview payload 按原样通过', () => {
   const payload = {
@@ -37,10 +37,25 @@ test('CSV preview 必须携带 record-aligned 表格数据', () => {
       windowStartRow: 1,
       windowEndRow: 1,
       complete: true,
+      revision: 'a'.repeat(64),
     },
   }
   assert.equal(parseReadEntry(payload), payload)
   assert.throws(() => parseReadEntry({ ...payload, csv: { ...payload.csv, rows: [['甲', 120]] } }), /预览数据无效/)
+})
+
+test('CSV 编辑分页要求安全的版本标识和字符串单元格', () => {
+  const page = {
+    headers: ['名称'],
+    rows: [['甲']],
+    totalRows: 1,
+    windowStartRow: 1,
+    windowEndRow: 1,
+    complete: true,
+    revision: 'a'.repeat(64),
+  }
+  assert.equal(parseCsvEditorPage(page), page)
+  assert.throws(() => parseCsvEditorPage({ ...page, revision: 'stale' }), /分页数据无效/)
 })
 
 test('旧 Host 的 Markdown read 响应仍能打开预览', () => {

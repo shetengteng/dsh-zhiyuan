@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReadEntryResult } from '../../models.ts'
 import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/client-api.tsx'
+import { EntryFormat, type CsvEditorPage, type CsvEntryPatch } from '../../../content/api.ts'
 import { Note } from '../Dialogs.tsx'
 
 export type PreviewDialogProps = {
@@ -13,6 +14,8 @@ export type PreviewDialogProps = {
   fallbackText?: string
   onClose: () => void
   onSave?: (text: string) => void
+  onSaveCsv?: (patch: CsvEntryPatch) => void
+  onLoadCsvPage?: (startRow: number) => Promise<CsvEditorPage>
   onDelete?: () => void
 }
 
@@ -44,10 +47,16 @@ export function PreviewDialog(props: PreviewDialogProps) {
           ref={form}
           onSubmit={(event: { preventDefault: () => void }) => {
             event.preventDefault()
+            if (displayPreview.format === EntryFormat.Csv) {
+              const patch = editorRef.current?.getCsvPatch?.()
+              if (patch) props.onSaveCsv?.(patch)
+              else props.onClose()
+              return
+            }
             props.onSave?.(editorRef.current?.getText() ?? displayPreview.text)
           }}
         >
-          <EntryPreviewContent preview={displayPreview} mode="edit" editorRef={editorRef} />
+          <EntryPreviewContent preview={displayPreview} mode="edit" editorRef={editorRef} onLoadCsvPage={props.onLoadCsvPage} />
         </form>
       ) : (
         <EntryPreviewContent preview={displayPreview} mode="read" showPreviewStatus />

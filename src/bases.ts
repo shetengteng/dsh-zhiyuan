@@ -2,7 +2,7 @@ import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
 import { cleanAliases, readCatalog, removeBase, upsertBase, writeCatalog } from './catalog.ts'
-import { contentRegistry, type EntryPreviewOptions } from './content/host-api.ts'
+import { contentRegistry, type CsvEditorPage, type CsvEntryPatch, type EntryPreviewOptions } from './content/host-api.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, basesRoot, resolveDest } from './paths.ts'
 import type { BaseCard, BaseSummary, Catalog, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
 import { KbError } from './types.ts'
@@ -227,6 +227,41 @@ export async function writeEntry(dataRoot: string, baseId: string, relativePath:
     absolutePath,
     relativePath,
     text,
+    maxFileBytes: catalog.prefs.maxFileBytes,
+    maxBaseBytes: catalog.prefs.maxBaseBytes,
+    baseBytesWithoutEntry: Math.max(0, baseBytes - entryBytes),
+  })
+}
+
+/** Reads one bounded CSV table page through the file-type registry. */
+export async function readCsvEditorPage(
+  dataRoot: string,
+  baseId: string,
+  relativePath: string,
+  startRow: number,
+  pageSize: number,
+): Promise<CsvEditorPage> {
+  await requireBase(dataRoot, baseId)
+  const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
+  const baseRoot = baseDir(dataRoot, baseId)
+  assertInside(baseRoot, absolutePath)
+  assertNoSymlinkEscape(baseRoot, absolutePath)
+  return contentRegistry.readCsvEditorPage({ absolutePath, relativePath, startRow, pageSize })
+}
+
+/** Writes a sparse CSV patch through the file-type registry. */
+export async function writeCsvPatch(dataRoot: string, baseId: string, relativePath: string, patch: CsvEntryPatch): Promise<void> {
+  await requireBase(dataRoot, baseId)
+  const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute
+  const baseRoot = baseDir(dataRoot, baseId)
+  assertInside(baseRoot, absolutePath)
+  assertNoSymlinkEscape(baseRoot, absolutePath)
+  const catalog = await readCatalog(dataRoot)
+  const [baseBytes, entryBytes] = await Promise.all([textDocumentBytes(baseRoot), fileBytes(absolutePath)])
+  await contentRegistry.writeCsvPatch({
+    absolutePath,
+    relativePath,
+    patch,
     maxFileBytes: catalog.prefs.maxFileBytes,
     maxBaseBytes: catalog.prefs.maxBaseBytes,
     baseBytesWithoutEntry: Math.max(0, baseBytes - entryBytes),

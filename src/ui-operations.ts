@@ -1,7 +1,8 @@
-import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, requireBase, updateBase, writeEntry } from './bases.ts'
+import { createBase, deleteBase, deleteEntry, listBases, listTree, readCsvEditorPage, readEntry, requireBase, updateBase, writeCsvPatch, writeEntry } from './bases.ts'
 import { readCatalog, writeCatalog } from './catalog.ts'
-import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, type EntryPreviewOptions } from './content/host-api.ts'
+import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, type CsvCellChange, type CsvEntryPatch, type CsvHeaderChange, type EntryPreviewOptions } from './content/host-api.ts'
 import { ingest } from './ingest.ts'
+import { CSV_EDITOR_PAGE_SIZE, CSV_MAX_PATCH_CHANGES, CSV_MAX_PHYSICAL_LINE_BYTES } from './identity.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
 import { pickSource } from './pick-source.ts'
@@ -58,6 +59,61 @@ function optionalPositiveInteger(data: JsonRecord, field: string): number | unde
     throw new KbError('missing_field', `${field} 必须是正整数`)
   }
   return value
+}
+
+function requireNonNegativeInteger(data: JsonRecord, field: string): number {
+  const value = data[field]
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new KbError('missing_field', `${field} 必须是非负整数`)
+  }
+  return value
+}
+
+function requireCsvPatch(data: JsonRecord): CsvEntryPatch {
+  const patch = asRecord(data.patch)
+  const revision = requireString(patch, 'revision')
+  if (!/^[a-f0-9]{64}$/u.test(revision)) throw new KbError('csv_patch_invalid', 'CSV 版本标识无效')
+  const headerChanges = requireCsvHeaderChanges(patch)
+  const cellChanges = requireCsvCellChanges(patch)
+  if (headerChanges.length + cellChanges.length > CSV_MAX_PATCH_CHANGES) {
+    throw new KbError('csv_patch_invalid', `一次最多修改 ${CSV_MAX_PATCH_CHANGES} 个单元格`)
+  }
+  return { revision, headerChanges, cellChanges }
+}
+
+function requireCsvHeaderChanges(data: JsonRecord): CsvHeaderChange[] {
+  return requireCsvChangeArray(data, 'headerChanges').map((change) => ({
+    column: requireNonNegativeInteger(change, 'column'),
+    value: requireCsvValue(change),
+  }))
+}
+
+function requireCsvCellChanges(data: JsonRecord): CsvCellChange[] {
+  return requireCsvChangeArray(data, 'cellChanges').map((change) => {
+    const row = optionalPositiveInteger(change, 'row')
+    if (row === undefined) throw new KbError('csv_patch_invalid', 'CSV 行号无效')
+    return { row, column: requireNonNegativeInteger(change, 'column'), value: requireCsvValue(change) }
+  })
+}
+
+function requireCsvChangeArray(data: JsonRecord, field: string): JsonRecord[] {
+  const value = data[field]
+  if (!Array.isArray(value)) throw new KbError('csv_patch_invalid', `${field} 必须是数组`)
+  return value.map(asRecord)
+}
+
+function requireCsvValue(data: JsonRecord): string {
+  const value = requireString(data, 'value')
+  if (Buffer.byteLength(value, 'utf8') > CSV_MAX_PHYSICAL_LINE_BYTES) {
+    throw new KbError('csv_patch_invalid', '单元格内容过长')
+  }
+  return value
+}
+
+function requireCsvPageSize(data: JsonRecord): number {
+  const pageSize = optionalPositiveInteger(data, 'pageSize') ?? CSV_EDITOR_PAGE_SIZE
+  if (pageSize > CSV_EDITOR_PAGE_SIZE) throw new KbError('csv_patch_invalid', `每页最多 ${CSV_EDITOR_PAGE_SIZE} 行`)
+  return pageSize
 }
 
 function readPreviewOptions(data: JsonRecord): EntryPreviewOptions {
@@ -130,8 +186,19 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
       return listTree(dataRoot, requireString(data, 'id'))
     case 'read':
       return readEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), readPreviewOptions(data))
+    case 'readCsvPage':
+      return readCsvEditorPage(
+        dataRoot,
+        requireString(data, 'id'),
+        requireString(data, 'path'),
+        optionalPositiveInteger(data, 'startRow') ?? 1,
+        requireCsvPageSize(data),
+      )
     case 'write':
       await writeEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), requireString(data, 'text'))
+      return { ok: true }
+    case 'writeCsvPatch':
+      await writeCsvPatch(dataRoot, requireString(data, 'id'), requireString(data, 'path'), requireCsvPatch(data))
       return { ok: true }
     case 'deleteEntry':
       await deleteEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), optionalBoolean(data, 'confirm', false))

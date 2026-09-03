@@ -224,6 +224,38 @@ describe('kb call', { concurrency: false }, () => {
     })
   })
 
+  test('CSV 分页和 patch 写入走私有操作边界并校验输入', async () => {
+    await withRoot(async (root, run) => {
+      const base = await createTestBase(root)
+      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: 'table.csv', text: '名称,金额\n甲,120\n乙,80' }))), { ok: true })
+      const preview = json(await run(callLine({ op: 'read', id: base.id, path: 'table.csv', view: 'tree', readMode: 'edit' }))) as {
+        csv: { revision: string }
+      }
+      const page = json(await run(callLine({ op: 'readCsvPage', id: base.id, path: 'table.csv', startRow: 2, pageSize: 1 }))) as {
+        windowStartRow: number
+        rows: string[][]
+      }
+      assert.equal(page.windowStartRow, 2)
+      assert.deepEqual(page.rows, [['乙', '80']])
+
+      const invalid = await run(callLine({
+        op: 'writeCsvPatch',
+        id: base.id,
+        path: 'table.csv',
+        patch: { revision: preview.csv.revision, headerChanges: [{ column: -1, value: '名称' }], cellChanges: [] },
+      }))
+      assert.equal(invalid.kind, 'error')
+      assert.match(invalid.text ?? '', /非负整数/)
+
+      assert.deepEqual(json(await run(callLine({
+        op: 'writeCsvPatch',
+        id: base.id,
+        path: 'table.csv',
+        patch: { revision: preview.csv.revision, headerChanges: [], cellChanges: [{ row: 2, column: 1, value: '90' }] },
+      }))), { ok: true })
+    })
+  })
+
   test('prefs / setPrefs 只改给出的字段，并拒绝非法偏好', async () => {
     await withRoot(async (_root, run) => {
       const created = json(await run(callLine({ op: 'create', title: '工作库', description: '描述' }))) as { id: string }

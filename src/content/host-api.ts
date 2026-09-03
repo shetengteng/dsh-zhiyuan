@@ -3,6 +3,10 @@ export { contentRegistry } from './host-registry.ts'
 export { EntryFormat, EntryPreviewView, EntryReadMode, SourceFormat, isEntryFormat, isEntryPreviewView, isEntryReadMode } from './api.ts'
 
 export type {
+  CsvCellChange,
+  CsvEditorPage,
+  CsvEntryPatch,
+  CsvHeaderChange,
   CsvPreviewData,
   EntryCapabilities,
   EntryReadMode,
