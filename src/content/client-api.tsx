@@ -1,14 +1,14 @@
 import type { ReactNode, RefObject } from 'react'
-import { EntryFormat } from './api.ts'
+import { EntryContentKind } from './api.ts'
+import type { EntryWriteChange, TableEditorPage } from './api.ts'
 import { CsvPreview } from './csv/client/CsvPreview.tsx'
+import { CsvTextPreview } from './csv/client/CsvTextPreview.tsx'
 import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/MarkdownPreview.tsx'
-import type { ReadEntryResult } from '../client/models.ts'
-import type { CsvEditorPage, CsvEntryPatch } from './api.ts'
+import type { ReadEntryResult, TableEntryPreview } from '../client/models.ts'
 
 /** 面向 Client 的编辑器句柄；具体编辑器仍由格式模块私有。 */
 export type EntryEditorHandle = {
-  getText: () => string
-  getCsvPatch?: () => CsvEntryPatch | undefined
+  getChange: () => EntryWriteChange | undefined
 }
 
 export type EntryPreviewContentProps = {
@@ -17,32 +17,35 @@ export type EntryPreviewContentProps = {
   editorRef?: RefObject<EntryEditorHandle | null>
   highlightText?: string
   showPreviewStatus?: boolean
-  onLoadCsvPage?: (startRow: number) => Promise<CsvEditorPage>
+  onLoadPage?: (startRow: number) => Promise<TableEditorPage>
 }
 
 type PreviewRenderer = (props: EntryPreviewContentProps) => ReactNode
 
-const PREVIEW_RENDERERS: Record<ReadEntryResult['format'], PreviewRenderer> = {
-  [EntryFormat.Markdown]: (props) => <MarkdownPreview {...toMarkdownPreviewProps(props)} />,
-  [EntryFormat.Csv]: (props) => (
+/** 按交互形态分发渲染组件；CSV 表格降级时保留其格式并展示原始文本。 */
+const CONTENT_RENDERERS: Record<ReadEntryResult['kind'], PreviewRenderer> = {
+  [EntryContentKind.Text]: (props) => props.preview.format === 'csv'
+    ? <CsvTextPreview text={props.preview.text} />
+    : <MarkdownPreview {...toMarkdownPreviewProps(props)} />,
+  [EntryContentKind.Table]: (props) => (
     <CsvPreview
-      preview={props.preview}
+      preview={props.preview as TableEntryPreview}
       mode={props.mode}
       ref={props.editorRef}
       showPreviewStatus={props.showPreviewStatus}
-      onLoadPage={props.onLoadCsvPage}
+      onLoadPage={props.onLoadPage}
     />
   ),
 }
 
 /** 仅 Client 使用的预览分发器。不读本地文件，也不授予权限。 */
 export function EntryPreviewContent(props: EntryPreviewContentProps) {
-  return PREVIEW_RENDERERS[props.preview.format](props)
+  return CONTENT_RENDERERS[props.preview.kind](props)
 }
 
 function toMarkdownPreviewProps(props: EntryPreviewContentProps): MarkdownPreviewProps {
   return {
-    preview: props.preview,
+    preview: props.preview as MarkdownPreviewProps['preview'],
     mode: props.mode,
     ...(props.editorRef === undefined ? {} : { editorRef: props.editorRef }),
     ...(props.highlightText === undefined ? {} : { highlightText: props.highlightText }),

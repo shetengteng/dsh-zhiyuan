@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SECTION_LABEL } from '../../identity.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
 import type { DialogKind, IngestResult, SearchHit } from '../models.ts'
-import { parseCsvEditorPage, parseIngestResult, parseSearchResult } from '../host-payload.ts'
+import { parseIngestResult, parseSearchResult, parseTableEditorPage } from '../host-payload.ts'
 import { useWorkbenchData, splitAliases } from './use-workbench-data.ts'
 import { useEntryPreview } from './use-entry-preview.ts'
 import { AboutPage } from './AboutPage.tsx'
@@ -178,15 +178,14 @@ export function createSettingsSection(
         {dialog === 'preview' && preview ? (
           <PreviewDialog
             preview={preview}
-            editable={previewOrigin === 'tree' && preview.capabilities.canEdit}
+            editable={previewOrigin === 'tree'}
             deletable={previewOrigin === 'tree'}
             error={error}
             busy={pending}
             fallbackText={previewFallback || undefined}
             onClose={() => { cancelPreviews(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
-            onSave={preview.format === 'markdown' ? (text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, text }).then(() => undefined)) : undefined}
-            onSaveCsv={(patch) => void run(() => call({ op: 'writeCsvPatch', id: currentBaseId, path: preview.path, patch }).then(() => undefined))}
-            onLoadCsvPage={(startRow) => call({ op: 'readCsvPage', id: currentBaseId, path: preview.path, startRow }).then(parseCsvEditorPage)}
+            onSave={(change) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, change }).then(() => undefined))}
+            onLoadPage={(startRow) => call({ op: 'readPage', id: currentBaseId, path: preview.path, startRow }).then(parseTableEditorPage)}
             onDelete={() => {
               setConfirm({
                 message: `删除文件「${preview.path}」？`,

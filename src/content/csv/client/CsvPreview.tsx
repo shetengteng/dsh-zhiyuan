@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TableVirtuoso } from 'react-virtuoso'
-import type { CsvEditorPage, CsvEntryPatch } from '../../api.ts'
-import type { ReadEntryResult } from '../../../client/models.ts'
+import type { EntryWriteChange, TableEditorPage, TableWindowData } from '../../api.ts'
+import type { TableEntryPreview } from '../../../client/models.ts'
 import {
   buildPatch,
   cellKey,
@@ -13,21 +13,20 @@ import {
 } from './csv-patch.ts'
 
 export type CsvEditorHandle = {
-  getText: () => string
-  getCsvPatch?: () => CsvEntryPatch | undefined
+  getChange: () => EntryWriteChange | undefined
 }
 
 export type CsvPreviewProps = {
-  preview: ReadEntryResult
+  preview: TableEntryPreview
   mode: 'read' | 'edit'
   showPreviewStatus?: boolean
-  onLoadPage?: (startRow: number) => Promise<CsvEditorPage>
+  onLoadPage?: (startRow: number) => Promise<TableEditorPage>
 }
 
 /** 轻量 CSV 查看与单元格编辑用的虚拟原生表格。 */
 export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function CsvPreview(props, ref) {
-  const csv = props.preview.csv
-  const [page, setPage] = useState<CsvEditorPage | undefined>(() => editorPage(csv))
+  const table = props.preview.table
+  const [page, setPage] = useState<TableEditorPage | undefined>(() => editorPage(table))
   const [changes, setChanges] = useState<CsvChanges>(emptyCsvChanges)
   const [activeEdit, setActiveEdit] = useState<CsvActiveEdit | null>(null)
   const [pageBusy, setPageBusy] = useState(false)
@@ -38,21 +37,24 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
 
   useEffect(() => {
     requestId.current += 1
-    setPage(editorPage(csv))
+    setPage(editorPage(table))
     setChanges(emptyCsvChanges())
     setActiveEdit(null)
     setPageBusy(false)
     setPageError('')
-  }, [props.preview.path, csv?.revision])
+  }, [props.preview.path, table?.revision])
 
   useEffect(() => () => { requestId.current += 1 }, [])
 
   useImperativeHandle(ref, () => ({
-    getText: () => props.preview.text,
-    getCsvPatch: () => page?.revision ? buildPatch(page.revision, withActiveEdit(changes, activeEdit)) : undefined,
-  }), [activeEdit, changes, page?.revision, props.preview.text])
+    getChange: () => {
+      if (!page?.revision) return undefined
+      const patch = buildPatch(page.revision, withActiveEdit(changes, activeEdit))
+      return patch ? { kind: 'table-patch' as const, patch } : undefined
+    },
+  }), [activeEdit, changes, page?.revision])
 
-  if (!csv || !page) return <RawCsvFallback preview={props.preview} showPreviewStatus={props.showPreviewStatus} />
+  if (!table || !page) return <RawCsvFallback preview={props.preview} showPreviewStatus={props.showPreviewStatus} />
 
   const currentValue = (row: number, column: number, source: string, isHeader: boolean): string => {
     if (isHeader) return changes.headers.get(column) ?? source
@@ -96,7 +98,7 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
         setPage(nextPage)
       }
     } catch (error) {
-      if (requestId.current === nextRequest) setPageError(error instanceof Error ? error.message : '读取 CSV 分页失败')
+      if (requestId.current === nextRequest) setPageError(error instanceof Error ? error.message : '读取表格分页失败')
     } finally {
       if (requestId.current === nextRequest) setPageBusy(false)
     }
@@ -105,11 +107,12 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
   const startRow = page.windowStartRow || 1
   const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
   const nextStartRow = page.windowEndRow + 1
+  const minimumTableWidth = 48 + Math.max(1, page.headers.length) * 132
   return (
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
       {editable ? (
-        <div className="zy-csv-page-tools" aria-label="CSV 分页工具">
+        <div className="zy-csv-page-tools" aria-label="表格分页工具">
           <span className="zy-csv-page-status" aria-live="polite">第 {page.windowStartRow || 0}–{page.windowEndRow || 0} 行，共 {page.totalRows} 行</span>
           <button className="zy-btn" type="button" disabled={pageBusy || page.windowStartRow <= 1} onClick={() => void loadPage(previousStartRow)}>上一页</button>
           <button className="zy-btn" type="button" disabled={pageBusy || page.windowEndRow >= page.totalRows} onClick={() => void loadPage(nextStartRow)}>下一页</button>
@@ -119,6 +122,7 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
       <div className="zy-csv-grid" aria-label={editable ? 'CSV 表格编辑器' : 'CSV 表格预览'}>
         <TableVirtuoso
           className="zy-csv-table"
+          style={{ minWidth: `${minimumTableWidth}px` }}
           data={page.rows}
           computeItemKey={(index) => startRow + index}
           fixedHeaderContent={() => (
@@ -134,9 +138,9 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
             const rowNumber = startRow + index
             return (
               <>
-                <th className={rowNumber === csv.focusedRow ? 'zy-csv-row-number zy-csv-row-focus' : 'zy-csv-row-number'} scope="row">{rowNumber}</th>
+                <th className={rowNumber === table.focusedRow ? 'zy-csv-row-number zy-csv-row-focus' : 'zy-csv-row-number'} scope="row">{rowNumber}</th>
                 {page.headers.map((_header, column) => (
-                  <td key={`${rowNumber}-${column}`} className={rowNumber === csv.focusedRow ? 'zy-csv-row-focus' : undefined}>
+                  <td key={`${rowNumber}-${column}`} className={rowNumber === table.focusedRow ? 'zy-csv-row-focus' : undefined}>
                     {renderCell(currentValue(rowNumber, column, row[column] ?? '', false), rowNumber, column, false)}
                   </td>
                 ))}
@@ -178,11 +182,11 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
   }
 })
 
-function editorPage(csv: ReadEntryResult['csv']): CsvEditorPage | undefined {
-  return csv?.revision ? csv : undefined
+function editorPage(table: TableWindowData | undefined): TableEditorPage | undefined {
+  return table?.revision ? table : undefined
 }
 
-function RawCsvFallback(props: { preview: ReadEntryResult; showPreviewStatus?: boolean }) {
+function RawCsvFallback(props: { preview: TableEntryPreview; showPreviewStatus?: boolean }) {
   return (
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
@@ -191,10 +195,10 @@ function RawCsvFallback(props: { preview: ReadEntryResult; showPreviewStatus?: b
   )
 }
 
-function statusText(preview: ReadEntryResult): string {
-  const csv = preview.csv
+function statusText(preview: TableEntryPreview): string {
+  const table = preview.table
   const location = preview.view === 'search-hit' ? '显示命中附近' : '显示文件开头'
-  const rows = csv ? `；显示第 ${csv.windowStartRow}–${csv.windowEndRow} 行，共 ${csv.totalRows} 行` : ''
+  const rows = table ? `；显示第 ${table.windowStartRow}–${table.windowEndRow} 行，共 ${table.totalRows} 行` : ''
   const truncation = preview.truncation === 'both'
     ? '，前后均有省略'
     : preview.truncation === 'before'

@@ -1,10 +1,9 @@
-import { createBase, deleteBase, deleteEntry, listBases, listTree, readCsvEditorPage, readEntry, requireBase, updateBase, writeCsvPatch, writeEntry } from './bases.ts'
+import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, readEntryPage, requireBase, updateBase, writeEntryContent } from './bases.ts'
 import { readCatalog, withCatalogTx } from './catalog.ts'
-import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, type EntryPreviewOptions } from './content/host-api.ts'
-import { parseCsvEntryPatch } from './content/csv/server/patch-schema.ts'
+import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, parseEntryWriteChange, type EntryPreviewOptions } from './content/host-api.ts'
 import { buildIngestInput, ingest } from './ingest.ts'
 import { ingestDroppedBytes } from './ingest-dropped.ts'
-import { CSV_EDITOR_PAGE_SIZE } from './identity.ts'
+import { TABLE_EDITOR_PAGE_SIZE } from './identity.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
 import { pickSource } from './pick-source.ts'
@@ -62,12 +61,6 @@ function optionalPositiveInteger(data: JsonRecord, field: string): number | unde
     throw new KbError('invalid_field', `${field} 必须是正整数`)
   }
   return value
-}
-
-function requireCsvPageSize(data: JsonRecord): number {
-  const pageSize = optionalPositiveInteger(data, 'pageSize') ?? CSV_EDITOR_PAGE_SIZE
-  if (pageSize > CSV_EDITOR_PAGE_SIZE) throw new KbError('csv_patch_invalid', `每页最多 ${CSV_EDITOR_PAGE_SIZE} 行`)
-  return pageSize
 }
 
 function readPreviewOptions(data: JsonRecord): EntryPreviewOptions {
@@ -139,19 +132,16 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
       return listTree(dataRoot, requireString(data, 'id'))
     case 'read':
       return readEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), readPreviewOptions(data))
-    case 'readCsvPage':
-      return readCsvEditorPage(
+    case 'readPage':
+      return readEntryPage(
         dataRoot,
         requireString(data, 'id'),
         requireString(data, 'path'),
         optionalPositiveInteger(data, 'startRow') ?? 1,
-        requireCsvPageSize(data),
+        optionalPositiveInteger(data, 'pageSize') ?? TABLE_EDITOR_PAGE_SIZE,
       )
     case 'write':
-      await writeEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), requireString(data, 'text'))
-      return { ok: true }
-    case 'writeCsvPatch':
-      await writeCsvPatch(dataRoot, requireString(data, 'id'), requireString(data, 'path'), parseCsvEntryPatch(data.patch))
+      await writeEntryContent(dataRoot, requireString(data, 'id'), requireString(data, 'path'), parseEntryWriteChange(data.change))
       return { ok: true }
     case 'deleteEntry':
       await deleteEntry(dataRoot, requireString(data, 'id'), requireString(data, 'path'), optionalBoolean(data, 'confirm', false))

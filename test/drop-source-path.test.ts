@@ -51,6 +51,22 @@ test('droppedSourcePath 能从 file URI 还原本机路径', () => {
   assert.equal(droppedSourcePath(transfer({ uriList: 'file:///C:/notes/a.csv' })), 'C:/notes/a.csv')
 })
 
+test('claimFileDrag 拦截只暴露 file URI 类型的拖放', () => {
+  const dataTransfer = transfer({ uriList: 'file:///tmp/a.csv', types: ['text/uri-list'] })
+  let prevented = false
+  let stopped = false
+  const claimed = claimFileDrag({
+    preventDefault() { prevented = true },
+    stopPropagation() { stopped = true },
+    dataTransfer,
+  }, 'copy')
+  assert.equal(claimed, true)
+  assert.equal(prevented, true)
+  assert.equal(stopped, true)
+  assert.equal(dataTransfer.dropEffect, 'copy')
+  assert.equal(isFileDrag(dataTransfer), true)
+})
+
 test('droppedSourcePath 接受绝对路径形式的 text/plain', () => {
   assert.equal(droppedSourcePath(transfer({ plain: '/Users/me/a.csv' })), '/Users/me/a.csv')
   assert.equal(droppedSourcePath(transfer({ plain: 'C:\\notes\\a.csv' })), 'C:\\notes\\a.csv')

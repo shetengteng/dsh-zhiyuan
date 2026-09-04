@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
 import { CSV_PREVIEW_MAX_CHARS, CSV_PREVIEW_MAX_ROWS, SEARCH_CONTEXT } from '../../../identity.ts'
-import type { CsvEditorPage, CsvPreviewData, PreviewTruncation } from '../../api.ts'
+import type { TableEditorPage, TableWindowData, PreviewTruncation } from '../../api.ts'
 import { KbError } from '../../../types.ts'
 
 type CsvRecordRange = {
@@ -21,7 +21,7 @@ export type CsvDocument = {
 }
 
 export type CsvPreviewWindow = {
-  csv: CsvPreviewData
+  csv: TableWindowData
   textStartOffset: number
   textEndOffset: number
   windowStartLine: number
@@ -100,7 +100,7 @@ export function createCsvEditorPage(
   requestedStartRow: number,
   requestedPageSize: number,
   revision: string,
-): CsvEditorPage {
+): TableEditorPage {
   const totalRows = document.records.length
   const pageSize = Math.max(1, requestedPageSize)
   const startIndex = totalRows ? Math.min(Math.max(0, requestedStartRow - 1), totalRows - 1) : 0

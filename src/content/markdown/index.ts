@@ -3,7 +3,7 @@ import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } fro
 import { prepareMarkdownImport } from './server/import.ts'
 import { readMarkdownPreview } from './server/preview.ts'
 import { readMarkdownForSearch } from './server/search.ts'
-import { writeMarkdownEntry } from './server/write.ts'
+import { readMarkdownPage, writeMarkdownContent } from './server/write.ts'
 
 const markdownSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Markdown,
@@ -20,10 +20,10 @@ const plainTextSourceHandler: SourceFormatHandler = {
 const markdownEntryHandler: EntryFormatHandler = {
   format: EntryFormat.Markdown,
   entryExtensions: ['.md', '.txt', '.markdown'],
-  canEdit: true,
-  readPreview: readMarkdownPreview,
+  readContent: readMarkdownPreview,
+  readPage: readMarkdownPage,
+  writeContent: writeMarkdownContent,
   readForSearch: readMarkdownForSearch,
-  writeEntry: writeMarkdownEntry,
 }
 
 /** Markdown/文本在 Host registry 上的唯一注册面。 */

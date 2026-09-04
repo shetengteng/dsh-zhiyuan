@@ -1,13 +1,12 @@
 import { extname } from 'node:path'
-import { EntryFormat } from './api.ts'
 import { csvContentFormat } from './csv/index.ts'
 import { markdownContentFormat } from './markdown/index.ts'
-import type { ContentFormatModule, EntryCsvPageContext, EntryCsvPatchContext, EntryFormatHandler, EntryPathContext, EntryPreviewContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
+import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPathContext, EntryReadContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
 import type { SourceFormat, EntryFormat as EntryFormatValue } from './api.ts'
-import type { CsvEditorPage } from './api.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../types.ts'
+import type { TableEditorPage } from './api.ts'
 import { KbError } from '../types.ts'
 
 type SourceRoute = {
@@ -61,7 +60,7 @@ function entryHandlerForPath(relativePath: string): EntryFormatHandler {
   return handler
 }
 
-/** 文件类型路由的唯一 Host 实现。 */
+/** 文件类型路由的唯一 Host 实现。只做扩展名路由和委托，不感知具体格式。 */
 export const contentRegistry = {
   sourceExtensions: (): readonly string[] => [...SOURCE_EXTENSIONS],
   entryExtensions: (): readonly string[] => [...ENTRY_EXTENSIONS],
@@ -70,28 +69,8 @@ export const contentRegistry = {
   entryFormatForPath: (relativePath: string): EntryFormatValue | undefined => ENTRY_ROUTES.get(extensionOf(relativePath))?.format,
   isStoredEntryPath: (relativePath: string): boolean => ENTRY_ROUTES.has(extensionOf(relativePath)),
   prepareImport: (context: PrepareImportContext): Promise<PreparedEntry[]> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
-  readPreview: (context: EntryPreviewContext): Promise<ReadEntryResult> => entryHandlerForPath(context.relativePath).readPreview(context),
+  readContent: (context: EntryReadContext): Promise<ReadEntryResult> => entryHandlerForPath(context.relativePath).readContent(context),
+  readPage: (context: EntryPageContext): Promise<TableEditorPage> => entryHandlerForPath(context.relativePath).readPage(context),
+  writeContent: (context: EntryWriteContext): Promise<void> => entryHandlerForPath(context.relativePath).writeContent(context),
   readForSearch: (context: EntryPathContext): Promise<SearchDocument> => entryHandlerForPath(context.relativePath).readForSearch(context),
-  writeEntry: async (context: EntryWriteContext): Promise<void> => {
-    const handler = entryHandlerForPath(context.relativePath)
-    if (!handler.canEdit || !handler.writeEntry) {
-      const label = handler.format === EntryFormat.Csv ? 'CSV' : '该文件格式'
-      throw new KbError('read_only_format', `${label} 只读，不能在知源中修改`)
-    }
-    await handler.writeEntry(context)
-  },
-  readCsvEditorPage: async (context: EntryCsvPageContext): Promise<CsvEditorPage> => {
-    const handler = entryHandlerForPath(context.relativePath)
-    if (handler.format !== EntryFormat.Csv || !handler.readCsvEditorPage) {
-      throw new KbError('read_only_format', '该文件不支持 CSV 表格分页读取')
-    }
-    return handler.readCsvEditorPage(context)
-  },
-  writeCsvPatch: async (context: EntryCsvPatchContext): Promise<void> => {
-    const handler = entryHandlerForPath(context.relativePath)
-    if (handler.format !== EntryFormat.Csv || !handler.canEdit || !handler.writeCsvPatch) {
-      throw new KbError('read_only_format', '该文件不支持 CSV 表格编辑')
-    }
-    await handler.writeCsvPatch(context)
-  },
 }

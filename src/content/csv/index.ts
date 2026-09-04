@@ -1,10 +1,10 @@
 import { EntryFormat, SourceFormat } from '../api.ts'
 import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } from '../host-contract.ts'
 import { prepareCsvImport } from './server/import.ts'
-import { readCsvEditorPage, writeCsvEditorPatch } from './server/editor.ts'
+import { readCsvPage } from './server/editor.ts'
 import { readCsvPreview } from './server/preview.ts'
 import { readCsvForSearch } from './server/search.ts'
-import { writeCsvEntry } from './server/write.ts'
+import { writeCsvContent } from './server/write.ts'
 
 const csvSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Csv,
@@ -15,12 +15,10 @@ const csvSourceHandler: SourceFormatHandler = {
 const csvEntryHandler: EntryFormatHandler = {
   format: EntryFormat.Csv,
   entryExtensions: ['.csv'],
-  canEdit: true,
-  readPreview: readCsvPreview,
+  readContent: readCsvPreview,
+  readPage: readCsvPage,
+  writeContent: writeCsvContent,
   readForSearch: readCsvForSearch,
-  writeEntry: writeCsvEntry,
-  readCsvEditorPage,
-  writeCsvPatch: writeCsvEditorPatch,
 }
 
 /** CSV 在 Host registry 上的唯一注册面。 */

@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { WorkbenchModal } from '../WorkbenchModal.tsx'
 import type { ReadEntryResult } from '../../models.ts'
 import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/client-api.tsx'
-import { EntryFormat, type CsvEditorPage, type CsvEntryPatch } from '../../../content/api.ts'
+import type { EntryWriteChange, TableEditorPage } from '../../../content/api.ts'
 import { Note } from '../Dialogs.tsx'
 
 export type PreviewDialogProps = {
@@ -13,9 +13,8 @@ export type PreviewDialogProps = {
   busy: boolean
   fallbackText?: string
   onClose: () => void
-  onSave?: (text: string) => void
-  onSaveCsv?: (patch: CsvEntryPatch) => void
-  onLoadCsvPage?: (startRow: number) => Promise<CsvEditorPage>
+  onSave?: (change: EntryWriteChange) => void
+  onLoadPage?: (startRow: number) => Promise<TableEditorPage>
   onDelete?: () => void
 }
 
@@ -25,8 +24,8 @@ export function PreviewDialog(props: PreviewDialogProps) {
   const fileName = props.preview.path.split('/').pop() || props.preview.path
   const displayPreview = props.preview.previewStatus === 'ready' || !props.fallbackText
     ? props.preview
-    : { ...props.preview, text: props.fallbackText, csv: undefined }
-  const canEdit = props.editable && props.preview.capabilities.canEdit
+    : toTextFallback(props.preview, props.fallbackText)
+  const canEdit = props.editable && (displayPreview.format !== 'csv' || displayPreview.kind === 'table')
   const hasActions = canEdit || props.deletable
   return (
     <WorkbenchModal
@@ -47,16 +46,12 @@ export function PreviewDialog(props: PreviewDialogProps) {
           ref={form}
           onSubmit={(event: { preventDefault: () => void }) => {
             event.preventDefault()
-            if (displayPreview.format === EntryFormat.Csv) {
-              const patch = editorRef.current?.getCsvPatch?.()
-              if (patch) props.onSaveCsv?.(patch)
-              else props.onClose()
-              return
-            }
-            props.onSave?.(editorRef.current?.getText() ?? displayPreview.text)
+            const change = editorRef.current?.getChange()
+            if (change) props.onSave?.(change)
+            else props.onClose()
           }}
         >
-          <EntryPreviewContent preview={displayPreview} mode="edit" editorRef={editorRef} onLoadCsvPage={props.onLoadCsvPage} />
+          <EntryPreviewContent preview={displayPreview} mode="edit" editorRef={editorRef} onLoadPage={props.onLoadPage} />
         </form>
       ) : (
         <EntryPreviewContent preview={displayPreview} mode="read" showPreviewStatus />
@@ -64,4 +59,11 @@ export function PreviewDialog(props: PreviewDialogProps) {
       <Note text={props.error} />
     </WorkbenchModal>
   )
+}
+
+/** 命中失效时降级为纯文本展示；形态转换在弹框内完成，上层不感知格式。 */
+function toTextFallback(preview: ReadEntryResult, fallbackText: string): ReadEntryResult {
+  if (preview.kind === 'text') return { ...preview, text: fallbackText }
+  const { table: _table, ...meta } = preview
+  return { ...meta, kind: 'text', text: fallbackText }
 }

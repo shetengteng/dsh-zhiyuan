@@ -12,7 +12,7 @@ export type DroppedSource =
   | { kind: 'directory' }
   | { kind: 'empty' }
 
-const FILE_DRAG_TYPES = new Set(['Files', 'application/x-moz-file', 'public.file-url'])
+const FILE_DRAG_TYPES = new Set(['Files', 'application/x-moz-file', 'public.file-url', 'text/uri-list'])
 
 export function sourceDisplayName(sourcePath: string): string {
   const trimmedPath = sourcePath.replace(/[\\/]+$/, '')

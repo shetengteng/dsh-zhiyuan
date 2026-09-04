@@ -3,11 +3,14 @@ import Link from '@tiptap/extension-link'
 import { Markdown } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import type { EntryWriteChange } from '../../api.ts'
 
 export type TiptapEditorHandle = {
   getText: () => string
 }
-export type MdEditorHandle = TiptapEditorHandle
+export type MdEditorHandle = {
+  getChange: () => EntryWriteChange | undefined
+}
 
 export type TiptapEditorProps = {
   text: string
@@ -25,7 +28,7 @@ export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(fu
   const [tick, setTick] = useState(0)
 
   useImperativeHandle(ref, () => ({
-    getText: () => editorRef.current?.getMarkdown() ?? props.text,
+    getChange: () => ({ kind: 'text' as const, text: editorRef.current?.getMarkdown() ?? props.text }),
   }), [props.text])
 
   useEffect(() => {

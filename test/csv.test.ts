@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, readCsvEditorPage, readEntry, writeCsvPatch, writeEntry } from '../src/bases.ts'
+import { createBase, readEntry, readEntryPage, writeEntryContent } from '../src/bases.ts'
 import { readCatalog, writeCatalog } from '../src/catalog.ts'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/identity.ts'
 import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
@@ -50,14 +50,14 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
       sourceFingerprint: hit?.sourceFingerprint,
     })
     assert.equal(preview.format, 'csv')
-    assert.equal(preview.capabilities.canEdit, true)
+    assert.equal(preview.kind, 'table')
     assert.equal(preview.previewStatus, 'ready')
     assert.equal(preview.focusLine, 2)
     assert.equal(preview.focusColumnByte, 4)
     assert.doesNotMatch(preview.text, /^\uFEFF/)
-    const { revision, ...previewCsv } = preview.csv ?? {}
+    const { revision, ...previewTable } = preview.table ?? {}
     assert.match(revision ?? '', /^[a-f0-9]{64}$/)
-    assert.deepEqual(previewCsv, {
+    assert.deepEqual(previewTable, {
       headers: ['名称', '金额'],
       rows: [['甲公司', '120']],
       totalRows: 1,
@@ -68,13 +68,13 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
     })
 
     const editable = await readEntry(root, base.id, 'table.CSV', { view: 'tree', readMode: 'edit' })
-    assert.equal(editable.csv?.complete, true)
-    assert.match(editable.csv?.revision ?? '', /^[a-f0-9]{64}$/)
-    await writeEntry(root, base.id, 'table.CSV', '名称,金额\n乙公司,"98,000"')
+    assert.equal(editable.table?.complete, true)
+    assert.match(editable.table?.revision ?? '', /^[a-f0-9]{64}$/)
+    await writeEntryContent(root, base.id, 'table.CSV', { kind: 'text', text: '名称,金额\n乙公司,"98,000"' })
     const written = await readFile(join(root, 'bases', base.id, 'table.CSV'))
     assert.deepEqual(written.subarray(0, 3), Buffer.from([0xef, 0xbb, 0xbf]))
     assert.equal(written.subarray(3).toString('utf8'), '名称,金额\n乙公司,"98,000"')
-    await assert.rejects(() => writeEntry(root, base.id, 'table.CSV', '名称,金额\n"未闭合'), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, base.id, 'table.CSV', { kind: 'text', text: '名称,金额\n"未闭合' }), (error: unknown) => (
       error instanceof KbError && error.code === 'csv_parse_invalid'
     ))
   } finally {
@@ -87,47 +87,47 @@ test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越�
   try {
     const base = await createBase(root, { title: '分页', description: 'CSV 分页编辑测试' })
     const rows = Array.from({ length: 650 }, (_, index) => `原始${index + 1},${index + 1}`).join('\n')
-    await writeEntry(root, base.id, 'large.csv', `名称,编号\n${rows}`)
+    await writeEntryContent(root, base.id, 'large.csv', { kind: 'text', text: `名称,编号\n${rows}` })
 
     const readOnly = await readEntry(root, base.id, 'large.csv')
-    assert.equal(readOnly.csv?.rows.length, 500)
-    assert.equal(readOnly.csv?.totalRows, 650)
-    assert.equal(readOnly.csv?.complete, false)
+    assert.equal(readOnly.table?.rows.length, 500)
+    assert.equal(readOnly.table?.totalRows, 650)
+    assert.equal(readOnly.table?.complete, false)
 
     const initial = await readEntry(root, base.id, 'large.csv', { view: 'tree', readMode: 'edit' })
-    assert.equal(initial.csv?.rows.length, 200)
-    assert.equal(initial.csv?.windowStartRow, 1)
-    assert.equal(initial.csv?.windowEndRow, 200)
-    assert.equal(initial.csv?.totalRows, 650)
-    const revision = initial.csv?.revision
+    assert.equal(initial.table?.rows.length, 200)
+    assert.equal(initial.table?.windowStartRow, 1)
+    assert.equal(initial.table?.windowEndRow, 200)
+    assert.equal(initial.table?.totalRows, 650)
+    const revision = initial.table?.revision
     if (!revision) throw new Error('CSV 编辑预览缺少版本标识')
 
-    const secondPage = await readCsvEditorPage(root, base.id, 'large.csv', 201, 200)
+    const secondPage = await readEntryPage(root, base.id, 'large.csv', 201, 200)
     assert.equal(secondPage.rows.length, 200)
     assert.equal(secondPage.windowStartRow, 201)
     assert.equal(secondPage.windowEndRow, 400)
     assert.equal(secondPage.rows[0]?.[0], '原始201')
 
-    await assert.rejects(() => writeCsvPatch(root, base.id, 'large.csv', {
+    await assert.rejects(() => writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [],
       cellChanges: [{ row: 651, column: 0, value: '越界' }],
-    }), (error: unknown) => error instanceof KbError && error.code === 'csv_patch_invalid')
+    } }), (error: unknown) => error instanceof KbError && error.code === 'csv_patch_invalid')
 
-    await writeCsvPatch(root, base.id, 'large.csv', {
+    await writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [{ column: 0, value: '新名称' }],
       cellChanges: [{ row: 201, column: 0, value: '已修改201' }],
-    })
+    } })
     const written = await readFile(join(root, 'bases', base.id, 'large.csv'), 'utf8')
     assert.match(written, /^\uFEFF新名称,编号\n原始1,1/m)
     assert.match(written, /已修改201,201/)
 
-    await assert.rejects(() => writeCsvPatch(root, base.id, 'large.csv', {
+    await assert.rejects(() => writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [],
       cellChanges: [{ row: 1, column: 0, value: '过期' }],
-    }), (error: unknown) => error instanceof KbError && error.code === 'csv_revision_conflict')
+    } }), (error: unknown) => error instanceof KbError && error.code === 'csv_revision_conflict')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -220,11 +220,11 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
       matchColumnByte: hit.matchColumnByte,
       sourceFingerprint: hit.sourceFingerprint,
     })
-    assert.deepEqual(preview.csv?.headers, ['供应商', '备注', '金额'])
-    assert.deepEqual(preview.csv?.rows[0], ['甲公司', '第一行\n第二行, 含逗号', '120'])
-    assert.equal(preview.csv?.focusedRow, 1)
+    assert.deepEqual(preview.table?.headers, ['供应商', '备注', '金额'])
+    assert.deepEqual(preview.table?.rows[0], ['甲公司', '第一行\n第二行, 含逗号', '120'])
+    assert.equal(preview.table?.focusedRow, 1)
 
-    await writeEntry(root, base.id, 'quoted.csv', '供应商;备注\n甲公司;"第一行\n第二行, 含逗号"')
+    await writeEntryContent(root, base.id, 'quoted.csv', { kind: 'text', text: '供应商;备注\n甲公司;"第一行\n第二行, 含逗号"' })
     const written = await readFile(join(root, 'bases', base.id, 'quoted.csv'))
     assert.equal(written.subarray(3).toString('utf8'), '供应商,备注\n甲公司,"第一行\n第二行, 含逗号"')
   } finally {
@@ -240,8 +240,8 @@ test('CSV 支持 CR 物理换行，预览仍按记录展示', async () => {
     await writeFile(source, '名称,金额\r甲公司,120\r')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
     const preview = await readEntry(root, base.id, 'cr.csv')
-    assert.deepEqual(preview.csv?.headers, ['名称', '金额'])
-    assert.deepEqual(preview.csv?.rows, [['甲公司', '120']])
+    assert.deepEqual(preview.table?.headers, ['名称', '金额'])
+    assert.deepEqual(preview.table?.rows, [['甲公司', '120']])
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -254,13 +254,13 @@ test('CSV 编辑同时服从单文件和单库配额', async () => {
     const catalog = await readCatalog(root)
     catalog.prefs = { ...catalog.prefs, maxFileBytes: 8, maxBaseBytes: 100 }
     await writeCatalog(root, catalog)
-    await assert.rejects(() => writeEntry(root, base.id, 'limit.csv', '名称\n甲公司'), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, base.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
       error instanceof KbError && error.code === 'file_too_large'
     ))
 
     catalog.prefs = { ...catalog.prefs, maxFileBytes: 100, maxBaseBytes: 8 }
     await writeCatalog(root, catalog)
-    await assert.rejects(() => writeEntry(root, base.id, 'limit.csv', '名称\n甲公司'), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, base.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
       error instanceof KbError && error.code === 'quota'
     ))
   } finally {

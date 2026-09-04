@@ -1,9 +1,9 @@
 import type { RefObject } from 'react'
-import type { ReadEntryResult } from '../../../client/models.ts'
+import type { TextEntryPreview } from '../../../client/models.ts'
 import { MdEditor, type MdEditorHandle } from './MarkdownEditor.tsx'
 
 export type MarkdownPreviewProps = {
-  preview: ReadEntryResult
+  preview: TextEntryPreview
   mode: 'read' | 'edit'
   editorRef?: RefObject<MdEditorHandle | null>
   highlightText?: string

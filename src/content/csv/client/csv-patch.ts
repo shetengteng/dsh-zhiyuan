@@ -1,4 +1,4 @@
-import type { CsvCellChange, CsvEntryPatch } from '../../api.ts'
+import type { TableCellChange, TablePatch } from '../../api.ts'
 
 export type CsvActiveEdit = {
   row: number
@@ -10,7 +10,7 @@ export type CsvActiveEdit = {
 
 export type CsvChanges = {
   headers: Map<number, string>
-  cells: Map<string, CsvCellChange>
+  cells: Map<string, TableCellChange>
 }
 
 export function emptyCsvChanges(): CsvChanges {
@@ -39,7 +39,7 @@ export function withActiveEdit(changes: CsvChanges, activeEdit: CsvActiveEdit | 
   return activeEdit ? storeEdit(changes, activeEdit) : changes
 }
 
-export function buildPatch(revision: string, changes: CsvChanges): CsvEntryPatch | undefined {
+export function buildPatch(revision: string, changes: CsvChanges): TablePatch | undefined {
   if (!changes.headers.size && !changes.cells.size) return undefined
   return {
     revision,

@@ -1,4 +1,4 @@
-import type { CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+import type { EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation, TableWindowData } from './content/api.ts'
 
 export type CatalogPrefs = {
   defaultBaseId: string
@@ -38,9 +38,8 @@ export type TreeNode = {
   children?: TreeNode[]
 }
 
-export type ReadEntryResult = {
+type EntryPreviewMeta = {
   path: string
-  text: string
   format: EntryFormat
   view: EntryPreviewView
   windowStartLine: number
@@ -50,9 +49,16 @@ export type ReadEntryResult = {
   truncation: PreviewTruncation
   totalChars: number
   previewStatus: PreviewStatus
-  capabilities: EntryCapabilities
-  csv?: CsvPreviewData
 }
+
+/** 条目读取结果：正文按 kind（交互形态）判别，上层不感知文件格式。 */
+export type ReadEntryResult = EntryPreviewMeta & (
+  | { kind: 'text'; text: string }
+  | { kind: 'table'; text: string; table: TableWindowData }
+)
+
+export type TextEntryPreview = Extract<ReadEntryResult, { kind: 'text' }>
+export type TableEntryPreview = Extract<ReadEntryResult, { kind: 'table' }>
 
 export type SearchHit = {
   n: number
@@ -164,4 +170,4 @@ export class KbError extends Error {
     this.code = code
   }
 }
-export type { CsvCellChange, CsvEditorPage, CsvEntryPatch, CsvHeaderChange, CsvPreviewData, EntryCapabilities, EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation } from './content/api.ts'
+export type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from './content/api.ts'

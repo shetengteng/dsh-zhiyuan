@@ -1,4 +1,4 @@
-import type { CsvEditorPage, CsvEntryPatch, EntryFormat, EntryPreviewOptions, SourceFormat } from './api.ts'
+import type { EntryPreviewOptions, EntryFormat, EntryWriteChange, SourceFormat, TableEditorPage } from './api.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../types.ts'
@@ -14,24 +14,17 @@ export type EntryPathContext = {
   relativePath: string
 }
 
-export type EntryPreviewContext = EntryPathContext & {
+export type EntryReadContext = EntryPathContext & {
   options: EntryPreviewOptions
 }
 
-export type EntryWriteContext = EntryPathContext & {
-  text: string
-  maxFileBytes: number
-  maxBaseBytes: number
-  baseBytesWithoutEntry: number
-}
-
-export type EntryCsvPageContext = EntryPathContext & {
+export type EntryPageContext = EntryPathContext & {
   startRow: number
   pageSize: number
 }
 
-export type EntryCsvPatchContext = EntryPathContext & {
-  patch: CsvEntryPatch
+export type EntryWriteContext = EntryPathContext & {
+  change: EntryWriteChange
   maxFileBytes: number
   maxBaseBytes: number
   baseBytesWithoutEntry: number
@@ -43,15 +36,17 @@ export type SourceFormatHandler = {
   prepareImport: (context: PrepareImportContext) => Promise<PreparedEntry[]>
 }
 
+/**
+ * 条目格式契约。所有入口都是格式无关的通用动作；
+ * 不支持的操作由实现抛出 KbError，route 不做前置格式判断。
+ */
 export type EntryFormatHandler = {
   format: EntryFormat
   entryExtensions: readonly string[]
-  canEdit: boolean
-  readPreview: (context: EntryPreviewContext) => Promise<ReadEntryResult>
+  readContent: (context: EntryReadContext) => Promise<ReadEntryResult>
+  readPage: (context: EntryPageContext) => Promise<TableEditorPage>
+  writeContent: (context: EntryWriteContext) => Promise<void>
   readForSearch: (context: EntryPathContext) => Promise<SearchDocument>
-  writeEntry?: (context: EntryWriteContext) => Promise<void>
-  readCsvEditorPage?: (context: EntryCsvPageContext) => Promise<CsvEditorPage>
-  writeCsvPatch?: (context: EntryCsvPatchContext) => Promise<void>
 }
 
 /** 单个文件类型模块的内部注册契约。 */

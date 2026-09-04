@@ -144,10 +144,10 @@ export function ConfirmDialog(props: {
       className="zy-modal-form"
       description={props.message}
       footer={(
-        <>
+        <FormFooter>
           <Button type="button" variant="outline" onClick={props.onClose}>取消</Button>
           <Button type="button" variant="outline" className="zy-danger" disabled={props.busy} onClick={props.onConfirm}>删除</Button>
-        </>
+        </FormFooter>
       )}
     />
   )

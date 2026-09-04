@@ -209,7 +209,7 @@ describe('kb call', { concurrency: false }, () => {
   test('tree / read / write / deleteEntry', async () => {
     await withRoot(async (_root, run) => {
       const base = await createTestBase(_root)
-      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: '合同/2024/a.md', text: 'hello' }))), { ok: true })
+      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: '合同/2024/a.md', change: { kind: 'text', text: 'hello' } }))), { ok: true })
       const entry = json(await run(callLine({ op: 'read', id: base.id, path: '合同/2024/a.md' }))) as { text: string }
       assert.equal(entry.text, 'hello')
       const tree = json(await run(callLine({ op: 'tree', id: base.id }))) as Array<{ name: string; kind: string }>
@@ -224,14 +224,14 @@ describe('kb call', { concurrency: false }, () => {
     })
   })
 
-  test('CSV 分页和 patch 写入走私有操作边界并校验输入', async () => {
+  test('表格分页和修改写入走私有操作边界并校验输入', async () => {
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
-      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: 'table.csv', text: '名称,金额\n甲,120\n乙,80' }))), { ok: true })
+      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: 'table.csv', change: { kind: 'text', text: '名称,金额\n甲,120\n乙,80' } }))), { ok: true })
       const preview = json(await run(callLine({ op: 'read', id: base.id, path: 'table.csv', view: 'tree', readMode: 'edit' }))) as {
-        csv: { revision: string }
+        table: { revision: string }
       }
-      const page = json(await run(callLine({ op: 'readCsvPage', id: base.id, path: 'table.csv', startRow: 2, pageSize: 1 }))) as {
+      const page = json(await run(callLine({ op: 'readPage', id: base.id, path: 'table.csv', startRow: 2, pageSize: 1 }))) as {
         windowStartRow: number
         rows: string[][]
       }
@@ -239,19 +239,19 @@ describe('kb call', { concurrency: false }, () => {
       assert.deepEqual(page.rows, [['乙', '80']])
 
       const invalid = await run(callLine({
-        op: 'writeCsvPatch',
+        op: 'write',
         id: base.id,
         path: 'table.csv',
-        patch: { revision: preview.csv.revision, headerChanges: [{ column: -1, value: '名称' }], cellChanges: [] },
+        change: { kind: 'table-patch', patch: { revision: preview.table.revision, headerChanges: [{ column: -1, value: '名称' }], cellChanges: [] } },
       }))
       assert.equal(invalid.kind, 'error')
       assert.match(invalid.text ?? '', /非负整数/)
 
       assert.deepEqual(json(await run(callLine({
-        op: 'writeCsvPatch',
+        op: 'write',
         id: base.id,
         path: 'table.csv',
-        patch: { revision: preview.csv.revision, headerChanges: [], cellChanges: [{ row: 2, column: 1, value: '90' }] },
+        change: { kind: 'table-patch', patch: { revision: preview.table.revision, headerChanges: [], cellChanges: [{ row: 2, column: 1, value: '90' }] } },
       }))), { ok: true })
     })
   })

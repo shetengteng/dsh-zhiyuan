@@ -15,6 +15,14 @@ export const EntryFormat = {
 
 export type EntryFormat = typeof EntryFormat[keyof typeof EntryFormat]
 
+/** 预览与编辑的交互形态。判别轴是形态而不是文件格式：格式增长不触碰本枚举。 */
+export const EntryContentKind = {
+  Text: 'text',
+  Table: 'table',
+} as const
+
+export type EntryContentKind = typeof EntryContentKind[keyof typeof EntryContentKind]
+
 export const EntryPreviewView = {
   Tree: 'tree',
   SearchHit: 'search-hit',
@@ -34,12 +42,8 @@ export type PreviewStatus = 'ready' | 'stale' | 'fallback'
 
 export type PreviewTruncation = 'none' | 'before' | 'after' | 'both'
 
-export type EntryCapabilities = {
-  canEdit: boolean
-}
-
-/** 按逻辑记录对齐的 CSV 窗口。行号不含表头，从 1 起。 */
-export type CsvPreviewData = {
+/** 按逻辑记录对齐的表格窗口。行号不含表头，从 1 起。 */
+export type TableWindowData = {
   headers: string[]
   rows: string[][]
   totalRows: number
@@ -50,28 +54,33 @@ export type CsvPreviewData = {
   revision?: string
 }
 
-/** 轻量 CSV 表格编辑器使用的一页记录。 */
-export type CsvEditorPage = CsvPreviewData & {
+/** 轻量表格编辑器使用的一页记录。 */
+export type TableEditorPage = TableWindowData & {
   revision: string
 }
 
-export type CsvHeaderChange = {
+export type TableHeaderChange = {
   column: number
   value: string
 }
 
-export type CsvCellChange = {
+export type TableCellChange = {
   row: number
   column: number
   value: string
 }
 
-/** 针对某一内容寻址版本的稀疏 CSV 修改。 */
-export type CsvEntryPatch = {
+/** 针对某一内容寻址版本的稀疏表格修改。 */
+export type TablePatch = {
   revision: string
-  headerChanges: CsvHeaderChange[]
-  cellChanges: CsvCellChange[]
+  headerChanges: TableHeaderChange[]
+  cellChanges: TableCellChange[]
 }
+
+/** 条目写入的判别联合：整文件替换或稀疏表格修改。 */
+export type EntryWriteChange =
+  | { kind: 'text'; text: string }
+  | { kind: 'table-patch'; patch: TablePatch }
 
 export type EntryPreviewOptions = {
   view?: EntryPreviewView
@@ -83,6 +92,10 @@ export type EntryPreviewOptions = {
 
 export function isEntryFormat(value: unknown): value is EntryFormat {
   return value === EntryFormat.Markdown || value === EntryFormat.Csv
+}
+
+export function isEntryContentKind(value: unknown): value is EntryContentKind {
+  return value === EntryContentKind.Text || value === EntryContentKind.Table
 }
 
 export function isEntryPreviewView(value: unknown): value is EntryPreviewView {

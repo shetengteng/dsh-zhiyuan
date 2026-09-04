@@ -1,14 +1,14 @@
-import { CSV_EDITOR_PAGE_SIZE, CSV_PREVIEW_MAX_BYTES } from '../../../identity.ts'
-import { EntryFormat, EntryPreviewView, EntryReadMode } from '../../api.ts'
+import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../identity.ts'
+import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../api.ts'
 import { splitPhysicalLines } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
 import { KbError } from '../../../types.ts'
 import { createCsvEditorPage, createCsvPreviewWindow } from './csv-document.ts'
 import { readCsvDocument } from './editor.ts'
-import type { EntryPreviewContext } from '../../host-contract.ts'
+import type { EntryReadContext } from '../../host-contract.ts'
 import type { ReadEntryResult } from '../../../types.ts'
 
-export async function readCsvPreview(context: EntryPreviewContext): Promise<ReadEntryResult> {
+export async function readCsvPreview(context: EntryReadContext): Promise<ReadEntryResult> {
   let loaded
   try {
     loaded = await readCsvDocument(context.absolutePath, CSV_PREVIEW_MAX_BYTES)
@@ -22,28 +22,28 @@ export async function readCsvPreview(context: EntryPreviewContext): Promise<Read
 }
 
 function csvEditPreview(
-  context: EntryPreviewContext,
+  context: EntryReadContext,
   loaded: Awaited<ReturnType<typeof readCsvDocument>>,
 ): ReadEntryResult {
-  const csv = createCsvEditorPage(loaded.document, 1, CSV_EDITOR_PAGE_SIZE, loaded.revision)
-  const lastRecord = csv.windowEndRow ? loaded.document.records[csv.windowEndRow - 1] : loaded.document.header
+  const table = createCsvEditorPage(loaded.document, 1, TABLE_EDITOR_PAGE_SIZE, loaded.revision)
+  const lastRecord = table.windowEndRow ? loaded.document.records[table.windowEndRow - 1] : loaded.document.header
   return {
     path: context.relativePath,
+    kind: EntryContentKind.Table,
     text: '',
+    table,
     format: EntryFormat.Csv,
     view: context.options.view ?? EntryPreviewView.Tree,
     windowStartLine: loaded.document.header.startLine,
     windowEndLine: lastRecord?.endLine ?? loaded.document.header.endLine,
-    truncation: csv.complete ? 'none' : 'after',
+    truncation: table.complete ? 'none' : 'after',
     totalChars: loaded.text.length,
     previewStatus: 'ready',
-    capabilities: { canEdit: true },
-    csv,
   }
 }
 
 function csvReadPreview(
-  context: EntryPreviewContext,
+  context: EntryReadContext,
   loaded: Awaited<ReturnType<typeof readCsvDocument>>,
 ): ReadEntryResult {
   const lines = splitPhysicalLines(loaded.text)
@@ -53,12 +53,14 @@ function csvReadPreview(
     false,
     focus.hasRequestedFocus ? focus.requestedLine : undefined,
   )
-  const previewCsv = focus.previewStatus === 'ready' || window.csv.focusedRow === undefined
+  const previewTable = focus.previewStatus === 'ready' || window.csv.focusedRow === undefined
     ? window.csv
     : { ...window.csv, focusedRow: undefined }
   return {
     path: context.relativePath,
+    kind: EntryContentKind.Table,
     text: loaded.text.slice(window.textStartOffset, window.textEndOffset),
+    table: { ...previewTable, revision: loaded.revision },
     format: EntryFormat.Csv,
     view: focus.view,
     windowStartLine: window.windowStartLine,
@@ -66,8 +68,6 @@ function csvReadPreview(
     truncation: window.truncation,
     totalChars: loaded.text.length,
     previewStatus: focus.previewStatus,
-    capabilities: { canEdit: true },
-    csv: { ...previewCsv, revision: loaded.revision },
     ...(focus.focusLine === undefined ? {} : { focusLine: focus.focusLine }),
     ...(focus.focusColumnByte === undefined ? {} : { focusColumnByte: focus.focusColumnByte }),
   }

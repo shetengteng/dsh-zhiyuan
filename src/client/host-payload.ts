@@ -1,6 +1,6 @@
 import type { IngestResult, ReadEntryResult, SearchHit, SearchResult } from './models.ts'
-import type { CsvEditorPage, CsvPreviewData } from '../content/api.ts'
-import { isEntryFormat, isEntryPreviewView } from '../content/api.ts'
+import type { TableEditorPage, TableWindowData } from '../content/api.ts'
+import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../content/api.ts'
 
 export type LegacyPreviewContext = {
   view?: 'tree' | 'search-hit'
@@ -19,25 +19,25 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
-function isCsvPreviewData(value: unknown): value is CsvPreviewData {
-  const csv = asRecord(value)
-  return Boolean(csv)
-    && Array.isArray(csv.headers) && csv.headers.every((header) => typeof header === 'string')
-    && Array.isArray(csv.rows) && csv.rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === 'string'))
-    && isNonNegativeInteger(csv.totalRows)
-    && isNonNegativeInteger(csv.windowStartRow)
-    && isNonNegativeInteger(csv.windowEndRow)
-    && typeof csv.complete === 'boolean'
-    && (csv.focusedRow === undefined || isPositiveInteger(csv.focusedRow))
-    && (csv.revision === undefined || typeof csv.revision === 'string' && /^[a-f0-9]{64}$/u.test(csv.revision))
-    && csv.windowEndRow >= csv.windowStartRow
-    && csv.windowEndRow <= csv.totalRows
-    && (csv.focusedRow === undefined || csv.focusedRow <= csv.totalRows)
+function isTableWindowData(value: unknown): value is TableWindowData {
+  const table = asRecord(value)
+  return Boolean(table)
+    && Array.isArray(table.headers) && table.headers.every((header) => typeof header === 'string')
+    && Array.isArray(table.rows) && table.rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === 'string'))
+    && isNonNegativeInteger(table.totalRows)
+    && isNonNegativeInteger(table.windowStartRow)
+    && isNonNegativeInteger(table.windowEndRow)
+    && typeof table.complete === 'boolean'
+    && (table.focusedRow === undefined || isPositiveInteger(table.focusedRow))
+    && (table.revision === undefined || typeof table.revision === 'string' && /^[a-f0-9]{64}$/u.test(table.revision))
+    && table.windowEndRow >= table.windowStartRow
+    && table.windowEndRow <= table.totalRows
+    && (table.focusedRow === undefined || table.focusedRow <= table.totalRows)
 }
 
-function isCsvEditorPage(value: unknown): value is CsvEditorPage {
+function isTableEditorPage(value: unknown): value is TableEditorPage {
   const page = asRecord(value)
-  return isCsvPreviewData(page) && typeof page?.revision === 'string'
+  return isTableWindowData(page) && typeof page?.revision === 'string'
 }
 
 function isSearchHit(value: unknown): value is SearchHit {
@@ -57,13 +57,19 @@ function isSearchHit(value: unknown): value is SearchHit {
     && (hit.sourceFingerprint === undefined || typeof hit.sourceFingerprint === 'string')
 }
 
+/** 按 kind 判别收窄预览正文：table 形态必须有合法表格数据，text 形态不得携带表格。 */
+function isEntryContentBody(entry: Record<string, unknown>): boolean {
+  if (entry.kind === 'table') return isTableWindowData(entry.table)
+  if (entry.kind === 'text') return entry.table === undefined
+  return false
+}
+
 export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewContext = {}): ReadEntryResult {
   const entry = asRecord(value)
   const validFormat = isEntryFormat(entry?.format)
   const validView = isEntryPreviewView(entry?.view)
-  const capabilities = asRecord(entry?.capabilities)
-  const validCapabilities = typeof capabilities?.canEdit === 'boolean'
-  const validCsv = entry?.format !== 'csv' || isCsvPreviewData(entry.csv)
+  const validKind = isEntryContentKind(entry?.kind)
+  const validBody = isEntryContentBody(entry ?? {})
   const validTruncation = entry?.truncation === 'none'
     || entry?.truncation === 'before'
     || entry?.truncation === 'after'
@@ -72,19 +78,42 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
     || entry?.previewStatus === 'stale'
     || entry?.previewStatus === 'fallback'
   if (entry && typeof entry.path === 'string' && typeof entry.text === 'string' && validFormat && validView
+    && validKind && validBody
     && isPositiveInteger(entry.windowStartLine) && isPositiveInteger(entry.windowEndLine)
     && entry.windowEndLine >= entry.windowStartLine && validTruncation && typeof entry.totalChars === 'number'
-    && Number.isFinite(entry.totalChars) && validStatus && validCapabilities && validCsv) {
+    && Number.isFinite(entry.totalChars) && validStatus) {
     return value as ReadEntryResult
   }
-  if (entry?.format === 'csv') throw new Error('Host 返回的预览数据无效')
+  // CSV 表格结构不可用时只显示原始文本，避免错误交给 Markdown 渲染。
+  if (entry?.format === 'csv') return parseCsvTextFallback(entry, legacyContext)
+  // legacy 回退仅用于不带 kind 的旧 Markdown Host 响应；kind 存在但校验失败必须硬失败。
+  if (entry?.kind !== undefined) throw new Error('Host 返回的预览数据无效')
   return parseLegacyMarkdownPreview(entry, legacyContext)
 }
 
-/** 收窄 loopback Host RPC 返回的 CSV 编辑分页。 */
-export function parseCsvEditorPage(value: unknown): CsvEditorPage {
-  if (!isCsvEditorPage(value)) throw new Error('Host 返回的 CSV 分页数据无效')
+/** 收窄 loopback Host RPC 返回的表格编辑分页。 */
+export function parseTableEditorPage(value: unknown): TableEditorPage {
+  if (!isTableEditorPage(value)) throw new Error('Host 返回的表格分页数据无效')
   return value
+}
+
+function parseCsvTextFallback(entry: Record<string, unknown> | null, context: LegacyPreviewContext): ReadEntryResult {
+  if (!entry || typeof entry.path !== 'string' || typeof entry.text !== 'string') {
+    throw new Error('Host 返回的预览数据无效')
+  }
+  const lineCount = Math.max(1, entry.text.split(/\r?\n/).length)
+  return {
+    path: entry.path,
+    kind: 'text',
+    text: entry.text,
+    format: 'csv',
+    view: isEntryPreviewView(entry.view) ? entry.view : context.view ?? 'tree',
+    windowStartLine: 1,
+    windowEndLine: lineCount,
+    truncation: 'none',
+    totalChars: entry.text.length,
+    previewStatus: 'fallback',
+  }
 }
 
 function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, context: LegacyPreviewContext): ReadEntryResult {
@@ -97,6 +126,7 @@ function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, conte
     : undefined
   return {
     path: entry.path,
+    kind: 'text',
     text: entry.text,
     format: 'markdown',
     view: context.view ?? 'tree',
@@ -106,7 +136,6 @@ function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, conte
     truncation: 'none',
     totalChars: entry.text.length,
     previewStatus: 'ready',
-    capabilities: { canEdit: true },
   }
 }
 

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir, symlink } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, updateBase, writeEntry } from '../src/bases.ts'
+import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, updateBase, writeEntryContent } from '../src/bases.ts'
 import { ingest } from '../src/ingest.ts'
 import { KbError } from '../src/types.ts'
 
@@ -76,9 +76,10 @@ test('deleteBase 只删除已知的 bases 直接子目录', async () => {
 test('write/read/deleteEntry 与 listTree；删除需确认', async () => {
   const root = await sandbox()
   const base = await createBase(root, { title: '工作库', description: '描述' })
-  await writeEntry(root, base.id, '合同/2024/a.md', 'hello')
+  await writeEntryContent(root, base.id, '合同/2024/a.md', { kind: 'text', text: 'hello' })
   assert.deepEqual(await readEntry(root, base.id, '合同/2024/a.md'), {
     path: '合同/2024/a.md',
+    kind: 'text',
     text: 'hello',
     format: 'markdown',
     view: 'tree',
@@ -87,7 +88,6 @@ test('write/read/deleteEntry 与 listTree；删除需确认', async () => {
     truncation: 'none',
     totalChars: 5,
     previewStatus: 'ready',
-    capabilities: { canEdit: true },
   })
   const tree = await listTree(root, base.id)
   assert.equal(tree[0].name, '合同')
@@ -119,14 +119,14 @@ test('导入路径不调 createBase：缺库报错', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-test('writeEntry 遇到逃出库根的符号链接会拒绝', async () => {
+test('writeEntryContent 遇到逃出库根的符号链接会拒绝', async () => {
   const root = await sandbox()
   const base = await createBase(root, { title: '工作库', description: '描述' })
   const outside = join(root, 'outside')
   await mkdir(outside)
   await symlink(outside, join(root, 'bases', base.id, 'linked'))
   await assert.rejects(
-    () => writeEntry(root, base.id, 'linked/escape.md', '不能写出库根'),
+    () => writeEntryContent(root, base.id, 'linked/escape.md', { kind: 'text', text: '不能写出库根' }),
     (error: unknown) => error instanceof KbError && error.code === 'path_escape',
   )
   assert.equal(await readFile(join(outside, 'escape.md')).then(() => true, () => false), false)
