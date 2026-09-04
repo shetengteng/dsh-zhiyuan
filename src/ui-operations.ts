@@ -178,6 +178,7 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
         aliases: optionalStringArray(data, 'aliases'),
         category: optionalString(data, 'category'),
         topK: optionalPositiveInteger(data, 'topK'),
+        cursor: optionalString(data, 'cursor'),
       })
     case 'prefs':
       return (await readCatalog(dataRoot)).prefs

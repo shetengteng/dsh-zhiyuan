@@ -174,6 +174,28 @@ test('CSV 严格校验控制字符、超长物理行和读取上限', async () =
   }
 })
 
+test('CSV 同值多行各自成条，搜后面的值不会落到第一条', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '多行', description: 'CSV 测试' })
+    const source = join(root, 'ledger.csv')
+    await writeFile(source, '名称,金额\n甲公司,120\n乙公司,120\n丙公司,80\n')
+    await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+
+    const sameValue = await searchBase(root, { baseId: base.id, query: '120' })
+    assert.equal(sameValue.hits.length, 2)
+    assert.equal(sameValue.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
+    assert.equal(sameValue.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
+
+    const later = await searchBase(root, { baseId: base.id, query: '丙公司' })
+    assert.equal(later.hits.length, 1)
+    assert.equal(later.hits[0]?.matchLine, 4)
+    assert.equal(later.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('CSV 末段命中返回围绕命中的窗口，不退化为文件头', async () => {
   const root = await sandbox()
   try {
@@ -397,6 +419,9 @@ test('大量中文命中时嵌套类目下的中文文件名仍能打开', async
     const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链' })
     assert.equal(search.hits[0]?.path, '合同/2026/供应商台账.csv')
     assert.match(search.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
+    assert.equal(search.scanComplete, false)
+    assert.equal(search.hasMore, true)
+    assert.match(search.warnings.join(' '), /扫描上限/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

@@ -125,6 +125,43 @@ test('一次多词、截段、打散同一篇', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+test('搜索结果按游标分页，后续页面不重复前一页', async () => {
+  const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-page-')))
+  const base = await createBase(root, { title: '分页库', description: '描述' })
+  const rows = Array.from({ length: 30 }, (_, index) => `第${index + 1}条,重复值`)
+  await writeFile(join(root, 'bases', base.id, 'ledger.csv'), `名称,状态\n${rows.join('\n')}\n`)
+
+  const first = await searchBase(root, { baseId: base.id, query: '重复值', topK: 3 })
+  assert.equal(first.hits.length, 3)
+  assert.equal(first.hits[0]?.n, 1)
+  assert.equal(first.hits[2]?.matchLine, 4)
+  assert.equal(first.scanComplete, true)
+  assert.equal(first.hasMore, true)
+  if (!first.nextCursor) throw new Error('缺少下一页游标')
+  const nextCursor = first.nextCursor
+
+  const second = await searchBase(root, {
+    baseId: base.id,
+    query: '重复值',
+    topK: 3,
+    cursor: nextCursor,
+  })
+  assert.deepEqual(second.hits.map((hit) => hit.n), [4, 5, 6])
+  assert.deepEqual(second.hits.map((hit) => hit.matchLine), [5, 6, 7])
+  assert.deepEqual(second.hits.map((hit) => hit.matchedExcerpt), [
+    '名称: 第4条 | 状态: 重复值',
+    '名称: 第5条 | 状态: 重复值',
+    '名称: 第6条 | 状态: 重复值',
+  ])
+  assert.equal(second.scanComplete, true)
+  assert.equal(second.hasMore, true)
+  await assert.rejects(
+    () => searchBase(root, { baseId: base.id, query: '其他词', cursor: nextCursor }),
+    /搜索游标无效或已过期/,
+  )
+  await rm(root, { recursive: true, force: true })
+})
+
 test('类目对不上则本库全扫；mergeTerms 去重', async () => {
   const { terms } = mergeTerms('违约', ['违约', ' 解约 ', ''])
   assert.deepEqual(terms, ['违约', '解约'])

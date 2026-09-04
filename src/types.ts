@@ -76,6 +76,11 @@ export type SearchHit = {
 export type SearchResult = {
   hits: SearchHit[]
   warnings: string[]
+  /** true 表示本次搜索已经扫描完可搜索范围；false 时不能宣称全量。 */
+  scanComplete: boolean
+  /** 当前页之后是否已经发现下一页命中。 */
+  hasMore: boolean
+  nextCursor?: string
 }
 
 export type SearchInput = {
@@ -83,10 +88,17 @@ export type SearchInput = {
   rootDir: string
   terms: string[]
   topK: number
+  offset: number
+}
+
+export type SearchPage = {
+  hits: SearchHit[]
+  scanComplete: boolean
+  hasMore: boolean
 }
 
 export interface SearchEngine {
-  search(input: SearchInput): Promise<SearchHit[]>
+  search(input: SearchInput): Promise<SearchPage>
 }
 
 export type IngestInput = {

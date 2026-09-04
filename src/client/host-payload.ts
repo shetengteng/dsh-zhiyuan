@@ -145,10 +145,24 @@ export function parseSearchResult(value: unknown): SearchResult {
   const warnings = Array.isArray(result?.warnings)
     ? result.warnings.filter((item): item is string => typeof item === 'string')
     : []
+  const scanComplete = result?.scanComplete === undefined ? true : result.scanComplete
+  const hasMore = result?.hasMore === undefined ? false : result.hasMore
+  const nextCursor = result?.nextCursor
   if (!result || !Array.isArray(result.hits) || !Array.isArray(result.warnings) || hits.length !== result.hits.length) {
     throw new Error('Host 返回的搜索结果无效')
   }
-  return { hits, warnings }
+  if (typeof scanComplete !== 'boolean' || typeof hasMore !== 'boolean'
+    || (nextCursor !== undefined && (typeof nextCursor !== 'string' || !nextCursor.trim()))
+    || (hasMore && typeof nextCursor !== 'string')) {
+    throw new Error('Host 返回的搜索结果无效')
+  }
+  return {
+    hits,
+    warnings,
+    scanComplete,
+    hasMore,
+    ...(typeof nextCursor === 'string' ? { nextCursor } : {}),
+  }
 }
 
 export function parseIngestResult(value: unknown): IngestResult {

@@ -13,8 +13,12 @@ export type SearchDialogProps = {
   warning: string
   busy: boolean
   searched: boolean
+  scanComplete: boolean
+  hasMore: boolean
+  nextCursor?: string
   onClose: () => void
   onSearch: (query: string) => void
+  onLoadMore: (cursor: string) => void
   onOpenHit: (hit: SearchHit) => void
 }
 
@@ -42,6 +46,10 @@ export function SearchDialog(props: SearchDialogProps) {
         warning={props.warning}
         busy={props.busy}
         searched={props.searched}
+        scanComplete={props.scanComplete}
+        hasMore={props.hasMore}
+        nextCursor={props.nextCursor}
+        onLoadMore={props.onLoadMore}
         onOpenHit={props.onOpenHit}
       />
     </WorkbenchModal>
@@ -54,6 +62,10 @@ function SearchResults(props: {
   warning: string
   busy: boolean
   searched: boolean
+  scanComplete: boolean
+  hasMore: boolean
+  nextCursor?: string
+  onLoadMore: (cursor: string) => void
   onOpenHit: (hit: SearchHit) => void
 }) {
   let body: ReactNode = null
@@ -62,12 +74,20 @@ function SearchResults(props: {
   } else if (props.hits.length) {
     body = (
       <>
-        <p className="zy-search-status">{props.hits.length} 条命中 · 点击查看原文</p>
+        <p className="zy-search-status">
+          {props.hits.length} 条命中 · 点击查看原文
+          {props.hasMore ? ' · 还有更多' : props.scanComplete ? ' · 扫描完成' : ' · 扫描未完成'}
+        </p>
         <div className="zy-search-hits">
           {props.hits.map((hit) => (
             <SearchHitCard key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} hit={hit} query={props.query} onOpenHit={props.onOpenHit} />
           ))}
         </div>
+        {props.hasMore && props.nextCursor ? (
+          <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(props.nextCursor ?? '')}>
+            加载更多
+          </button>
+        ) : null}
       </>
     )
   } else if (!props.searched) {

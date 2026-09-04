@@ -55,15 +55,33 @@ function renderIngestResult(value: unknown) {
 }
 
 function renderSearchResult(value: unknown) {
-  const result = value as { hits?: SearchHit[]; warnings?: string[] } | undefined
+  const result = value as {
+    hits?: SearchHit[]
+    warnings?: string[]
+    scanComplete?: boolean
+    hasMore?: boolean
+    nextCursor?: string
+  } | undefined
   const hits = Array.isArray(result?.hits) ? result.hits : []
   const warnings = Array.isArray(result?.warnings) ? result.warnings.filter((item): item is string => typeof item === 'string' && item.trim()) : []
   const renderedHits = hits.map((hit) => {
     const lineRange = hit.startLine === hit.endLine ? `${hit.startLine}` : `${hit.startLine}–${hit.endLine}`
     return `\`${hit.n}\` ${hit.path}:${lineRange}（命中行 ${hit.matchLine}）\n${hit.excerpt}`
   })
-  const body = renderedHits.length ? renderedHits.join('\n\n') : '无命中'
-  return text(warnings.length ? `${body}\n\n提示：${warnings.join('；')}` : body)
+  const scanComplete = result?.scanComplete !== false
+  const hasMore = result?.hasMore === true
+  const body = renderedHits.length
+    ? renderedHits.join('\n\n')
+    : scanComplete ? '无命中' : '当前扫描未完成，暂未找到可返回的命中'
+  const notes: string[] = []
+  if (hasMore) {
+    notes.push(result?.nextCursor
+      ? `当前仅展示 ${hits.length} 条，仍有更多命中；下一页游标：${result.nextCursor}`
+      : `当前仅展示 ${hits.length} 条，仍有更多命中。`)
+  }
+  if (!scanComplete) notes.push('本次扫描未完成，当前结果不能代表整个知识库。')
+  if (warnings.length) notes.push(`提示：${warnings.join('；')}`)
+  return text(notes.length ? `${body}\n\n${notes.join('\n')}` : body)
 }
 
 function fail(error: unknown): never {
@@ -141,7 +159,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_search',
-    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。CSV 命中 excerpt 带列名；必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
+    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。CSV 命中 excerpt 带列名；必须带 baseId。换词放进 aliases（3～8）。结果可能分页，scanComplete=false 或 hasMore=true 时不能把当前页当成全量。',
     parameters: {
       type: 'object',
       required: ['baseId', 'query'],
@@ -150,13 +168,13 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         query: { type: 'string', description: '主关键词' },
         aliases: { type: 'array', items: { type: 'string' }, description: '3～8 个同义词，与 query 合并一次 OR' },
         category: { type: 'string', description: '对上子文件夹则只扫那一层；对不上则本库全扫' },
-        topK: { type: 'number', description: '默认 12，上限 20' },
+        topK: { type: 'number', description: '默认 10，上限 20；用于控制每页数量' },
+        cursor: { type: 'string', description: '上一页返回的 nextCursor；只用于继续同一查询' },
       },
     },
     output: {
       schema: {
         type: 'object',
-        required: ['hits', 'warnings'],
         properties: {
           hits: {
             type: 'array',
@@ -177,7 +195,11 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
             },
           },
           warnings: { type: 'array', items: { type: 'string' } },
+          scanComplete: { type: 'boolean', description: '是否完成了本次可搜索范围的扫描' },
+          hasMore: { type: 'boolean', description: '当前页之后是否还有已发现的命中' },
+          nextCursor: { type: 'string', description: '继续下一页的游标' },
         },
+        required: ['hits', 'warnings', 'scanComplete', 'hasMore'],
       },
       render: (_args: unknown, value: unknown) => renderSearchResult(value),
       presentationMeta: (args: unknown, value: unknown) => {
@@ -188,6 +210,9 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
           hits: Array.isArray(result.hits) ? result.hits : [],
           warnings: Array.isArray(result.warnings) ? result.warnings : [],
         }
+        if (typeof result.scanComplete === 'boolean') safeResult.scanComplete = result.scanComplete
+        if (typeof result.hasMore === 'boolean') safeResult.hasMore = result.hasMore
+        if (typeof result.nextCursor === 'string') safeResult.nextCursor = result.nextCursor
         if (baseId) safeResult.baseId = baseId
         return safeResult
       },
@@ -209,6 +234,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
           aliases: asStringArray(input.aliases),
           category: asString(input.category),
           topK: typeof input.topK === 'number' ? input.topK : undefined,
+          cursor: asString(input.cursor),
         })
       } catch (error) {
         fail(error)

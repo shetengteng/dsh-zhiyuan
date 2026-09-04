@@ -6,7 +6,8 @@ import { markUsed, requireBase } from './bases.ts'
 import { contentRegistry } from './content/host-api.ts'
 import { mergePhysicalExcerpts, type SearchDocument } from './content/shared/search-document.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, resolveDest } from './paths.ts'
-import type { SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
+import { decodeSearchCursor, encodeSearchCursor, searchQueryKey } from './search-cursor.ts'
+import type { SearchEngine, SearchHit, SearchInput, SearchPage, SearchResult } from './types.ts'
 import { KbError } from './types.ts'
 
 export function mergeTerms(query: string, aliases: string[] | undefined): { terms: string[]; warnings: string[] } {
@@ -42,8 +43,8 @@ function parseRg(stdout: string, rootDir: string): RipgrepMatch[] {
     const data = asRecord(record.data)
     const pathData = asRecord(data?.path)
     const printedPath = typeof pathData?.text === 'string' ? pathData.text : ''
-    const line = typeof data?.line_number === 'number' ? data.line_number : 0
-    const submatches = Array.isArray(data?.submatches) ? data.submatches : []
+    const line = data && typeof data.line_number === 'number' ? data.line_number : 0
+    const submatches = data && Array.isArray(data.submatches) ? data.submatches : []
     const firstSubmatch = asRecord(submatches[0])
     const start = typeof firstSubmatch?.start === 'number' ? firstSubmatch.start : 0
     if (!printedPath || !Number.isInteger(line) || line < 1 || !Number.isInteger(start) || start < 0) continue
@@ -68,7 +69,11 @@ function mergeAdjacent(
   const mergedHits: Array<SearchHit & { file: string }> = []
   for (const hit of sorted) {
     const previousHit = mergedHits.at(-1)
-    if (previousHit && previousHit.file === hit.file && hit.startLine <= previousHit.endLine + 1) {
+    const mergeNeighbors = documents.get(hit.file)?.mergeNeighbors !== false
+    const canMerge = previousHit && previousHit.file === hit.file && (
+      mergeNeighbors ? hit.startLine <= previousHit.endLine + 1 : hit.startLine <= previousHit.endLine
+    )
+    if (previousHit && canMerge) {
       const startLine = Math.min(previousHit.startLine, hit.startLine)
       const endLine = Math.max(previousHit.endLine, hit.endLine)
       const mergeExcerpt = documents.get(hit.file)?.mergeExcerpt ?? mergePhysicalExcerpts
@@ -132,6 +137,7 @@ async function resolveRg(): Promise<string> {
 type RgRun = {
   stdout: string
   warnings: string[]
+  scanComplete: boolean
 }
 
 function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): Promise<RgRun> {
@@ -166,7 +172,9 @@ function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): 
       if (timedOut) warnings.push('检索超时，已返回部分结果')
       if (truncated) warnings.push('检索结果过多，已截断')
       const stdout = Buffer.concat(stdoutChunks, stdoutBytes).toString('utf8')
-      if (code === 0 || code === 1 || timedOut || truncated) resolve({ stdout, warnings })
+      if (code === 0 || code === 1 || timedOut || truncated) {
+        resolve({ stdout, warnings, scanComplete: !timedOut && !truncated })
+      }
       else reject(new Error(stderr.trim() || `rg 退出 ${code}`))
     })
   })
@@ -175,16 +183,16 @@ function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): 
 export class RipgrepSearchEngine implements SearchEngine {
   lastWarnings: string[] = []
 
-  async search(input: SearchInput): Promise<SearchHit[]> {
+  async search(input: SearchInput): Promise<SearchPage> {
     this.lastWarnings = []
-    if (!existsSync(input.rootDir)) return []
+    if (!existsSync(input.rootDir)) return { hits: [], scanComplete: true, hasMore: false }
     const ripgrepBinary = await resolveRg()
     const rgArgs = [
       '--json',
       '--column',
       '--glob-case-insensitive',
       '--max-count',
-      String(SEARCH_RG_MAX_COUNT_PER_FILE),
+      String(SEARCH_RG_MAX_COUNT_PER_FILE + 1),
       '--max-filesize',
       SEARCH_RG_MAX_FILESIZE,
     ]
@@ -194,6 +202,12 @@ export class RipgrepSearchEngine implements SearchEngine {
     const run = await runRg(ripgrepBinary, rgArgs, input.rootDir)
     this.lastWarnings = run.warnings
     const matches = parseRg(run.stdout, input.rootDir)
+    const matchCounts = new Map<string, number>()
+    for (const match of matches) {
+      matchCounts.set(match.path, (matchCounts.get(match.path) ?? 0) + 1)
+    }
+    const perFileTruncated = [...matchCounts.values()].some((count) => count > SEARCH_RG_MAX_COUNT_PER_FILE)
+    if (perFileTruncated) this.lastWarnings.push('单个文件命中超过扫描上限，结果可能不完整')
     const rawHits: Array<SearchHit & { file: string }> = []
     const fileCache = new Map<string, SearchDocument>()
     for (const match of matches) {
@@ -223,13 +237,18 @@ export class RipgrepSearchEngine implements SearchEngine {
         sourceFingerprint: file.fingerprint,
       })
     }
-    return diversify(mergeAdjacent(rawHits, fileCache), input.topK)
+    const selectedHits = diversify(mergeAdjacent(rawHits, fileCache), input.offset + input.topK + 1)
+    return {
+      hits: selectedHits.slice(input.offset, input.offset + input.topK),
+      scanComplete: run.scanComplete && !perFileTruncated,
+      hasMore: selectedHits.length > input.offset + input.topK,
+    }
   }
 }
 
 export async function searchBase(
   dataRoot: string,
-  input: { baseId: string; query: string; aliases?: string[]; category?: string; topK?: number },
+  input: { baseId: string; query: string; aliases?: string[]; category?: string; topK?: number; cursor?: string },
   engine: SearchEngine = new RipgrepSearchEngine(),
 ): Promise<SearchResult> {
   if (!input.baseId?.trim()) throw new KbError('missing_field', 'kb_search 必须带 baseId')
@@ -246,8 +265,17 @@ export async function searchBase(
       /* 对不上则本库全扫 */
     }
   }
-  const hits = await engine.search({ baseId: input.baseId, rootDir, terms, topK })
+  const queryKey = searchQueryKey({ baseId: input.baseId, rootDir, terms })
+  const cursor = input.cursor?.trim()
+  const offset = cursor ? decodeSearchCursor(cursor, queryKey) : 0
+  const page = await engine.search({ baseId: input.baseId, rootDir, terms, topK, offset })
   const extraWarnings = engine instanceof RipgrepSearchEngine ? engine.lastWarnings : []
   await markUsed(dataRoot, input.baseId)
-  return { hits, warnings: [...warnings, ...extraWarnings] }
+  return {
+    hits: page.hits,
+    warnings: [...warnings, ...extraWarnings],
+    scanComplete: page.scanComplete,
+    hasMore: page.hasMore,
+    ...(page.hasMore ? { nextCursor: encodeSearchCursor(offset + page.hits.length, queryKey) } : {}),
+  }
 }

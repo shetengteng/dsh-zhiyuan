@@ -118,6 +118,15 @@ describe('kb tools', { concurrency: false }, () => {
       assert.match(rendered, /`1` a\.md:1–3/)
       assert.doesNotMatch(rendered, /\[1\]/)
       assert.match(rendered, /命中的正文/)
+      const incompleteRendered = search.output.render({}, {
+        ...meta,
+        scanComplete: false,
+        hasMore: true,
+        nextCursor: 'cursor',
+      })[0].text
+      assert.match(incompleteRendered, /当前仅展示 1 条，仍有更多命中/)
+      assert.match(incompleteRendered, /扫描未完成/)
+      assert.match(incompleteRendered, /下一页游标：cursor/)
       assert.deepEqual(search.output.presentationMeta?.({}, meta), meta)
       const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; hits?: unknown[]; warnings?: unknown[]; documents?: unknown[] }
       assert.equal(presentation.baseId, base.id)

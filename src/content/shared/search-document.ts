@@ -17,6 +17,8 @@ export type SearchDocument = {
   excerptAt: (matchLine: number, radius: number) => SearchExcerpt
   mergeExcerpt: (first: SearchExcerptSpan, second: SearchExcerptSpan, rangeStart: number, rangeEnd: number) => string
   normalizeColumnByte: (line: number, columnByte: number) => number | undefined
+  /** 为 false 时只合并重叠区间，不把相邻记录收成一条 */
+  mergeNeighbors?: boolean
   warnings?: string[]
 }
 

@@ -50,12 +50,10 @@ export function csvColumnExcerpt(document: CsvDocument, matchLine: number, radiu
   const focus = document.records[focusIndex]
   if (focusIndex < 0 || !focus) return headerExcerpt(document, headerLine)
   const records = windowRecords(document.records, focusIndex, radius)
-  const first = records[0]
-  const last = records.at(-1)
-  if (!first || !last) return headerExcerpt(document, headerLine)
+  if (!records.length) return headerExcerpt(document, headerLine)
   return {
-    startLine: first.startLine,
-    endLine: last.endLine,
+    startLine: focus.startLine,
+    endLine: focus.endLine,
     excerpt: [headerLine, ...records.map((record) => formatRecord(document.headers, record.cells))].join('\n'),
     matchedExcerpt: formatRecord(document.headers, focus.cells),
   }
@@ -89,6 +87,7 @@ export function createCsvSearchDocument(bytes: Buffer, text: string): SearchDocu
       normalizeColumnByte: physical.normalizeColumnByte,
       excerptAt: (matchLine, radius) => csvColumnExcerpt(document, matchLine, radius),
       mergeExcerpt: (first, second) => mergeCsvColumnExcerpts(first.excerpt, second.excerpt),
+      mergeNeighbors: false,
     }
   } catch {
     return { ...physical, warnings: ['csv_parse_fallback：CSV 无法按列解析，已保留原文 excerpt'] }

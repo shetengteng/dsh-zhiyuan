@@ -15,6 +15,8 @@ const SKILL_BODY = [
   '- 换词只做一次，放进同一次 `kb_search` 的 `aliases`（3～8 个）。禁止连调三十轮。',
   '- `kb_search` 必须带 `baseId`。没有 baseId 不要调用。',
   '- 可选 `category`：只有对上子文件夹名时才收窄；对不上就本库全扫，不要猜。',
+  '- `kb_search` 默认只返回一页命中；`hasMore=true` 时可用 `nextCursor` 继续查询。',
+  '- `scanComplete=false` 或 `hasMore=true` 时，不能把当前返回内容当成全库全量；用户要求全部、计数或汇总时必须继续分页，无法完成则明确说明范围。',
   '',
   '## 出处',
   '- 没命中：不得说「根据知识库」。不要编一段可能相关的条款。',
@@ -41,6 +43,7 @@ export const ZHIYUAN_PROMPT_SECTION = {
     '知源（知识库）：查询已导入资料必须先选定一个 baseId。',
     '用户没点名库时先 kb_list_bases，用描述和别名选一个库；两个都像就问人。',
     '禁止扫全部 bases。换词只做一次，放进同一次 kb_search 的 aliases。',
+    'kb_search 可能分页；hasMore=true 时用 nextCursor 继续，scanComplete=false 时不得宣称全量。',
     '没命中不得说「根据知识库」。命中时必须基于返回的 excerpt 回答，带文件路径、行号和片段编号；引用编号使用 Markdown 行内代码包裹，例如命中了 `1` 处，不加方括号；当前项目的 grep / glob 不算知识库检索。',
   ].join(''),
 }

@@ -35,6 +35,14 @@ function extractBaseId(block?: ToolResultBlock): string {
   return typeof baseId === 'string' ? baseId : ''
 }
 
+function extractSearchCoverage(block?: ToolResultBlock): { scanComplete: boolean; hasMore: boolean } {
+  const meta = asRecord(block?.meta)
+  return {
+    scanComplete: meta?.scanComplete !== false,
+    hasMore: meta?.hasMore === true,
+  }
+}
+
 function isSearchHit(value: unknown): value is SearchHit {
   if (!value || typeof value !== 'object') return false
   const hit = value as Partial<SearchHit>
@@ -63,11 +71,16 @@ export function createKbSearchView(preview: PreviewController) {
     const failed = block?.kind === 'tool-result' && Boolean(block.isError)
     const hits = extractSearchHits(block)
     const baseId = extractBaseId(block)
+    const coverage = extractSearchCoverage(block)
     const selectedHit = usePreviewSelection(preview)
 
     if (running) return <div className="zy-help">正在检索知识库…</div>
     if (failed) return <div className="zy-note">{firstTextContent(block?.content) || '检索失败'}</div>
-    if (!hits.length) return <div className="zy-help">无命中</div>
+    if (!hits.length) {
+      return coverage.scanComplete
+        ? <div className="zy-help">无命中</div>
+        : <div className="zy-note">扫描未完成，当前无命中结果不能代表整个知识库</div>
+    }
 
     return (
       <div>
@@ -89,6 +102,12 @@ export function createKbSearchView(preview: PreviewController) {
             </button>
           )
         })}
+        {coverage.hasMore || !coverage.scanComplete ? (
+          <div className="zy-search-coverage">
+            {coverage.hasMore ? '当前结果仍有更多命中。' : ''}
+            {!coverage.scanComplete ? '本次扫描未完成，不能把当前结果当成全量。' : ''}
+          </div>
+        ) : null}
       </div>
     )
   }

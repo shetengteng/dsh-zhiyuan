@@ -11,7 +11,7 @@ export const COMMAND_NAME = 'kb'
 
 export const DEFAULT_MAX_FILE_BYTES = 5_242_880
 export const DEFAULT_MAX_BASE_BYTES = 10_737_418_240
-export const DEFAULT_TOP_K = 12
+export const DEFAULT_TOP_K = 10
 export const MAX_TOP_K = 20
 export const MAX_ALIASES = 8
 export const SEARCH_CONTEXT = 8

@@ -30,6 +30,9 @@ export function createSettingsSection(
     const [query, setQuery] = useState('')
     const [searched, setSearched] = useState(false)
     const [searchBusy, setSearchBusy] = useState(false)
+    const [searchScanComplete, setSearchScanComplete] = useState(true)
+    const [searchHasMore, setSearchHasMore] = useState(false)
+    const [searchCursor, setSearchCursor] = useState('')
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
 
     const { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
@@ -90,6 +93,9 @@ export function createSettingsSection(
                 setHits([])
                 setQuery('')
                 setSearched(false)
+                setSearchScanComplete(true)
+                setSearchHasMore(false)
+                setSearchCursor('')
                 setError('')
                 setDialog('search')
               }}
@@ -157,20 +163,47 @@ export function createSettingsSection(
             warning={error}
             busy={searchBusy}
             searched={searched}
+            scanComplete={searchScanComplete}
+            hasMore={searchHasMore}
+            nextCursor={searchCursor || undefined}
             onClose={() => setDialog(null)}
             onSearch={(next) => {
               setQuery(next)
+              setHits([])
+              setSearchCursor('')
+              setSearchHasMore(false)
+              setSearchScanComplete(true)
               setSearchBusy(true)
               setError('')
               void call({ op: 'search', baseId: currentBase.id, query: next }).then((value) => {
                 const result = parseSearchResult(value)
                 setHits(result.hits)
+                setSearchScanComplete(result.scanComplete)
+                setSearchHasMore(result.hasMore)
+                setSearchCursor(result.nextCursor ?? '')
                 setError(result.warnings?.join(' ') ?? '')
                 setSearched(true)
               }).catch((err) => {
                 setHits([])
+                setSearchScanComplete(true)
+                setSearchHasMore(false)
+                setSearchCursor('')
                 setError(err instanceof Error ? err.message : String(err))
                 setSearched(true)
+              }).finally(() => setSearchBusy(false))
+            }}
+            onLoadMore={(cursor) => {
+              setSearchBusy(true)
+              setError('')
+              void call({ op: 'search', baseId: currentBase.id, query, cursor }).then((value) => {
+                const result = parseSearchResult(value)
+                setHits((previous) => [...previous, ...result.hits])
+                setSearchScanComplete(result.scanComplete)
+                setSearchHasMore(result.hasMore)
+                setSearchCursor(result.nextCursor ?? '')
+                setError(result.warnings?.join(' ') ?? '')
+              }).catch((err) => {
+                setError(err instanceof Error ? err.message : String(err))
               }).finally(() => setSearchBusy(false))
             }}
             onOpenHit={(hit) => openSearchHit(currentBase.id, hit)}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { parseReadEntry, parseTableEditorPage } from '../src/client/host-payload.ts'
+import { parseReadEntry, parseSearchResult, parseTableEditorPage } from '../src/client/host-payload.ts'
 
 test('新版 Host preview payload 按原样通过', () => {
   const payload = {
@@ -86,6 +86,36 @@ test('表格编辑分页要求安全的版本标识和字符串单元格', () =>
   }
   assert.equal(parseTableEditorPage(page), page)
   assert.throws(() => parseTableEditorPage({ ...page, revision: 'stale' }), /分页数据无效/)
+})
+
+test('搜索结果协议保留分页和扫描完整性', () => {
+  const payload = {
+    hits: [],
+    warnings: ['结果可能不完整'],
+    scanComplete: false,
+    hasMore: true,
+    nextCursor: 'cursor',
+  }
+  assert.deepEqual(parseSearchResult(payload), payload)
+})
+
+test('旧搜索结果缺少分页字段时按完整且无下一页兼容', () => {
+  const payload = { hits: [], warnings: [] }
+  assert.deepEqual(parseSearchResult(payload), {
+    hits: [],
+    warnings: [],
+    scanComplete: true,
+    hasMore: false,
+  })
+})
+
+test('搜索结果分页字段类型错误时拒绝', () => {
+  assert.throws(() => parseSearchResult({
+    hits: [],
+    warnings: [],
+    scanComplete: 'true',
+    hasMore: false,
+  }), /搜索结果无效/)
 })
 
 test('旧 Host 的 Markdown read 响应仍能打开预览', () => {
