@@ -9,6 +9,12 @@ export function splitAliases(text: string): string[] {
   return text.split(/[,，]/).map((item) => item.trim()).filter(Boolean)
 }
 
+/** 刷新后仍选当前库；该库已不在列表中（例如刚删除）则回退到上次使用或第一项。 */
+export function pickWorkbenchBaseId(list: BaseSummary[], preferredId: string): string {
+  if (preferredId && list.some((item) => item.id === preferredId)) return preferredId
+  return list.find((item) => item.lastUsed)?.id || list[0]?.id || ''
+}
+
 /** 工作台数据 hook：库列表、当前库、目录树、偏好与任务状态；Host 是唯一真相。 */
 export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
   const [bases, setBases] = useState([] as BaseSummary[])
@@ -28,7 +34,7 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
     try {
       const list = await call({ op: 'list' }) as BaseSummary[]
       setBases(list)
-      const nextBaseId = baseId || currentBaseId || list.find((item) => item.lastUsed)?.id || list[0]?.id || ''
+      const nextBaseId = pickWorkbenchBaseId(list, baseId || currentBaseId)
       setCurrentBaseId(nextBaseId)
       if (nextBaseId) setTree(await call({ op: 'tree', id: nextBaseId }) as TreeNode[])
       else setTree([])

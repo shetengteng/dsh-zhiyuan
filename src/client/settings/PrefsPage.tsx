@@ -15,7 +15,7 @@ export function PrefsPage(props: {
   useEffect(() => { setDraft(props.prefs) }, [props.prefs])
 
   const selectedBase = props.bases.find((base) => base.id === draft.defaultBaseId)
-  const label = selectedBase ? `${selectedBase.id}（${selectedBase.title}）` : '（无）'
+  const label = selectedBase ? (selectedBase.title || selectedBase.id) : '（无）'
 
   const commit = (next: Prefs) => {
     setDraft(next)
@@ -35,7 +35,7 @@ export function PrefsPage(props: {
           selectedId={draft.defaultBaseId || 'none'}
           items={[
             { id: 'none', label: '（无）' },
-            ...props.bases.map((base) => ({ id: base.id, label: `${base.id}（${base.title}）` })),
+            ...props.bases.map((base) => ({ id: base.id, label: base.title || base.id })),
           ]}
           onSelect={(id: string) => {
             commit({ ...draft, defaultBaseId: id === 'none' ? '' : id })

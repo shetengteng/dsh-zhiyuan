@@ -150,7 +150,7 @@ export function createSettingsSection(
         ) : null}
         {dialog === 'search' && currentBase ? (
           <SearchDialog
-            baseId={currentBase.id}
+            baseTitle={currentBase.title}
             query={query}
             hits={hits}
             warning={error}

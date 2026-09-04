@@ -31,7 +31,6 @@ export function BasePage(props: {
     )
   }
   const base = props.currentBase
-  const { summary, details } = splitDescription(base?.description ?? '')
   return (
     <div className="zy-base-layout">
       <div className="zy-base-list">
@@ -57,7 +56,7 @@ export function BasePage(props: {
                 <button className="zy-btn zy-primary" type="button" onClick={props.onImport}>导入</button>
               </div>
             </div>
-            <BaseDescription summary={summary} details={details} aliases={base.aliases} basePath={`bases/${base.id}/`} />
+            <BaseDescription description={base.description} aliases={base.aliases} basePath={`bases/${base.id}/`} />
             <div className="zy-tree">
               {props.pending ? <p className="zy-help">加载中…</p> : null}
               {props.tree.map((node) => <BaseTreeItem key={node.path} node={node} onOpenEntry={props.onOpenEntry} onDeleteEntry={props.onDeleteEntry} />)}
@@ -82,24 +81,16 @@ function formatBaseMeta(base: BaseSummary): string {
   return parts.join(' · ')
 }
 
-function splitDescription(description: string): { summary: string; details: string } {
-  const text = description.trim()
-  if (!text) return { summary: '没有描述', details: '' }
-  const cut = text.indexOf('。')
-  if (cut === -1 || cut >= text.length - 1) return { summary: text.replace(/。$/, ''), details: '' }
-  return { summary: text.slice(0, cut), details: text.slice(cut + 1).trim() }
-}
-
-function BaseDescription(props: { summary: string; details: string; aliases: string[]; basePath: string }) {
+function BaseDescription(props: { description: string; aliases: string[]; basePath: string }) {
+  const text = props.description.trim() || '没有描述'
   const alias = props.aliases.length ? `别名：${props.aliases.join(', ')}` : ''
   return (
     <details className="zy-base-description">
       <summary>
-        <TwistIcon />
-        <span className="zy-base-summary">{props.summary}</span>
+        <span className="zy-base-summary">{text}</span>
+        <span className="zy-base-ellipsis" aria-hidden="true"> ...</span>
       </summary>
       <div className="zy-base-description-body">
-        {props.details || null}
         <div className="zy-help"><code>{props.basePath}</code></div>
         {alias ? <div className="zy-help">{alias}</div> : null}
       </div>

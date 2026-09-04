@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>知识库工作台原型 · 对照 DSH 0.1.1-rc.2</title>
+  <title>知源工作台原型 · 侧栏脚部入口 · 对照 DSH 0.1.1-rc.2</title>
   <style>
 body{--dsw-static-amber-100:#fef5e7;--dsw-static-amber-400:#f7ad31;--dsw-static-amber-500:#f59e0b;--dsw-static-amber-600:#dd8629;--dsw-static-amber-900:#27241f;--dsw-static-blue-100:#dbeafe;--dsw-static-blue-300:#93c5fd;--dsw-static-blue-400:#60a5fa;--dsw-static-blue-450:#4d93f8;--dsw-static-blue-500:#3b82f6;--dsw-static-blue-50:#eff6ff;--dsw-static-blue-50p:#eaf3ff;--dsw-static-blue-600:#2563eb;--dsw-static-blue-75:#e5f0ff;--dsw-static-blue-800:#1e40af;--dsw-static-blue-900:#0e3074;--dsw-static-blue-950:#172554;--dsw-static-deepseek-100:#e4edfd;--dsw-static-deepseek-200:#d3e2ff;--dsw-static-deepseek-300:#b7c8fe;--dsw-static-deepseek-400:#679efe;--dsw-static-deepseek-450:#5686fe;--dsw-static-deepseek-500:#4176e6;--dsw-static-deepseek-50:#edf3fe;--dsw-static-deepseek-600:#4868b2;--dsw-static-deepseek-700-delete:#2f4c8f;--dsw-static-deepseek-800:#34415b;--dsw-static-deepseek-900:#283142;--dsw-static-green-100:#e6faed;--dsw-static-green-400:#4ed17e;--dsw-static-green-500:#22c55e;--dsw-static-green-900:#233c2c;--dsw-static-neutral-00:#fff;--dsw-static-neutral-1000:#000;--dsw-static-neutral-100:#f5f5f5;--dsw-static-neutral-150:#ededed;--dsw-static-neutral-200:#e5e5e5;--dsw-static-neutral-250:#dcdcdc;--dsw-static-neutral-300:#d4d4d4;--dsw-static-neutral-400:#a2a4a6;--dsw-static-neutral-500:#7f8287;--dsw-static-neutral-50:#fafafa;--dsw-static-neutral-550:#65676b;--dsw-static-neutral-600:#545557;--dsw-static-neutral-700:#3c3c3d;--dsw-static-neutral-800:#292929;--dsw-static-neutral-850:#212123;--dsw-static-neutral-900:#0f0f0f;--dsw-static-neutral-bluish-00:#fff;--dsw-static-neutral-bluish-1000:#0f1115;--dsw-static-neutral-bluish-100:#ebeef2;--dsw-static-neutral-bluish-150:#e9ecf2;--dsw-static-neutral-bluish-200:#e1e5ee;--dsw-static-neutral-bluish-300:#cfd3d6;--dsw-static-neutral-bluish-400:#adb2b8;--dsw-static-neutral-bluish-500:#979da6;--dsw-static-neutral-bluish-50:#f9fafb;--dsw-static-neutral-bluish-600:#81858c;--dsw-static-neutral-bluish-60:#f5f6f7;--dsw-static-neutral-bluish-700:#61666b;--dsw-static-neutral-bluish-750:#43454a;--dsw-static-neutral-bluish-75:#f1f3f5;--dsw-static-neutral-bluish-800:#353638;--dsw-static-neutral-bluish-850:#2c2c2e;--dsw-static-neutral-bluish-875:#232324;--dsw-static-neutral-bluish-900:#1b1b1c;--dsw-static-neutral-bluish-950:#151517;--dsw-static-red-100:#fee2e2;--dsw-static-red-400:#f25a5a;--dsw-static-red-500:#ef4444;--dsw-static-red-50:#fef2f2;--dsw-static-red-600:#ec1313;--dsw-static-red-900:#570c0c}
 body[data-ds-dark-theme]{--dsw-static-amber-100:#fef5e7;--dsw-static-amber-400:#f7ad31;--dsw-static-amber-500:#f59e0b;--dsw-static-amber-600:#dd8629;--dsw-static-amber-900:#27241f;--dsw-static-blue-100:#dbeafe;--dsw-static-blue-300:#93c5fd;--dsw-static-blue-400:#60a5fa;--dsw-static-blue-450:#4d93f8;--dsw-static-blue-500:#3b82f6;--dsw-static-blue-50:#eff6ff;--dsw-static-blue-50p:#eaf3ff;--dsw-static-blue-600:#2563eb;--dsw-static-blue-75:#e5f0ff;--dsw-static-blue-800:#1e40af;--dsw-static-blue-900:#0e3074;--dsw-static-blue-950:#172554;--dsw-static-deepseek-100:#e4edfd;--dsw-static-deepseek-200:#d3e2ff;--dsw-static-deepseek-300:#b7c8fe;--dsw-static-deepseek-400:#679efe;--dsw-static-deepseek-450:#5686fe;--dsw-static-deepseek-500:#4176e6;--dsw-static-deepseek-50:#edf3fe;--dsw-static-deepseek-600:#4868b2;--dsw-static-deepseek-700-delete:#2f4c8f;--dsw-static-deepseek-800:#34415b;--dsw-static-deepseek-900:#283142;--dsw-static-green-100:#e6faed;--dsw-static-green-400:#4ed17e;--dsw-static-green-500:#22c55e;--dsw-static-green-900:#233c2c;--dsw-static-neutral-00:#fff;--dsw-static-neutral-1000:#000;--dsw-static-neutral-100:#f5f5f5;--dsw-static-neutral-150:#ededed;--dsw-static-neutral-200:#e5e5e5;--dsw-static-neutral-250:#dcdcdc;--dsw-static-neutral-300:#d4d4d4;--dsw-static-neutral-400:#a2a4a6;--dsw-static-neutral-500:#7f8287;--dsw-static-neutral-50:#fafafa;--dsw-static-neutral-550:#65676b;--dsw-static-neutral-600:#545557;--dsw-static-neutral-700:#3c3c3d;--dsw-static-neutral-800:#292929;--dsw-static-neutral-850:#212123;--dsw-static-neutral-900:#0f0f0f;--dsw-static-neutral-bluish-00:#fff;--dsw-static-neutral-bluish-1000:#0f1115;--dsw-static-neutral-bluish-100:#ebeef2;--dsw-static-neutral-bluish-150:#e9ecf2;--dsw-static-neutral-bluish-200:#e1e5ee;--dsw-static-neutral-bluish-300:#cfd3d6;--dsw-static-neutral-bluish-400:#adb2b8;--dsw-static-neutral-bluish-500:#979da6;--dsw-static-neutral-bluish-50:#f9fafb;--dsw-static-neutral-bluish-600:#81858c;--dsw-static-neutral-bluish-60:#f9fafb;--dsw-static-neutral-bluish-700:#61666b;--dsw-static-neutral-bluish-750:#43454a;--dsw-static-neutral-bluish-75:#f1f3f5;--dsw-static-neutral-bluish-800:#353638;--dsw-static-neutral-bluish-850:#2c2c2e;--dsw-static-neutral-bluish-875:#232324;--dsw-static-neutral-bluish-900:#1b1b1c;--dsw-static-neutral-bluish-950:#151517;--dsw-static-red-100:#fee2e2;--dsw-static-red-400:#f25a5a;--dsw-static-red-500:#ef4444;--dsw-static-red-50:#fef2f2;--dsw-static-red-600:#ec1313;--dsw-static-red-900:#570c0c}
@@ -88,6 +88,9 @@ body{
       grid-template-columns: 220px minmax(0, 1fr);
       background: var(--dsw-alias-bg-base);
     }
+    .app.has-details {
+      grid-template-columns: 220px minmax(0, 1fr) minmax(300px, 420px);
+    }
     .rail {
       background: var(--dsw-specific-sidebar-fill);
       border-right: 1px solid var(--dsw-alias-border-l1);
@@ -139,11 +142,17 @@ body{
       width: 100%;
     }
     .ws-item:hover { background: var(--dsw-specific-sidebar-nav-item-hover); }
-    .rail-foot { margin-top: auto; }
-    .set-trigger {
+    .rail-foot {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .zy-footer-action, .set-trigger {
+      box-sizing: border-box;
       width: calc(100% + 4px);
       height: 42px;
-      margin: 4px -2px;
+      margin: 4px -2px -4px;
       padding: 0 10px 0 8px;
       border: none;
       background: transparent;
@@ -153,9 +162,18 @@ body{
       gap: 8px;
       color: var(--dsw-alias-label-primary);
       font-size: 14px;
+      line-height: 22px;
+      overflow: hidden;
+      flex: none;
     }
-    .set-trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
-    .set-trigger.is-on { background: var(--dsw-specific-sidebar-nav-item-active); }
+    .set-trigger { margin: 4px -2px; }
+    .zy-footer-action:hover, .set-trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .zy-footer-action-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
 
     .center { display: flex; flex-direction: column; min-width: 0; background: var(--dsw-alias-bg-base); }
     .chat-head {
@@ -196,13 +214,23 @@ body{
       max-width: 520px;
     }
     .hit-card {
+      width: 100%;
+      text-align: left;
       cursor: pointer;
       border: 1px solid var(--dsw-alias-border-l2);
       border-radius: 8px;
       padding: 6px 10px;
       background: var(--dsw-alias-bg-layer-1);
+      color: inherit;
+      font: inherit;
+      margin: 0;
     }
     .hit-card:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .hit-card.is-selected,
+    .hit-card.is-selected:hover {
+      border-color: color-mix(in oklch, var(--dsw-alias-state-business-primary) 38%, var(--dsw-alias-border-l2));
+      background: color-mix(in oklch, var(--dsw-alias-state-business-primary) 8%, var(--dsw-alias-bg-layer-1));
+    }
     .hit-card .src {
       display: flex;
       align-items: center;
@@ -228,14 +256,141 @@ body{
       overflow: hidden;
     }
     .n-tag {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
       font-family: var(--ds-font-family-code);
       font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
       line-height: 18px;
-      background: var(--dsw-alias-markdown-citation);
+      color: color-mix(in oklch, var(--dsw-alias-state-business-primary) 78%, var(--dsw-alias-label-primary));
+      background: color-mix(in oklch, var(--dsw-alias-state-business-primary) 14%, var(--dsw-alias-bg-layer-1));
+      border: 1px solid color-mix(in oklch, var(--dsw-alias-state-business-primary) 22%, var(--dsw-alias-bg-layer-1));
       padding: 0 5px;
       border-radius: 4px;
       flex: none;
     }
+    .zy-preview-panel {
+      box-sizing: border-box;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--dsw-alias-bg-layer-1);
+      color: var(--dsw-alias-label-primary);
+      border-left: 1px solid var(--dsw-alias-border-l2);
+    }
+    .zy-preview-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      height: 45px;
+      min-height: 45px;
+      box-sizing: border-box;
+      padding: 12px 16px 0;
+      border-bottom: 1px solid transparent;
+      position: relative;
+      flex: none;
+      overflow: hidden;
+    }
+    .zy-preview-head:after {
+      content: "";
+      z-index: 0;
+      background: var(--dsw-alias-border-l2);
+      pointer-events: none;
+      height: 1px;
+      position: absolute;
+      bottom: 1px;
+      left: 0;
+      right: 0;
+    }
+    .zy-preview-head-copy { min-width: 0; flex: 1; }
+    .zy-preview-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 16px;
+    }
+    .zy-preview-filename {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .zy-preview-close {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--dsw-alias-label-tertiary);
+      font: inherit;
+      font-size: 20px;
+      line-height: 24px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+    .zy-preview-close:hover {
+      background: var(--dsw-alias-interactive-bg-hover);
+      color: var(--dsw-alias-label-primary);
+    }
+    .zy-preview-location {
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 12px;
+      line-height: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .zy-preview-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 0 16px 16px;
+    }
+    .zy-preview-doc {
+      margin: 0;
+      padding: 18px 6px 24px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      overflow: visible;
+    }
+    .zy-preview-doc mark {
+      background: color-mix(in oklch, var(--dsw-alias-state-warn-primary) 28%, var(--dsw-alias-bg-layer-1));
+      color: inherit;
+      border-radius: 3px;
+    }
+    .zy-preview-empty {
+      margin: auto;
+      max-width: 28ch;
+      padding: 24px 20px;
+      text-align: center;
+      color: var(--dsw-alias-label-tertiary);
+    }
+    .zy-preview-empty-title {
+      color: var(--dsw-alias-label-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 20px;
+    }
+    .zy-preview-empty p { margin: 6px 0 0; font-size: 12px; line-height: 18px; }
 
     .composer-wrap { padding: 0 24px 16px; display: flex; flex-direction: column; align-items: center; }
     .composer {
@@ -319,32 +474,65 @@ body{
       padding: 8px 16px;
     }
 
-    /* Settings overlay — SettingsRoot.module.css */
-    .overlay {
+    /* 侧栏脚部入口弹出的工作台弹层，不带设置左侧导航 */
+    .zy-footer-overlay {
       z-index: 1000;
       position: absolute;
       inset: 0;
       display: flex;
       justify-content: center;
       align-items: center;
+      animation: zy-footer-in .15s var(--ds-ease-in-out, ease);
     }
-    .mask {
+    .zy-footer-overlay[hidden] { display: none !important; }
+    @keyframes zy-footer-in { 0% { opacity: 0; } }
+    .zy-footer-mask {
       position: absolute;
       inset: 0;
       background: var(--dsw-alias-bg-mask-1);
       backdrop-filter: var(--dsw-mask-blur);
     }
-    .panel {
+    .zy-footer-panel {
       z-index: 1;
+      box-sizing: border-box;
       position: relative;
-      width: min(960px, calc(100% - 48px));
-      height: min(720px, calc(100% - 48px));
+      display: flex;
+      flex-direction: column;
+      width: 800px;
+      max-width: calc(100% - 48px);
+      height: min(800px, calc(100% - 48px));
+      padding: 20px 24px 24px;
+      border-radius: 24px;
       background: var(--dsw-alias-bg-layer-2);
       box-shadow: var(--dsw-shadow-lv3);
-      border-radius: 24px;
-      display: flex;
       overflow: hidden;
     }
+    .zy-footer-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 2;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 28px;
+      padding: 0;
+      background: transparent;
+      color: var(--dsw-alias-label-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .zy-footer-close:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .zy-footer-panel-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .zy-footer-panel-body .section-head { padding-right: 36px; }
     .nav {
       width: 188px;
       flex: none;
@@ -827,10 +1015,10 @@ body{
 <body>
   <div class="proto-bar">
     <strong>原型</strong>
-    <span>token 来自本机 DSH 0.1.1-rc.2</span>
+    <span>入口：侧栏脚部「知源」· 对话预览：右侧分区 · 2026-09-04</span>
     <button class="chip-btn" data-scene="chat" type="button">对话命中卡</button>
-    <button class="chip-btn" data-scene="b" data-empty="false" type="button" aria-pressed="true">设置工作台</button>
-    <button class="chip-btn" data-scene="b" data-empty="true" type="button">设置工作台空库状态</button>
+    <button class="chip-btn" data-scene="b" data-empty="false" type="button" aria-pressed="true">知源工作台</button>
+    <button class="chip-btn" data-scene="b" data-empty="true" type="button">知源工作台空库</button>
     <span class="grow"></span>
     <button class="chip-btn" id="themeToggle" type="button">深色</button>
   </div>
@@ -859,45 +1047,25 @@ body{
           <button class="new-session" type="button">新会话</button>
           <div class="ws-label">工作区</div>
           <button class="ws-item" type="button">~/proj</button>
-          <div class="rail-foot"><button class="set-trigger is-on" type="button">设置</button></div>
+          <div class="rail-foot">
+            <button class="zy-footer-action" type="button" data-open-zhiyuan="true" aria-label="知源" aria-haspopup="dialog" aria-expanded="true">
+              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>
+              <span class="zy-footer-action-label">知源</span>
+            </button>
+            <button class="set-trigger" type="button">设置</button>
+          </div>
         </aside>
         <div class="center">
           <div class="thread"><div class="thread-inner"><div class="user-row"><div class="bubble">对话还在背后，不抢会话。</div></div></div></div>
         </div>
       </div>
-      <div class="overlay" role="dialog" aria-label="设置">
-        <div class="mask"></div>
-        <div class="panel">
-          <nav class="nav">
-            <div class="nav-title">设置</div>
-            <div class="nav-list">
-              <button class="nav-cell" type="button">
-                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v3l2 1.2"/></svg>
-                通用设置
-              </button>
-              <button class="nav-cell active" type="button">
-                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>
-                知源
-              </button>
-              <button class="nav-cell" type="button">
-                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="10" height="10" rx="2"/><path d="M6 8h4"/></svg>
-                模型
-              </button>
-              <button class="nav-cell" type="button">
-                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 2.8v2.2M8 11v2.2M2.8 8h2.2M11 8h2.2"/></svg>
-                Agent 预设
-              </button>
-              <button class="nav-cell" type="button">
-                <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 5h8v7H4zM6 5V4h4v1"/></svg>
-                插件
-              </button>
-            </div>
-          </nav>
-          <div class="content">
-            <div class="header"><button class="close" type="button" aria-label="关闭">
-              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-            </button></div>
-            <div class="options">
+      <div class="zy-footer-overlay" id="zhiyuanOverlay" role="presentation">
+        <div class="zy-footer-mask" id="zhiyuanMask" aria-hidden="true"></div>
+        <div class="zy-footer-panel" role="dialog" aria-modal="true" aria-label="知源">
+          <button class="zy-footer-close" id="zhiyuanClose" type="button" aria-label="关闭">
+            <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+          </button>
+          <div class="zy-footer-panel-body">
               <div class="section">
                 <div class="section-head">
                   <h1 class="heading" style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>知源</h1>
@@ -1090,10 +1258,10 @@ body{
                     <p>斜杠命令 <code>/kb ingest</code> 与按钮同一套字段。</p>
 
                     <h3>3. 用自然语言问</h3>
-                    <p>在对话里直接问，不必先打开设置。点名库更准；没点名就靠描述选库。</p>
+                    <p>在对话里直接问，不必先打开工作台。点名库更准；没点名就靠描述选库。</p>
                     <div class="demo">
                       <div class="q">去年那个供应商合同的违约条款写了什么？</div>
-                      <p class="a">对上工作库 → 命中卡。点卡只读预览原文，该句高亮。</p>
+                      <p class="a">对上工作库 → 命中卡。点卡在右侧分区只读预览原文，该句高亮。</p>
                     </div>
                     <div class="demo">
                       <div class="q">上个月水电费多少？</div>
@@ -1103,24 +1271,29 @@ body{
                       <div class="q">用 work 库查 termination 条款</div>
                       <p class="a">已经点名库，不再猜。只搜 work。</p>
                     </div>
-                    <p>命中卡可叠多条。点任意一条看原文。答案里的 [1] 对应卡片编号。库里没有的内容不会编出来。</p>
+                    <p>命中卡可叠多条。点任意一条在右侧看原文。答案里的 1 对应卡片编号。库里没有的内容不会编出来。</p>
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       </div>
     </section>
 
     <section class="scene" id="scene-chat">
-      <div class="app">
+      <div class="app has-details" id="chatApp">
         <aside class="rail">
           <div class="brand-row">DSH</div>
           <button class="new-session" type="button">新会话</button>
           <div class="ws-label">工作区</div>
           <button class="ws-item" type="button">~/proj</button>
-          <div class="rail-foot"><button class="set-trigger" type="button" id="openSettingsFromChat">设置</button></div>
+          <div class="rail-foot">
+            <button class="zy-footer-action" type="button" data-open-zhiyuan="true" aria-label="知源" aria-haspopup="dialog" aria-expanded="false">
+              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>
+              <span class="zy-footer-action-label">知源</span>
+            </button>
+            <button class="set-trigger" type="button">设置</button>
+          </div>
         </aside>
         <div class="center">
           <div class="chat-head">供应商合同违约条款 <span class="side">聊天 | 轨迹</span></div>
@@ -1129,20 +1302,20 @@ body{
               <div class="user-row"><div class="bubble">去年那个供应商合同的违约条款写了什么？</div></div>
               <div class="bot">模型先 <code>kb_list_bases</code> 再一次 <code>kb_search</code>（aliases：违约、解约、termination、违约金）。</div>
               <div class="hit-list">
-                <article class="hit-card" data-file="供应商.md" data-path="work / 合同/2024 / 供应商.md" data-hl="若乙方违约，甲方可解除合同并收取违约金。">
-                  <div class="src"><span class="n-tag">[1]</span><span class="path">work / 合同/2024 / 供应商.md</span></div>
+                <button class="hit-card is-selected" type="button" aria-pressed="true" data-n="1" data-file="供应商.md" data-path="合同/2024/供应商.md" data-start="3" data-end="4" data-match="3" data-hl="若乙方违约，甲方可解除合同并收取违约金。">
+                  <div class="src"><span class="n-tag">1</span><span class="path">合同/2024/供应商.md:3–4</span></div>
                   <div class="quote">若乙方违约，甲方可解除合同并收取违约金。</div>
-                </article>
-                <article class="hit-card" data-file="供应商.md" data-path="work / 合同/2024 / 供应商.md" data-hl="`termination` 条款见附件三。">
-                  <div class="src"><span class="n-tag">[2]</span><span class="path">work / 合同/2024 / 供应商.md</span></div>
+                </button>
+                <button class="hit-card" type="button" aria-pressed="false" data-n="2" data-file="供应商.md" data-path="合同/2024/供应商.md" data-start="4" data-end="4" data-match="4" data-hl="`termination` 条款见附件三。">
+                  <div class="src"><span class="n-tag">2</span><span class="path">合同/2024/供应商.md:4–4</span></div>
                   <div class="quote">termination 条款见附件三。</div>
-                </article>
-                <article class="hit-card" data-file="框架协议.md" data-path="work / 合同/2024 / 框架协议.md" data-hl="双方就年度采购达成框架约定，具体订单另行签署。">
-                  <div class="src"><span class="n-tag">[3]</span><span class="path">work / 合同/2024 / 框架协议.md</span></div>
+                </button>
+                <button class="hit-card" type="button" aria-pressed="false" data-n="3" data-file="框架协议.md" data-path="合同/2024/框架协议.md" data-start="3" data-end="3" data-match="3" data-hl="双方就年度采购达成框架约定，具体订单另行签署。">
+                  <div class="src"><span class="n-tag">3</span><span class="path">合同/2024/框架协议.md:3–3</span></div>
                   <div class="quote">双方就年度采购达成框架约定，具体订单另行签署。</div>
-                </article>
+                </button>
               </div>
-              <div class="bot">根据 [1]：乙方违约时甲方可解除合同并收取违约金。termination 条款见附件三。</div>
+              <div class="bot">根据 <span class="n-tag">1</span>：乙方违约时甲方可解除合同并收取违约金。termination 条款见附件三。</div>
             </div>
           </div>
           <div class="composer-wrap">
@@ -1158,6 +1331,25 @@ body{
             </div>
           </div>
         </div>
+        <aside class="zy-preview-panel" id="detailsPanel" aria-label="供应商.md 引用 1">
+          <div class="zy-preview-head">
+            <div class="zy-preview-head-copy">
+              <div class="zy-preview-title">
+                <span class="zy-preview-filename" id="detailsFile">供应商.md</span>
+                <span class="n-tag" id="detailsN">1</span>
+              </div>
+              <div class="zy-preview-location" id="detailsLoc">第 3–4 行 · 命中第 3 行</div>
+            </div>
+            <button class="zy-preview-close" id="detailsClose" type="button" aria-label="关闭预览">×</button>
+          </div>
+          <div class="zy-preview-body" id="detailsBody">
+            <div class="zy-preview-empty" id="detailsEmpty" hidden>
+              <div class="zy-preview-empty-title">选择一条命中结果</div>
+              <p>点击对话中的引用卡片，在这里查看命中附近的原文。</p>
+            </div>
+            <pre class="zy-preview-doc" id="detailsDoc"></pre>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -1166,10 +1358,18 @@ body{
         <aside class="rail">
           <div class="brand-row">DSH</div>
           <button class="new-session" type="button">新会话</button>
-          <div class="rail-foot"><button class="set-trigger" type="button">设置</button></div>
+          <div class="ws-label">工作区</div>
+          <button class="ws-item" type="button">~/proj</button>
+          <div class="rail-foot">
+            <button class="zy-footer-action" type="button" data-open-zhiyuan="true" aria-label="知源" aria-haspopup="dialog" aria-expanded="false">
+              <svg class="ico" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3.15 1.55h9.7c.8 0 1.45.65 1.45 1.45v9.9c0 .8-.65 1.45-1.45 1.45H3.15c-.8 0-1.45-.65-1.45-1.45V3c0-.8.65-1.45 1.45-1.45Zm0 1.4c-.03 0-.05.02-.05.05v9.9c0 .03.02.05.05.05h9.7c.03 0 .05-.02.05-.05V3c0-.03-.02-.05-.05-.05H3.15Z"/><path fill="currentColor" d="M4.5 3.15h1.25v8.8H4.5z"/><path fill="currentColor" d="M9.95 1.55h1.45v4.25l-.725-.52-.725.52V1.55z"/></svg>
+              <span class="zy-footer-action-label">知源</span>
+            </button>
+            <button class="set-trigger" type="button">设置</button>
+          </div>
         </aside>
         <div class="center">
-          <div class="later-banner">后做：顶栏跳转、输入框内当前库芯片、输入框下只读状态。导入和建库仍在设置 → 知源。</div>
+          <div class="later-banner">后做：顶栏跳转、输入框内当前库芯片、输入框下只读状态。导入和建库仍在侧栏脚部 → 知源。</div>
           <div class="chat-head">供应商合同违约条款 <button class="chip" type="button" id="headerKb">知识库</button> <span class="side">聊天 | 轨迹</span></div>
           <div class="thread"><div class="thread-inner"><div class="user-row"><div class="bubble">消息流不变。</div></div></div></div>
           <div class="composer-wrap">
@@ -1345,6 +1545,11 @@ body{
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
+    function setWorkbenchOpen(open) {
+      const overlay = $("#zhiyuanOverlay");
+      if (overlay) overlay.hidden = !open;
+      $$("[data-open-zhiyuan]").forEach((b) => b.setAttribute("aria-expanded", String(!!open)));
+    }
     function showScene(id, empty) {
       $$(".scene").forEach((el) => el.classList.toggle("is-on", el.id === "scene-" + id));
       $$("[data-scene]").forEach((b) => {
@@ -1357,6 +1562,11 @@ body{
         $("#filled").hidden = !!empty;
         $("#empty").hidden = !empty;
         showPanel("lib");
+        setWorkbenchOpen(true);
+      }
+      if (id === "chat") {
+        const selected = $(".hit-card.is-selected");
+        if (selected) openDetails(selected);
       }
     }
     $$("[data-scene]").forEach((b) => {
@@ -1490,8 +1700,7 @@ body{
     function escapeHtml(s) {
       return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
-    function setPreviewText(text, highlight) {
-      const el = $("#previewBody");
+    function fillHighlighted(el, text, highlight) {
       if (!highlight) {
         el.textContent = text;
         return;
@@ -1503,8 +1712,55 @@ body{
       }
       el.innerHTML =
         escapeHtml(text.slice(0, i)) +
-        "<mark id=\"previewHit\">" + escapeHtml(text.slice(i, i + highlight.length)) + "</mark>" +
+        "<mark>" + escapeHtml(text.slice(i, i + highlight.length)) + "</mark>" +
         escapeHtml(text.slice(i + highlight.length));
+    }
+    function setPreviewText(text, highlight) {
+      fillHighlighted($("#previewBody"), text, highlight);
+    }
+    function openDetails(card) {
+      const app = $("#chatApp");
+      const panel = $("#detailsPanel");
+      const file = card.dataset.file;
+      const n = card.dataset.n;
+      const start = card.dataset.start;
+      const end = card.dataset.end;
+      const match = card.dataset.match;
+      $$(".hit-card").forEach((el) => {
+        const on = el === card;
+        el.classList.toggle("is-selected", on);
+        el.setAttribute("aria-pressed", String(on));
+      });
+      app.classList.add("has-details");
+      panel.hidden = false;
+      panel.setAttribute("aria-label", file + " 引用 " + n);
+      $("#detailsFile").textContent = file;
+      $("#detailsN").hidden = false;
+      $("#detailsN").textContent = n;
+      $("#detailsLoc").hidden = false;
+      $("#detailsLoc").textContent = "第 " + start + "–" + end + " 行 · 命中第 " + match + " 行";
+      $("#detailsEmpty").hidden = true;
+      $("#detailsDoc").hidden = false;
+      fillHighlighted($("#detailsDoc"), sources[file] || "", card.dataset.hl);
+      const hit = panel.querySelector("mark");
+      if (hit) hit.scrollIntoView({ block: "center" });
+    }
+    function closeDetails() {
+      const app = $("#chatApp");
+      const panel = $("#detailsPanel");
+      app.classList.remove("has-details");
+      panel.hidden = true;
+      panel.setAttribute("aria-label", "预览");
+      $$(".hit-card").forEach((el) => {
+        el.classList.remove("is-selected");
+        el.setAttribute("aria-pressed", "false");
+      });
+      $("#detailsFile").textContent = "选择引用";
+      $("#detailsN").hidden = true;
+      $("#detailsLoc").hidden = true;
+      $("#detailsEmpty").hidden = false;
+      $("#detailsDoc").hidden = true;
+      $("#detailsDoc").textContent = "";
     }
     function getPreviewText() {
       return $("#previewBody").innerText.replace(/\u00a0/g, " ");
@@ -1520,7 +1776,7 @@ body{
       body.classList.toggle("is-ro", !canEdit);
       $("#previewFoot").hidden = !canEdit;
       dlgP.showModal();
-      const hit = $("#previewHit");
+      const hit = $("#previewBody mark");
       if (hit) hit.scrollIntoView({ block: "center" });
       else if (canEdit) body.focus();
     }
@@ -1603,18 +1859,29 @@ body{
     function toWorkbench() {
       showScene("b", false);
     }
-    $$(".hit-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const name = card.dataset.file;
-        let fileEl = null;
-        $$(".file").forEach((el) => {
-          if (el.querySelector("span") && el.querySelector("span").textContent.trim() === name) fileEl = el;
-        });
-        openPreview(name, card.dataset.path, fileEl, card.dataset.hl, false);
-      });
+    $$("[data-open-zhiyuan]").forEach((b) => {
+      b.addEventListener("click", toWorkbench);
     });
+    function closeWorkbench() {
+      setWorkbenchOpen(false);
+    }
+    $("#zhiyuanClose").addEventListener("click", closeWorkbench);
+    $("#zhiyuanMask").addEventListener("click", closeWorkbench);
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (document.querySelector("dialog[open]")) return;
+      if ($("#zhiyuanOverlay") && !$("#zhiyuanOverlay").hidden) {
+        closeWorkbench();
+        return;
+      }
+      if ($("#chatApp") && $("#chatApp").classList.contains("has-details")) closeDetails();
+    });
+    $$(".hit-card").forEach((card) => {
+      card.addEventListener("click", () => openDetails(card));
+    });
+    $("#detailsClose").addEventListener("click", closeDetails);
+    openDetails($(".hit-card.is-selected") || $(".hit-card"));
     $("#headerKb").addEventListener("click", toWorkbench);
-    $("#openSettingsFromChat").addEventListener("click", toWorkbench);
     $("#plus").addEventListener("click", () => $("#slash").classList.toggle("is-on"));
 
     $("#themeToggle").addEventListener("click", () => {

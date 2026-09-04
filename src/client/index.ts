@@ -1,11 +1,10 @@
-import { createSettingsSection } from './settings/SettingsSection.tsx'
 import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
 import { createPreviewController, type PreviewSelection } from './toolview/preview/preview-state.ts'
-import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL } from '../identity.ts'
+import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL } from '../identity.ts'
+import { createFooterAction } from './FooterAction.tsx'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './host-payload.ts'
-import { installZhiyuanNavIcon } from './nav-icon.ts'
 import { disposeSettingsStyles } from './settings/styles.ts'
 
 export const name = PACKAGE_NAME
@@ -41,13 +40,13 @@ export function apply(ctx: {
   const KbSearchView = createKbSearchView(preview)
   const KbPreviewPanel = createKbPreviewPanel(preview)
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: SECTION_ID,
-    order: 35,
+  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: FOOTER_ACTION_ID,
+    order: FOOTER_ACTION_ORDER,
     label: () => SECTION_LABEL,
     registrant: PACKAGE_NAME,
-  }, createSettingsSection(ctx.connection)))
+  }, createFooterAction(ctx.connection)))
 
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
     name: 'tool.call.toolview',
@@ -64,14 +63,10 @@ export function apply(ctx: {
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => {
-      const offNav = installZhiyuanNavIcon(() => SECTION_LABEL)
       return () => {
         preview.dispose()
-        offNav()
         disposeSettingsStyles()
       }
     })
-  } else {
-    installZhiyuanNavIcon(() => SECTION_LABEL)
   }
 }

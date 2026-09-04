@@ -3,6 +3,8 @@
 export const PACKAGE_NAME = 'dsh-zhiyuan'
 export const SECTION_ID = 'knowledge'
 export const SECTION_LABEL = '知源'
+export const FOOTER_ACTION_ID = 'zhiyuan'
+export const FOOTER_ACTION_ORDER = 50
 export const TARGET_DSH_VERSION = '0.1.1-rc.2'
 export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'

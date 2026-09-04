@@ -165,7 +165,7 @@ export function ImportDialog(props: {
 }
 
 export function SearchDialog(props: {
-  baseId: string
+  baseTitle: string
   query: string
   hits: SearchHit[]
   warning: string
@@ -176,7 +176,7 @@ export function SearchDialog(props: {
   onOpenHit: (hit: SearchHit) => void
 }) {
   return (
-    <Modal open onClose={props.onClose} title={`搜索  ${props.baseId}`} className="zy-modal-form">
+    <Modal open onClose={props.onClose} title={`搜索 ${props.baseTitle}`} className="zy-modal-form">
       <form
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
           props.onSearch(String(readFormData(event).get('query') ?? ''))
