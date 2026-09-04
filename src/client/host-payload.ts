@@ -52,6 +52,7 @@ function isSearchHit(value: unknown): value is SearchHit {
     && hit.matchLine >= hit.startLine
     && hit.matchLine <= hit.endLine
     && typeof hit.excerpt === 'string'
+    && (hit.matchedExcerpt === undefined || typeof hit.matchedExcerpt === 'string')
     && (hit.matchColumnByte === undefined || isPositiveInteger(hit.matchColumnByte))
     && (hit.sourceFingerprint === undefined || typeof hit.sourceFingerprint === 'string')
 }

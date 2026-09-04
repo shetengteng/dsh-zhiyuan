@@ -3,6 +3,7 @@ import { readCatalog, withCatalogTx } from './catalog.ts'
 import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, type EntryPreviewOptions } from './content/host-api.ts'
 import { parseCsvEntryPatch } from './content/csv/server/patch-schema.ts'
 import { buildIngestInput, ingest } from './ingest.ts'
+import { ingestDroppedBytes } from './ingest-dropped.ts'
 import { CSV_EDITOR_PAGE_SIZE } from './identity.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
@@ -160,7 +161,18 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
       if (kind !== 'file' && kind !== 'dir') throw new KbError('invalid_field', 'kind 必须是 file 或 dir')
       return pickSource(kind)
     }
-    case 'ingest':
+    case 'ingest': {
+      const sourceBase64 = optionalString(data, 'sourceBase64')
+      if (sourceBase64 !== undefined) {
+        return jobs.enqueue('ingest', () => ingestDroppedBytes(dataRoot, {
+          baseId: requireString(data, 'baseId'),
+          destCategory: requireString(data, 'destCategory'),
+          fileName: requireString(data, 'sourceName'),
+          bytes: Buffer.from(sourceBase64, 'base64'),
+          preserveTree: optionalBoolean(data, 'preserveTree', false),
+          createMissing: optionalBoolean(data, 'createMissing', true),
+        }))
+      }
       return jobs.enqueue('ingest', () => ingest(dataRoot, buildIngestInput({
         baseId: requireString(data, 'baseId'),
         sourcePath: requireString(data, 'sourcePath'),
@@ -168,6 +180,7 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
         preserveTree: optionalBoolean(data, 'preserveTree', false),
         createMissing: optionalBoolean(data, 'createMissing', true),
       })))
+    }
     case 'search':
       return searchBase(dataRoot, {
         baseId: requireString(data, 'baseId'),

@@ -1,9 +1,9 @@
 import { useRef } from 'react'
-import { Button, Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
+import { WorkbenchModal } from './WorkbenchModal.tsx'
 
 /** 设置工作台共用的控件与弹框。 */
-export { Modal }
 
 export function Field(props: { label: string; help?: string; children: unknown }) {
   return (
@@ -42,7 +42,7 @@ export function CreateDialog(props: {
 }) {
   const form = useRef<HTMLFormElement>(null)
   return (
-    <Modal
+    <WorkbenchModal
       open
       onClose={props.onClose}
       title="新建知识库"
@@ -76,7 +76,7 @@ export function CreateDialog(props: {
         </Field>
         <Note text={props.error} />
       </form>
-    </Modal>
+    </WorkbenchModal>
   )
 }
 
@@ -90,7 +90,7 @@ export function EditDialog(props: {
 }) {
   const form = useRef<HTMLFormElement>(null)
   return (
-    <Modal
+    <WorkbenchModal
       open
       onClose={props.onClose}
       title="编辑知识库"
@@ -125,7 +125,7 @@ export function EditDialog(props: {
         </Field>
         <Note text={props.error} />
       </form>
-    </Modal>
+    </WorkbenchModal>
   )
 }
 
@@ -136,7 +136,7 @@ export function ConfirmDialog(props: {
   onConfirm: () => void
 }) {
   return (
-    <Modal
+    <WorkbenchModal
       open
       onClose={props.onClose}
       title="确认删除"

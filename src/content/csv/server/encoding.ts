@@ -1,5 +1,7 @@
 import { open } from 'node:fs/promises'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../../../identity.ts'
+import { encodeUtf8CsvWithBom, normalizeCsvNewlines } from '../../shared/utf8.ts'
+import { decodeCsvBytes } from './decode.ts'
 
 export type ValidatedCsv = {
   bytes: Buffer
@@ -8,10 +10,10 @@ export type ValidatedCsv = {
 }
 
 export type CsvValidation =
-  | { ok: true; value: ValidatedCsv }
+  | { ok: true; value: ValidatedCsv; warnings?: string[] }
   | {
     ok: false
-    code: 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'file_too_large'
+    code: 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'file_too_large' | 'encoding_unsupported'
     message: string
   }
 
@@ -74,6 +76,21 @@ export async function readValidatedUtf8Csv(sourcePath: string, maxBytes: number)
   }
 
   return validateUtf8CsvBytes(bytes, maxBytes)
+}
+
+/** 导入时解码、换行归一并写成 UTF-8+BOM，再做与库内读取相同的校验。 */
+export async function readNormalizedImportCsv(sourcePath: string, maxBytes: number): Promise<CsvValidation> {
+  const sourceBytes = await readBoundedBuffer(sourcePath, maxBytes)
+  if (!sourceBytes) {
+    return { ok: false, code: 'file_too_large', message: '文件超过大小上限，未导入' }
+  }
+  const decoded = decodeCsvBytes(sourceBytes)
+  if (!decoded.ok) return decoded
+  const text = normalizeCsvNewlines(decoded.text)
+  if (!text) return { ok: false, code: 'csv_encoding_invalid', message: 'CSV 解码后为空，未导入' }
+  const normalized = validateUtf8CsvBytes(encodeUtf8CsvWithBom(text), maxBytes)
+  if (!normalized.ok) return normalized
+  return { ok: true, value: normalized.value, warnings: decoded.warnings }
 }
 
 /** 导入与原地写入 CSV 前校验字节。 */

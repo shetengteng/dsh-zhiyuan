@@ -107,6 +107,7 @@ function isIngestFailureCode(code: string): code is NonNullable<IngestFileResult
     || code === 'csv_encoding_invalid'
     || code === 'csv_control_character'
     || code === 'csv_line_too_long'
+    || code === 'encoding_unsupported'
     || code === 'io_failed'
 }
 
@@ -159,6 +160,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
     })
     for (const fileResult of fileResults) {
       result.files.push(fileResult)
+      if (fileResult.warnings?.length) result.warnings.push(...fileResult.warnings)
       if (fileResult.status === 'skipped') result.skipped += 1
       else if (fileResult.status === 'failed') result.failed += 1
       else {
@@ -267,6 +269,7 @@ async function ingestPrepared(
       sourceRelPath: sourceRelativePath,
       status: 'skipped',
       reason: '同指纹已在库中',
+      warnings: prepared.warnings,
     }
   }
   if (!prepared.outputName || basename(prepared.outputName) !== prepared.outputName) {
@@ -291,5 +294,6 @@ async function ingestPrepared(
     destinationPath: relativeDestinationPath,
     status,
     writtenBytes: writtenBytes || prepared.byteLength,
+    warnings: prepared.warnings,
   }
 }

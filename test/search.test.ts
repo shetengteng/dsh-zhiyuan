@@ -45,6 +45,18 @@ test('命中展示使用实际命中行，而不是上下文第一行', () => {
   }), '命中的 shadcn 行')
 })
 
+test('命中展示优先使用格式模块给出的 matchedExcerpt', () => {
+  assert.equal(matchedExcerptLine({
+    n: 1,
+    path: 'table.csv',
+    startLine: 2,
+    endLine: 3,
+    matchLine: 3,
+    excerpt: '列: 名称 | 金额\n名称: 甲公司 | 金额: 120\n名称: 乙公司 | 金额: 80',
+    matchedExcerpt: '名称: 乙公司 | 金额: 80',
+  }), '名称: 乙公司 | 金额: 80')
+})
+
 test('空库搜索 → 空列表', async () => {
   const root = await import('node:fs/promises').then((fs) => fs.mkdtemp(join(tmpdir(), 'zy-se-')))
   const base = await createBase(root, { title: '工作库', description: '描述' })

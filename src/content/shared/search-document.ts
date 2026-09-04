@@ -1,16 +1,45 @@
 import { createHash } from 'node:crypto'
 import { splitPhysicalLines } from './line-window.ts'
 
-export type SearchExcerpt = {
+export type SearchExcerptSpan = {
   startLine: number
   endLine: number
   excerpt: string
 }
 
+export type SearchExcerpt = SearchExcerptSpan & {
+  /** 命中行展示文本，由格式模块决定 */
+  matchedExcerpt: string
+}
+
 export type SearchDocument = {
   fingerprint: string
   excerptAt: (matchLine: number, radius: number) => SearchExcerpt
+  mergeExcerpt: (first: SearchExcerptSpan, second: SearchExcerptSpan, rangeStart: number, rangeEnd: number) => string
   normalizeColumnByte: (line: number, columnByte: number) => number | undefined
+  warnings?: string[]
+}
+
+/** 按物理行窗口拼接相邻 excerpt。 */
+export function mergePhysicalExcerpts(
+  first: SearchExcerptSpan,
+  second: SearchExcerptSpan,
+  rangeStart: number,
+  rangeEnd: number,
+): string {
+  const firstLines = first.excerpt.split(/\r?\n/)
+  const secondLines = second.excerpt.split(/\r?\n/)
+  const mergedLines: string[] = []
+  for (let line = rangeStart; line <= rangeEnd; line += 1) {
+    if (line >= second.startLine && line <= second.endLine) {
+      mergedLines.push(secondLines[line - second.startLine] ?? '')
+    } else if (line >= first.startLine && line <= first.endLine) {
+      mergedLines.push(firstLines[line - first.startLine] ?? '')
+    } else {
+      mergedLines.push('')
+    }
+  }
+  return mergedLines.join('\n')
 }
 
 export function createPhysicalLineSearchDocument(bytes: Buffer, text: string): SearchDocument {
@@ -22,8 +51,14 @@ export function createPhysicalLineSearchDocument(bytes: Buffer, text: string): S
       const safeLine = Math.min(Math.max(matchLine, 1), Math.max(1, lines.length))
       const startLine = Math.max(1, safeLine - radius)
       const endLine = Math.min(lines.length, safeLine + radius)
-      return { startLine, endLine, excerpt: lines.slice(startLine - 1, endLine).join('\n') }
+      return {
+        startLine,
+        endLine,
+        excerpt: lines.slice(startLine - 1, endLine).join('\n'),
+        matchedExcerpt: lines[safeLine - 1] ?? '',
+      }
     },
+    mergeExcerpt: mergePhysicalExcerpts,
     normalizeColumnByte: (line, columnByte) => normalizeColumnByte(bytes, line, columnByte),
   }
 }

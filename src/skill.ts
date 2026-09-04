@@ -21,7 +21,7 @@ const SKILL_BODY = [
   '- 命中：必须基于返回的 excerpt 回答，并带文件路径、行号和片段编号；引用编号使用 Markdown 行内代码包裹，例如命中了 `1` 处，不加方括号；不能只报路径。',
   '',
   '## 导入',
-  '- 当前支持 md / txt / markdown，以及严格 UTF-8 的 csv；CSV 可在知源中表格编辑。GBK/GB18030/UTF-16 与 XLSX 转换属于后续阶段。',
+  '- 当前支持 md / txt / markdown / csv。CSV 导入时转成 UTF-8（含 GBK、UTF-16），可在知源中表格编辑。XLSX 转换属于后续阶段。',
   '- 用户话里没有库名就先问。禁止猜一个新库。禁止无 destCategory 就散落。',
   '- 导入不会自动建库。库不存在时提示先建库。',
 ].join('\n')
@@ -29,7 +29,7 @@ const SKILL_BODY = [
 export const ZHIYUAN_SKILL = {
   name: 'zhiyuan-kb',
   description: '从用户指定的知识库里查找原文片段。没点名库时先 kb_list_bases；没命中不得说根据知识库。',
-  whenToUse: '用户询问已导入知识库中的事实、条款、纪要，或要求导入本机 md/txt/UTF-8 csv。',
+  whenToUse: '用户询问已导入知识库中的事实、条款、纪要，或要求导入本机 md/txt/csv。',
   source: 'runtime' as const,
   content: SKILL_BODY,
 }

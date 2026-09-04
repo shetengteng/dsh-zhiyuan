@@ -86,3 +86,8 @@ declare module '@deepseek-ai/dsh-client-ui-primitives' {
     className?: string
   }): ReactElement
 }
+
+declare module 'react-dom' {
+  import type { ReactElement, ReactNode } from 'react'
+  export function createPortal(children: ReactNode, container: Element | DocumentFragment): ReactElement
+}

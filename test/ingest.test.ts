@@ -8,6 +8,7 @@ import { createBase } from '../src/bases.ts'
 import { lastDestCategory } from '../src/catalog.ts'
 import { resolveIngestTo } from '../src/commands.ts'
 import { ingest } from '../src/ingest.ts'
+import { ingestDroppedBytes, sanitizeDroppedFileName } from '../src/ingest-dropped.ts'
 import { KbError } from '../src/types.ts'
 
 async function ready() {
@@ -132,4 +133,23 @@ test('缺 --to 复用上次类目；没有上次则报错', async () => {
   assert.equal(await resolveIngestTo(root, baseId, undefined, true), '')
   assert.equal(await resolveIngestTo(root, baseId, '会议', false), '会议')
   await rm(root, { recursive: true, force: true })
+})
+
+test('拖入字节按文件名写入库内', async () => {
+  const { root, baseId } = await ready()
+  const result = await ingestDroppedBytes(root, {
+    baseId,
+    destCategory: '合同/2024',
+    fileName: '供应商台账.csv',
+    bytes: Buffer.from('名称,金额\n甲,120\n', 'utf8'),
+  })
+  assert.equal(result.failed, 0)
+  assert.ok(result.copied.some((path) => path.endsWith('供应商台账.csv')))
+  assert.equal(existsSync(join(root, 'bases', baseId, '合同', '2024', '供应商台账.csv')), true)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('拖入文件名拒绝路径段', () => {
+  assert.equal(sanitizeDroppedFileName('a/../b.csv'), 'b.csv')
+  assert.throws(() => sanitizeDroppedFileName('..'), KbError)
 })

@@ -13,6 +13,7 @@ export type PreparedEntry = {
   byteLength: number
   digest: string
   content: PreparedContent
+  warnings?: string[]
 }
 
 export async function writePreparedEntry(destinationPath: string, entry: PreparedEntry): Promise<number> {

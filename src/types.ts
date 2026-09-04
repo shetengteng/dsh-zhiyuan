@@ -61,6 +61,8 @@ export type SearchHit = {
   endLine: number
   matchLine: number
   excerpt: string
+  /** 命中行展示文本；缺省时按物理行窗口从 excerpt 切片 */
+  matchedExcerpt?: string
   matchColumnByte?: number
   sourceFingerprint?: string
 }
@@ -95,9 +97,10 @@ export type IngestFileResult = {
   sourceRelPath: string
   destinationPath?: string
   status: 'copied' | 'skipped' | 'renamed' | 'failed'
-  code?: 'ext_denied' | 'file_too_large' | 'quota' | 'path_escape' | 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'io_failed'
+  code?: 'ext_denied' | 'file_too_large' | 'quota' | 'path_escape' | 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'encoding_unsupported' | 'io_failed'
   reason?: string
   writtenBytes?: number
+  warnings?: string[]
 }
 
 export type IngestResult = {
@@ -150,6 +153,7 @@ export type KbErrorCode =
   | 'csv_parse_invalid'
   | 'csv_patch_invalid'
   | 'csv_revision_conflict'
+  | 'encoding_unsupported'
   | 'not_found'
 
 export class KbError extends Error {

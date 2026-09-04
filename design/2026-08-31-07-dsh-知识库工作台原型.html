@@ -900,6 +900,18 @@ body{
       font-size: 14px;
     }
     .selector:hover { background: var(--dsw-alias-interactive-bg-hover); }
+    .num-field { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+    .num-field .num {
+      width: 88px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 18px;
+      background: var(--dsw-alias-bg-layer-1);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .num-unit { color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 20px; }
     .parser {
       display: grid;
       grid-template-columns: 22px 1fr;
@@ -1218,14 +1230,20 @@ body{
                       <div class="row-title">单文件上限</div>
                       <p class="row-desc">超过则该文件导入失败。</p>
                     </div>
-                    <input class="selector" value="5 MB" style="width:120px" />
+                    <div class="num-field">
+                      <input class="num" type="text" inputmode="numeric" value="5" aria-label="单文件上限（MB）" />
+                      <span class="num-unit">MB</span>
+                    </div>
                   </div>
                   <div class="row">
                     <div class="row-text">
                       <div class="row-title">单库文字上限</div>
                       <p class="row-desc">超过拒绝本批导入。</p>
                     </div>
-                    <input class="selector" value="10 GB" style="width:120px" />
+                    <div class="num-field">
+                      <input class="num" type="text" inputmode="numeric" value="10" aria-label="单库文字上限（GB）" />
+                      <span class="num-unit">GB</span>
+                    </div>
                   </div>
                   <p class="row-title prefs-section">解析器</p>
                   <div class="parser"><input type="checkbox" checked disabled /><span>Markdown / txt</span></div>

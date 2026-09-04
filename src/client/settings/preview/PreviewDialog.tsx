@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { WorkbenchModal } from '../WorkbenchModal.tsx'
 import type { ReadEntryResult } from '../../models.ts'
 import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/client-api.tsx'
 import { EntryFormat, type CsvEditorPage, type CsvEntryPatch } from '../../../content/api.ts'
@@ -29,7 +29,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
   const canEdit = props.editable && props.preview.capabilities.canEdit
   const hasActions = canEdit || props.deletable
   return (
-    <Modal
+    <WorkbenchModal
       open
       onClose={props.onClose}
       title={fileName}
@@ -62,6 +62,6 @@ export function PreviewDialog(props: PreviewDialogProps) {
         <EntryPreviewContent preview={displayPreview} mode="read" showPreviewStatus />
       )}
       <Note text={props.error} />
-    </Modal>
+    </WorkbenchModal>
   )
 }

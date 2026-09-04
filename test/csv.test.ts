@@ -7,15 +7,18 @@ import { createBase, readCsvEditorPage, readEntry, writeCsvPatch, writeEntry } f
 import { readCatalog, writeCatalog } from '../src/catalog.ts'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/identity.ts'
 import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
+import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
+import { createCsvSearchDocument } from '../src/content/csv/server/search-excerpt.ts'
 import { ingest } from '../src/ingest.ts'
 import { searchBase } from '../src/search.ts'
+import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
 import { KbError } from '../src/types.ts'
 
 async function sandbox(prefix = 'zy-csv-'): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }
 
-test('UTF-8 CSV 保留原字节、可搜索、表格预览和编辑', async () => {
+test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', async () => {
   const root = await sandbox()
   try {
     const base = await createBase(root, { title: '台账', description: 'CSV 测试' })
@@ -33,6 +36,10 @@ test('UTF-8 CSV 保留原字节、可搜索、表格预览和编辑', async () =
     const hit = search.hits[0]
     assert.equal(hit?.path, 'table.CSV')
     assert.equal(hit?.matchLine, 2)
+    assert.equal(hit?.startLine, 2)
+    assert.equal(hit?.endLine, 2)
+    assert.equal(hit?.excerpt, '列: 名称 | 金额\n名称: 甲公司 | 金额: 120')
+    assert.equal(hit?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
     assert.equal(hit?.matchColumnByte, 4)
     assert.equal('documents' in search, false)
 
@@ -203,6 +210,9 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
     const hit = search.hits[0]
     if (!hit) throw new Error('未找到引号内换行的命中')
     assert.equal(hit.matchLine, 3)
+    assert.match(hit.excerpt, /^列: 供应商 \| 备注 \| 金额/)
+    assert.match(hit.excerpt, /备注: 第一行↩第二行, 含逗号/)
+    assert.equal(hit.matchedExcerpt, '供应商: 甲公司 | 备注: 第一行↩第二行, 含逗号 | 金额: 120')
 
     const preview = await readEntry(root, base.id, hit.path, {
       view: 'search-hit',
@@ -256,4 +266,147 @@ test('CSV 编辑同时服从单文件和单库配额', async () => {
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+const GBK_TABLE = Buffer.from([195, 251, 179, 198, 44, 189, 240, 182, 238, 10, 188, 215, 185, 171, 203, 190, 44, 49, 50, 48, 10])
+const NORMALIZED_TABLE = encodeUtf8CsvWithBom('名称,金额\n甲公司,120\n')
+
+function encodeUtf16Be(text: string): Buffer {
+  const littleEndian = Buffer.from(`\uFEFF${text}`, 'utf16le')
+  const bigEndian = Buffer.alloc(littleEndian.length)
+  for (let index = 0; index < littleEndian.length; index += 2) {
+    bigEndian[index] = littleEndian[index + 1] ?? 0
+    bigEndian[index + 1] = littleEndian[index] ?? 0
+  }
+  return bigEndian
+}
+
+function gb18030Available(): boolean {
+  try {
+    void new TextDecoder('gb18030', { fatal: true })
+    return true
+  } catch {
+    return false
+  }
+}
+
+test('导入时把无 BOM、CRLF 的 UTF-8 CSV 写成 UTF-8 BOM + LF', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '归一', description: 'CSV 测试' })
+    const source = join(root, 'plain.csv')
+    await writeFile(source, '名称,金额\r\n甲公司,120\r\n')
+    const result = await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    assert.deepEqual(result.copied, ['plain.csv'])
+    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'plain.csv')), NORMALIZED_TABLE)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('UTF-16 CSV 导入后写成 UTF-8 BOM 且可按列名检索', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: 'UTF16', description: 'CSV 测试' })
+    const sourceDir = join(root, 'source')
+    await mkdir(sourceDir)
+    await writeFile(join(sourceDir, 'le.csv'), Buffer.from('\uFEFF名称,金额\n甲公司,120\n', 'utf16le'))
+    await writeFile(join(sourceDir, 'be.csv'), encodeUtf16Be('名称,金额\n乙公司,80\n'))
+    const result = await ingest(root, { baseId: base.id, sourcePath: sourceDir, destCategory: '' })
+    assert.ok(result.copied.includes('le.csv'))
+    assert.ok(result.copied.includes('be.csv'))
+    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'le.csv')), NORMALIZED_TABLE)
+
+    const search = await searchBase(root, { baseId: base.id, query: '乙公司' })
+    const hit = search.hits[0]
+    assert.equal(hit?.path, 'be.csv')
+    assert.equal(hit?.excerpt, '列: 名称 | 金额\n名称: 乙公司 | 金额: 80')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('GB18030 CSV 导入后写成 UTF-8 BOM，同内容 UTF-8 会跳过', { skip: !gb18030Available() }, async () => {
+  const decoded = decodeCsvBytes(GBK_TABLE)
+  assert.equal(decoded.ok, true)
+  if (decoded.ok) assert.equal(decoded.encoding, 'gb18030')
+
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: 'GBK', description: 'CSV 测试' })
+    const source = join(root, 'gbk.csv')
+    await writeFile(source, GBK_TABLE)
+    const result = await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    assert.deepEqual(result.copied, ['gbk.csv'])
+    assert.ok(result.warnings.some((warning) => warning.includes('encoding_assumed_gb18030')))
+    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'gbk.csv')), NORMALIZED_TABLE)
+
+    const utf8Source = join(root, 'utf8.csv')
+    await writeFile(utf8Source, '名称,金额\n甲公司,120\n')
+    const skipped = await ingest(root, { baseId: base.id, sourcePath: utf8Source, destCategory: '' })
+    assert.equal(skipped.skipped, 1)
+    assert.equal(skipped.copied.length, 0)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('表头命中只返回列名行，不把表头扩成列名: 列名', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '表头', description: 'CSV 测试' })
+    const source = join(root, 'header.csv')
+    await writeFile(source, '供应商,金额\n甲公司,120\n')
+    await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    const search = await searchBase(root, { baseId: base.id, query: '供应商' })
+    const hit = search.hits.find((item) => item.matchLine === 1)
+    assert.equal(hit?.excerpt, '列: 供应商 | 金额')
+    assert.equal(hit?.matchedExcerpt, '列: 供应商 | 金额')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('截断 UTF-16 与空 CSV 导入失败', async () => {
+  assert.equal(decodeCsvBytes(Buffer.from([0xff, 0xfe, 0xfd])).ok, false)
+  assert.equal(decodeCsvBytes(Buffer.from([0xef, 0xbb, 0xbf])).ok, true)
+  const empty = decodeCsvBytes(Buffer.from([0xef, 0xbb, 0xbf]))
+  if (empty.ok) assert.equal(empty.text, '')
+
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '坏编码', description: 'CSV 测试' })
+    const emptyFile = join(root, 'empty.csv')
+    await writeFile(emptyFile, Buffer.from([0xef, 0xbb, 0xbf]))
+    const result = await ingest(root, { baseId: base.id, sourcePath: emptyFile, destCategory: '' })
+    assert.equal(result.failed, 1)
+    assert.equal(result.files[0]?.code, 'csv_encoding_invalid')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('大量中文命中时嵌套类目下的中文文件名仍能打开', async () => {
+  const root = await sandbox()
+  try {
+    const base = await createBase(root, { title: '分片', description: 'CSV 测试' })
+    const source = join(root, '供应商台账.csv')
+    const rows = Array.from({ length: 220 }, (_, index) => `HT-${index},深圳启明供应链,${'备注'.repeat(20)}`)
+    await writeFile(source, `合同编号,供应商,备注\n${rows.join('\n')}\n`)
+    await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '合同/2026' })
+    const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链' })
+    assert.equal(search.hits[0]?.path, '合同/2026/供应商台账.csv')
+    assert.match(search.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('CSV 相邻 excerpt 由格式模块合并，只保留一行列名', () => {
+  const text = '名称,金额\n甲公司,120\n乙公司,80\n'
+  const document = createCsvSearchDocument(Buffer.from(text), text)
+  const first = document.excerptAt(2, 0)
+  const second = document.excerptAt(3, 0)
+  const merged = document.mergeExcerpt(first, second, first.startLine, second.endLine)
+  assert.equal(merged, '列: 名称 | 金额\n名称: 甲公司 | 金额: 120\n名称: 乙公司 | 金额: 80')
 })

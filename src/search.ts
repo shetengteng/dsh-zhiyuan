@@ -4,7 +4,7 @@ import { isAbsolute, join, relative, sep } from 'node:path'
 import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT, SEARCH_RG_MAX_COUNT_PER_FILE, SEARCH_RG_MAX_FILESIZE, SEARCH_RG_MAX_STDOUT_BYTES, SEARCH_RG_TIMEOUT_MS } from './identity.ts'
 import { markUsed, requireBase } from './bases.ts'
 import { contentRegistry } from './content/host-api.ts'
-import type { SearchDocument } from './content/shared/search-document.ts'
+import { mergePhysicalExcerpts, type SearchDocument } from './content/shared/search-document.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, resolveDest } from './paths.ts'
 import type { SearchEngine, SearchHit, SearchInput, SearchResult } from './types.ts'
 import { KbError } from './types.ts'
@@ -60,23 +60,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
-function mergeExcerpts(first: SearchHit, second: SearchHit, startLine: number, endLine: number): string {
-  const firstLines = first.excerpt.split(/\r?\n/)
-  const secondLines = second.excerpt.split(/\r?\n/)
-  const mergedLines: string[] = []
-  for (let line = startLine; line <= endLine; line += 1) {
-    if (line >= second.startLine && line <= second.endLine) {
-      mergedLines.push(secondLines[line - second.startLine] ?? '')
-    } else if (line >= first.startLine && line <= first.endLine) {
-      mergedLines.push(firstLines[line - first.startLine] ?? '')
-    } else {
-      mergedLines.push('')
-    }
-  }
-  return mergedLines.join('\n')
-}
-
-function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchHit & { file: string }> {
+function mergeAdjacent(
+  hits: Array<SearchHit & { file: string }>,
+  documents: Map<string, SearchDocument>,
+): Array<SearchHit & { file: string }> {
   const sorted = [...hits].sort((a, b) => a.file.localeCompare(b.file) || a.startLine - b.startLine)
   const mergedHits: Array<SearchHit & { file: string }> = []
   for (const hit of sorted) {
@@ -84,7 +71,8 @@ function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchH
     if (previousHit && previousHit.file === hit.file && hit.startLine <= previousHit.endLine + 1) {
       const startLine = Math.min(previousHit.startLine, hit.startLine)
       const endLine = Math.max(previousHit.endLine, hit.endLine)
-      previousHit.excerpt = mergeExcerpts(previousHit, hit, startLine, endLine)
+      const mergeExcerpt = documents.get(hit.file)?.mergeExcerpt ?? mergePhysicalExcerpts
+      previousHit.excerpt = mergeExcerpt(previousHit, hit, startLine, endLine)
       previousHit.startLine = startLine
       previousHit.endLine = endLine
       if (hit.matchLine < previousHit.matchLine
@@ -92,6 +80,7 @@ function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchH
           && (hit.matchColumnByte ?? Number.MAX_SAFE_INTEGER) < (previousHit.matchColumnByte ?? Number.MAX_SAFE_INTEGER))) {
         previousHit.matchLine = hit.matchLine
         previousHit.matchColumnByte = hit.matchColumnByte
+        previousHit.matchedExcerpt = hit.matchedExcerpt
       }
       continue
     }
@@ -127,6 +116,7 @@ export function diversify(hits: Array<SearchHit & { file: string }>, topK: numbe
     endLine: hit.endLine,
     matchLine: hit.matchLine,
     excerpt: hit.excerpt,
+    ...(hit.matchedExcerpt === undefined ? {} : { matchedExcerpt: hit.matchedExcerpt }),
     matchColumnByte: hit.matchColumnByte,
     sourceFingerprint: hit.sourceFingerprint,
   }))
@@ -147,7 +137,8 @@ type RgRun = {
 function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): Promise<RgRun> {
   return new Promise((resolve, reject) => {
     const child = spawn(binaryPath, rgArgs, { cwd: workingDirectory, windowsHide: true })
-    let stdout = ''
+    const stdoutChunks: Buffer[] = []
+    let stdoutBytes = 0
     let stderr = ''
     let timedOut = false
     let truncated = false
@@ -156,8 +147,10 @@ function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): 
       child.kill('SIGKILL')
     }, SEARCH_RG_TIMEOUT_MS)
     child.stdout.on('data', (chunk) => {
-      stdout += String(chunk)
-      if (Buffer.byteLength(stdout) > SEARCH_RG_MAX_STDOUT_BYTES) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      stdoutChunks.push(buffer)
+      stdoutBytes += buffer.length
+      if (stdoutBytes > SEARCH_RG_MAX_STDOUT_BYTES) {
         truncated = true
         child.kill('SIGKILL')
       }
@@ -172,6 +165,7 @@ function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): 
       const warnings: string[] = []
       if (timedOut) warnings.push('检索超时，已返回部分结果')
       if (truncated) warnings.push('检索结果过多，已截断')
+      const stdout = Buffer.concat(stdoutChunks, stdoutBytes).toString('utf8')
       if (code === 0 || code === 1 || timedOut || truncated) resolve({ stdout, warnings })
       else reject(new Error(stderr.trim() || `rg 退出 ${code}`))
     })
@@ -210,6 +204,9 @@ export class RipgrepSearchEngine implements SearchEngine {
       if (!file) {
         file = await contentRegistry.readForSearch({ absolutePath: safePath, relativePath: match.path })
         fileCache.set(match.path, file)
+        for (const warning of file.warnings ?? []) {
+          if (!this.lastWarnings.includes(warning)) this.lastWarnings.push(warning)
+        }
       }
       const clip = file.excerptAt(match.line, SEARCH_CONTEXT)
       const matchColumnByte = file.normalizeColumnByte(match.line, match.columnByte)
@@ -221,11 +218,12 @@ export class RipgrepSearchEngine implements SearchEngine {
         endLine: clip.endLine,
         matchLine: Math.min(Math.max(match.line, clip.startLine), clip.endLine),
         excerpt: clip.excerpt,
+        matchedExcerpt: clip.matchedExcerpt,
         matchColumnByte,
         sourceFingerprint: file.fingerprint,
       })
     }
-    return diversify(mergeAdjacent(rawHits), input.topK)
+    return diversify(mergeAdjacent(rawHits, fileCache), input.topK)
   }
 }
 

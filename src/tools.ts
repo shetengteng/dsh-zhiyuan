@@ -96,7 +96,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_ingest',
-    description: '把本机 md/txt/UTF-8 csv 导入已有知识库的指定类目。CSV 可在知源中表格编辑。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
+    description: '把本机 md/txt/csv 导入已有知识库的指定类目。CSV 会转成 UTF-8 后入库，可在知源中表格编辑。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
     parameters: {
       type: 'object',
       required: ['baseId', 'sourcePath'],
@@ -141,7 +141,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_search',
-    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。支持 UTF-8 CSV；必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
+    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。CSV 命中 excerpt 带列名；必须带 baseId。换词放进 aliases（3～8）。回答必须基于 excerpt；没命中返回空列表，不要编造。',
     parameters: {
       type: 'object',
       required: ['baseId', 'query'],
@@ -170,6 +170,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
                 endLine: { type: 'integer' },
                 matchLine: { type: 'integer' },
                 excerpt: { type: 'string' },
+                matchedExcerpt: { type: 'string', description: '命中行展示文本，由格式模块给出' },
                 matchColumnByte: { type: 'integer', description: 'UI 预览使用的 UTF-8 字节列' },
                 sourceFingerprint: { type: 'string', description: 'UI 预览用的源文件指纹' },
               },
