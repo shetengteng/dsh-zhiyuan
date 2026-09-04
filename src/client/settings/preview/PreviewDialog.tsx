@@ -44,6 +44,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
       {canEdit ? (
         <form
           ref={form}
+          className="zy-preview-form"
           onSubmit={(event: { preventDefault: () => void }) => {
             event.preventDefault()
             const change = editorRef.current?.getChange()

@@ -107,7 +107,6 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
   const startRow = page.windowStartRow || 1
   const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
   const nextStartRow = page.windowEndRow + 1
-  const minimumTableWidth = 48 + Math.max(1, page.headers.length) * 132
   return (
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
@@ -122,7 +121,7 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
       <div className="zy-csv-grid" aria-label={editable ? 'CSV 表格编辑器' : 'CSV 表格预览'}>
         <TableVirtuoso
           className="zy-csv-table"
-          style={{ minWidth: `${minimumTableWidth}px` }}
+          style={{ width: '100%' }}
           data={page.rows}
           computeItemKey={(index) => startRow + index}
           fixedHeaderContent={() => (

@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { WorkbenchModal } from './WorkbenchModal.tsx'
-import type { SearchHit } from '../models.ts'
-import { matchedExcerptLine } from '../search-utils.ts'
 import { Field, Note } from './Dialogs.tsx'
-import { SearchIcon } from './Icons.tsx'
 import { claimFileDrag, fileToBase64, resolveDroppedSource, sourceDisplayName } from './drop-source-path.ts'
 
-/** 设置工作台的导入、搜索与预览弹框。 */
-function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
-  event.preventDefault()
-  return new FormData(event.currentTarget)
-}
+/** 设置工作台的导入弹框。 */
 
 export function ImportDialog(props: {
   baseTitle: string
@@ -174,7 +167,7 @@ export function ImportDialog(props: {
       open
       onClose={props.onClose}
       title={`导入到 ${props.baseTitle}`}
-      className="zy-modal-form"
+      className="zy-modal-form-wide"
       footer={(
         <div className="zy-footbar">
           <button className="zy-btn" type="button" onClick={props.onClose}>取消</button>
@@ -212,60 +205,5 @@ export function ImportDialog(props: {
         <Note text={props.error} />
       </form>
     </WorkbenchModal>
-  )
-}
-
-export function SearchDialog(props: {
-  baseTitle: string
-  query: string
-  hits: SearchHit[]
-  warning: string
-  busy: boolean
-  searched: boolean
-  onClose: () => void
-  onSearch: (query: string) => void
-  onOpenHit: (hit: SearchHit) => void
-}) {
-  return (
-    <WorkbenchModal open onClose={props.onClose} title={`搜索 ${props.baseTitle}`} className="zy-modal-form">
-      <form
-        onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
-          props.onSearch(String(readFormData(event).get('query') ?? ''))
-        }}
-      >
-        <div className="zy-search-bar">
-          <input className="zy-box" name="query" placeholder="关键词" defaultValue={props.query} autoFocus />
-          <button className="zy-icon" type="submit" aria-label="搜索" disabled={props.busy}>
-            <SearchIcon />
-          </button>
-        </div>
-      </form>
-      <Note text={props.warning} />
-      {props.busy ? <p className="zy-help">检索中…</p> : null}
-      {props.hits.length ? (
-        <div className="zy-search-hits">
-          {props.hits.map((hit) => (
-            <button key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} className="zy-hit-line" type="button" onClick={() => props.onOpenHit(hit)}>
-              {hit.path}:{hit.matchLine}{' '}
-              <HitMark text={matchedExcerptLine(hit)} query={props.query} />
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {props.searched && !props.busy && !props.hits.length && !props.warning ? <p className="zy-help">无命中</p> : null}
-    </WorkbenchModal>
-  )
-}
-
-function HitMark(props: { text: string; query: string }) {
-  const queryText = props.query.trim()
-  const matchStart = queryText ? props.text.toLowerCase().indexOf(queryText.toLowerCase()) : -1
-  if (matchStart < 0) return <>{props.text}</>
-  return (
-    <>
-      {props.text.slice(0, matchStart)}
-      <mark>{props.text.slice(matchStart, matchStart + queryText.length)}</mark>
-      {props.text.slice(matchStart + queryText.length)}
-    </>
   )
 }

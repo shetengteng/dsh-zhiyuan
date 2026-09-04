@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { createBase } from '../src/bases.ts'
-import { matchedExcerptLine } from '../src/client/search-utils.ts'
+import { matchedExcerptLine, parseLabeledFields, queryTerms } from '../src/client/search-utils.ts'
 import { diversify, mergeTerms, searchBase } from '../src/search.ts'
 import type { SearchHit } from '../src/types.ts'
 import { KbError } from '../src/types.ts'
@@ -55,6 +55,20 @@ test('命中展示优先使用格式模块给出的 matchedExcerpt', () => {
     excerpt: '列: 名称 | 金额\n名称: 甲公司 | 金额: 120\n名称: 乙公司 | 金额: 80',
     matchedExcerpt: '名称: 乙公司 | 金额: 80',
   }), '名称: 乙公司 | 金额: 80')
+})
+
+test('CSV 列名摘录拆成字段，表头行保持原文', () => {
+  assert.deepEqual(parseLabeledFields('名称: 甲公司 | 金额: 120'), [
+    { label: '名称', value: '甲公司' },
+    { label: '金额', value: '120' },
+  ])
+  assert.equal(parseLabeledFields('列: 供应商 | 品类 | 金额'), null)
+  assert.equal(parseLabeledFields('若乙方违约，甲方可解除合同'), null)
+})
+
+test('搜索关键词按空白拆开并去重', () => {
+  assert.deepEqual(queryTerms('  违约  条款 违约 '), ['违约', '条款'])
+  assert.deepEqual(queryTerms('   '), [])
 })
 
 test('空库搜索 → 空列表', async () => {

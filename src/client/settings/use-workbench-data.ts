@@ -4,6 +4,11 @@ import type { BaseSummary, JobStatus, Prefs, TreeNode } from '../models.ts'
 
 const DEFAULT_PREFS: Prefs = { defaultBaseId: '', maxFileBytes: 5_242_880, maxBaseBytes: 10_737_418_240 }
 
+export type WorkbenchNotice = {
+  tone: 'success' | 'warning' | 'error'
+  text: string
+}
+
 /** 把弹框里输入的别名文本按中英文逗号拆成数组。 */
 export function splitAliases(text: string): string[] {
   return text.split(/[,，]/).map((item) => item.trim()).filter(Boolean)
@@ -24,13 +29,13 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
   const [job, setJob] = useState(undefined as JobStatus | undefined)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
-  const [note, setNote] = useState('')
+  const [notice, setNotice] = useState<WorkbenchNotice | null>(null)
 
   const call = (payload: Record<string, unknown>, signal?: AbortSignal) => callKnowledgeHost(connection, payload, signal)
 
   const refresh = async (baseId?: string) => {
     setPending(true)
-    setNote('')
+    setNotice(null)
     try {
       const list = await call({ op: 'list' }) as BaseSummary[]
       setBases(list)
@@ -41,7 +46,7 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
       setPrefs(await call({ op: 'prefs' }) as Prefs)
       setJob(await getKnowledgeJobStatus(connection) as JobStatus)
     } catch (err) {
-      setNote(err instanceof Error ? err.message : String(err))
+      setNotice({ tone: 'error', text: err instanceof Error ? err.message : String(err) })
     } finally {
       setPending(false)
     }
@@ -62,5 +67,5 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
     }
   }
 
-  return { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, note, setError, setNote, call, refresh, run }
+  return { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run }
 }

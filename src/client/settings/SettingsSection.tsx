@@ -3,13 +3,14 @@ import { SECTION_LABEL } from '../../identity.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
 import type { DialogKind, IngestResult, SearchHit } from '../models.ts'
 import { parseIngestResult, parseSearchResult, parseTableEditorPage } from '../host-payload.ts'
-import { useWorkbenchData, splitAliases } from './use-workbench-data.ts'
+import { useWorkbenchData, splitAliases, type WorkbenchNotice } from './use-workbench-data.ts'
 import { useEntryPreview } from './use-entry-preview.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ConfirmDialog, CreateDialog, EditDialog } from './Dialogs.tsx'
 import { BasePage } from './BasePage.tsx'
-import { ImportDialog, SearchDialog } from './AdditionalDialogs.tsx'
+import { ImportDialog } from './AdditionalDialogs.tsx'
+import { SearchDialog } from './SearchDialog.tsx'
 import { PreviewDialog } from './preview/PreviewDialog.tsx'
 import { PrefsPage } from './PrefsPage.tsx'
 import { SectionIcon } from './SectionIcon.tsx'
@@ -31,11 +32,11 @@ export function createSettingsSection(
     const [searchBusy, setSearchBusy] = useState(false)
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
 
-    const { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, note, setError, setNote, call, refresh, run: runWork } = useWorkbenchData(connection)
+    const { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
     const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, cancelPreviews } = useEntryPreview({
       call,
       onOpened: () => setDialog('preview'),
-      onTreeError: (message) => setNote(message),
+      onTreeError: (message) => setNotice({ tone: 'error', text: message }),
       onSearchError: (message) => setError(message),
     })
 
@@ -67,10 +68,10 @@ export function createSettingsSection(
             ))}
           </div>
         </div>
-        {note ? (
-          <p className="zy-note">
-            <IconWarningOutline16 size={14} />
-            {note}
+        {notice ? (
+          <p className={`zy-note is-${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>
+            {notice.tone === 'success' ? null : <IconWarningOutline16 size={14} />}
+            {notice.text}
           </p>
         ) : null}
         <div className={tab === 'bases' ? 'zy-body' : 'zy-body is-doc'}>
@@ -84,7 +85,7 @@ export function createSettingsSection(
               onSelectBase={(baseId) => { setCurrentBaseId(baseId); void refresh(baseId) }}
               onCreate={() => { setError(''); setDialog('create') }}
               onEdit={() => { setError(''); setDialog('edit') }}
-              onImport={() => { setError(''); setDialog('import') }}
+              onImport={() => { setError(''); setNotice(null); setDialog('import') }}
               onSearch={() => {
                 setHits([])
                 setQuery('')
@@ -144,7 +145,7 @@ export function createSettingsSection(
             }}
             onSubmit={(input) => void run(
               () => call({ op: 'ingest', ...input, baseId: currentBase.id }).then(parseIngestResult),
-              (result) => setNote(formatIngestNotice(result)),
+              (result) => setNotice(formatIngestNotice(result)),
             )}
           />
         ) : null}
@@ -203,12 +204,16 @@ export function createSettingsSection(
   }
 }
 
-function formatIngestNotice(result: IngestResult): string {
-  if (!result.failed) return `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}`
+function formatIngestNotice(result: IngestResult): WorkbenchNotice {
+  const summary = `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}`
+  if (!result.failed) return { tone: 'success', text: summary }
   const details = result.files
     .filter((item) => item.status === 'failed')
     .slice(0, 2)
     .map((item) => `${item.sourceRelPath}：${item.reason ?? '处理失败'}`)
     .join('；')
-  return `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}，失败 ${result.failed}${details ? `。${details}` : ''}`
+  return {
+    tone: result.copied.length > 0 || result.skipped > 0 ? 'warning' : 'error',
+    text: `${summary}，失败 ${result.failed}${details ? `。${details}` : ''}`,
+  }
 }
