@@ -30,9 +30,8 @@ function failure(error: unknown): RpcResult {
 }
 
 /**
- * Registers the browser-only knowledge-base channel. DSH owns the returned
- * registration through the current injected fiber, so it is removed when the
- * plugin or connection reloads.
+ * 登记仅浏览器使用的知识库通道。DSH 通过当前注入的 fiber 持有返回的注册，
+ * 插件或连接重载时会卸掉。
  */
 export function registerKnowledgePrivateRpc(ctx: PrivateRpcContext, jobs: JobRunner): () => Promise<void> {
   return ctx.connection.rpc.handle(KNOWLEDGE_RPC_CHANNEL, async (endpoint, payload, signal) => {

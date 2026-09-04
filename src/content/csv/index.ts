@@ -9,7 +9,7 @@ import { writeCsvEntry } from './server/write.ts'
 const csvSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Csv,
   sourceExtensions: ['.csv'],
-  prepareImport: prepareCsvImport,
+  prepareImport: async (context) => [await prepareCsvImport(context)],
 }
 
 const csvEntryHandler: EntryFormatHandler = {
@@ -23,7 +23,7 @@ const csvEntryHandler: EntryFormatHandler = {
   writeCsvPatch: writeCsvEditorPatch,
 }
 
-/** CSV's only registration surface for the Host registry. */
+/** CSV 在 Host registry 上的唯一注册面。 */
 export const csvContentFormat: ContentFormatModule = {
   sourceHandlers: [csvSourceHandler],
   entryHandlers: [csvEntryHandler],

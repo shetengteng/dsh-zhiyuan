@@ -8,13 +8,13 @@ import { writeMarkdownEntry } from './server/write.ts'
 const markdownSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Markdown,
   sourceExtensions: ['.md', '.markdown'],
-  prepareImport: prepareMarkdownImport,
+  prepareImport: async (context) => [await prepareMarkdownImport(context)],
 }
 
 const plainTextSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.PlainText,
   sourceExtensions: ['.txt'],
-  prepareImport: prepareMarkdownImport,
+  prepareImport: async (context) => [await prepareMarkdownImport(context)],
 }
 
 const markdownEntryHandler: EntryFormatHandler = {
@@ -26,7 +26,7 @@ const markdownEntryHandler: EntryFormatHandler = {
   writeEntry: writeMarkdownEntry,
 }
 
-/** Markdown/Text's only registration surface for the Host registry. */
+/** Markdown/文本在 Host registry 上的唯一注册面。 */
 export const markdownContentFormat: ContentFormatModule = {
   sourceHandlers: [markdownSourceHandler, plainTextSourceHandler],
   entryHandlers: [markdownEntryHandler],

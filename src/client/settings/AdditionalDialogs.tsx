@@ -5,7 +5,7 @@ import { matchedExcerptLine } from '../search-utils.ts'
 import { Field, Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
 
-/** Import, search, and preview dialogs for the settings workbench. */
+/** 设置工作台的导入、搜索与预览弹框。 */
 function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) {
   event.preventDefault()
   return new FormData(event.currentTarget)
@@ -39,7 +39,7 @@ function droppedSourcePath(event: DragEvent<HTMLDivElement>): string {
 }
 
 export function ImportDialog(props: {
-  baseId: string
+  baseTitle: string
   error: string
   busy: boolean
   onClose: () => void
@@ -113,7 +113,7 @@ export function ImportDialog(props: {
     <Modal
       open
       onClose={props.onClose}
-      title={`导入到 ${props.baseId}`}
+      title={`导入到 ${props.baseTitle}`}
       className="zy-modal-form"
       footer={(
         <div className="zy-footbar">
@@ -140,7 +140,7 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="拖拽文件或文件夹，或点击下方按钮选择。支持 md / txt / markdown / UTF-8 csv；CSV 导入后只读。"
+          help="拖拽文件或文件夹，或点击下方按钮选择。支持 md / txt / markdown / UTF-8 csv。"
         >
           {sourceDropzone}
           <Note text={sourceError} />

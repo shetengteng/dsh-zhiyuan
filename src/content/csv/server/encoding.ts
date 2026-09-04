@@ -1,6 +1,5 @@
 import { open } from 'node:fs/promises'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../../../identity.ts'
-import { stripUtf8Bom } from '../../shared/utf8.ts'
 
 export type ValidatedCsv = {
   bytes: Buffer
@@ -18,12 +17,6 @@ export type CsvValidation =
 
 const READ_CHUNK_BYTES = 64 * 1024
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u0080-\u009F]/u
-
-export function isCsvPath(filePath: string): boolean {
-  return filePath.toLowerCase().endsWith('.csv')
-}
-
-export { stripUtf8Bom }
 
 async function readBoundedBuffer(sourcePath: string, maxBytes: number): Promise<Buffer | null> {
   const limit = Math.floor(maxBytes)
@@ -83,7 +76,7 @@ export async function readValidatedUtf8Csv(sourcePath: string, maxBytes: number)
   return validateUtf8CsvBytes(bytes, maxBytes)
 }
 
-/** Validates bytes before both import and in-place CSV writes. */
+/** 导入与原地写入 CSV 前校验字节。 */
 export function validateUtf8CsvBytes(bytes: Buffer, maxBytes: number): CsvValidation {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || bytes.length > maxBytes) {
     return { ok: false, code: 'file_too_large', message: '文件超过大小上限，未导入' }

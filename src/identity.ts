@@ -1,4 +1,4 @@
-/** Package / runtime identity. Official names: 知源 / dsh-zhiyuan. 产品对象仍称知识库。 */
+/** 包与运行时身份。正式名：知源 / dsh-zhiyuan。产品对象仍称知识库。 */
 
 export const PACKAGE_NAME = 'dsh-zhiyuan'
 export const SECTION_ID = 'knowledge'
@@ -20,4 +20,9 @@ export const CSV_PREVIEW_MAX_BYTES = CSV_MAX_IMPORT_BYTES
 export const CSV_PREVIEW_MAX_ROWS = 500
 export const CSV_EDITOR_PAGE_SIZE = 200
 export const CSV_MAX_PATCH_CHANGES = 10_000
+export const MARK_USED_THROTTLE_MS = 60_000
+export const SEARCH_RG_MAX_COUNT_PER_FILE = 200
+export const SEARCH_RG_MAX_FILESIZE = '20M'
+export const SEARCH_RG_MAX_STDOUT_BYTES = 2 * 1024 * 1024
+export const SEARCH_RG_TIMEOUT_MS = 20_000
 export const CATEGORY_WARN_DEPTH = 4

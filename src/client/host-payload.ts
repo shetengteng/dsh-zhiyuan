@@ -80,7 +80,7 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
   return parseLegacyMarkdownPreview(entry, legacyContext)
 }
 
-/** Narrows a bounded CSV editor page returned by the loopback Host RPC. */
+/** 收窄 loopback Host RPC 返回的 CSV 编辑分页。 */
 export function parseCsvEditorPage(value: unknown): CsvEditorPage {
   if (!isCsvEditorPage(value)) throw new Error('Host 返回的 CSV 分页数据无效')
   return value

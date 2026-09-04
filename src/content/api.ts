@@ -1,4 +1,4 @@
-/** Stable, serializable contract shared by Host and Client. */
+/** Host 与 Client 共享的稳定、可序列化契约。 */
 export const SourceFormat = {
   Markdown: 'markdown',
   PlainText: 'plain-text',
@@ -22,7 +22,7 @@ export const EntryPreviewView = {
 
 export type EntryPreviewView = typeof EntryPreviewView[keyof typeof EntryPreviewView]
 
-/** The amount of source content the Host returns for an entry read. */
+/** Host 读取条目时返回的源内容范围。 */
 export const EntryReadMode = {
   Preview: 'preview',
   Edit: 'edit',
@@ -38,7 +38,7 @@ export type EntryCapabilities = {
   canEdit: boolean
 }
 
-/** A record-aligned CSV window. Row indexes exclude the header and start at 1. */
+/** 按逻辑记录对齐的 CSV 窗口。行号不含表头，从 1 起。 */
 export type CsvPreviewData = {
   headers: string[]
   rows: string[][]
@@ -50,7 +50,7 @@ export type CsvPreviewData = {
   revision?: string
 }
 
-/** One bounded page used by the lightweight CSV table editor. */
+/** 轻量 CSV 表格编辑器使用的一页记录。 */
 export type CsvEditorPage = CsvPreviewData & {
   revision: string
 }
@@ -66,7 +66,7 @@ export type CsvCellChange = {
   value: string
 }
 
-/** Sparse changes against a single content-addressed version of a CSV file. */
+/** 针对某一内容寻址版本的稀疏 CSV 修改。 */
 export type CsvEntryPatch = {
   revision: string
   headerChanges: CsvHeaderChange[]

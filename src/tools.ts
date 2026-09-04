@@ -1,4 +1,4 @@
-import { ingest } from './ingest.ts'
+import { buildIngestInput, ingest } from './ingest.ts'
 import { createJobRunner, type JobRunner } from './jobs.ts'
 import { listBases } from './bases.ts'
 import { resolveDataRoot } from './paths.ts'
@@ -96,7 +96,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_ingest',
-    description: '把本机 md/txt/UTF-8 csv 导入已有知识库的指定类目。CSV 导入后只读。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
+    description: '把本机 md/txt/UTF-8 csv 导入已有知识库的指定类目。CSV 可在知源中表格编辑。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
     parameters: {
       type: 'object',
       required: ['baseId', 'sourcePath'],
@@ -127,14 +127,13 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       const input = asRecord(args)
       try {
         const dataRoot = await resolveDataRoot()
-        return await jobs.enqueue('ingest', () => ingest(dataRoot, {
+        return await jobs.enqueue('ingest', () => ingest(dataRoot, buildIngestInput({
           baseId: requireString(input, 'baseId'),
           sourcePath: requireString(input, 'sourcePath'),
           destCategory: asString(input.destCategory) ?? '',
           preserveTree: asBool(input.preserveTree, false),
           createMissing: asBool(input.createMissing, true),
-          onConflict: 'skip',
-        }))
+        })))
       } catch (error) {
         fail(error)
       }

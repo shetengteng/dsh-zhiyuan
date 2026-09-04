@@ -31,7 +31,7 @@ export type CsvPreviewWindow = {
 
 const DELIMITER_CANDIDATES = [',', ';', '\t', '|'] as const
 
-/** Parses CSV once on the Host, preserving logical-record source positions. */
+/** 在 Host 上解析一次 CSV，保留逻辑记录的源位置。 */
 export function parseCsvDocument(text: string): CsvDocument {
   const ranges = scanRecordRanges(text)
   const parsed = Papa.parse<string[]>(text, {
@@ -54,12 +54,12 @@ export function parseCsvDocument(text: string): CsvDocument {
   return { header, headers, records }
 }
 
-/** Serializes parsed cells to the defined comma-delimited CSV form. */
+/** 将已解析单元格序列化为约定的逗号分隔 CSV。 */
 export function serializeCsvDocument(document: CsvDocument): string {
   return Papa.unparse([document.headers, ...document.records.map((record) => record.cells)], { newline: '\n' })
 }
 
-/** Selects a bounded logical-record window for a read-only preview. */
+/** 为只读预览选取一段有界的逻辑记录窗口。 */
 export function createCsvPreviewWindow(
   document: CsvDocument,
   includeAllRows: boolean,
@@ -94,7 +94,7 @@ export function createCsvPreviewWindow(
   }
 }
 
-/** Selects a fixed-size record page for the CSV editor without copying the whole file to the Client. */
+/** 为 CSV 编辑器选取固定大小的记录页，不把整文件拷到 Client。 */
 export function createCsvEditorPage(
   document: CsvDocument,
   requestedStartRow: number,

@@ -1,5 +1,6 @@
 import { createJobRunner } from './jobs.ts'
 import { PACKAGE_NAME } from './identity.ts'
+import { setCatalogWarningSink } from './catalog.ts'
 import { registerKbCommands } from './commands.ts'
 import { registerKbTools } from './tools.ts'
 import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skill.ts'
@@ -9,7 +10,7 @@ import { registerKnowledgePrivateRpc } from './private-rpc.ts'
 export const name = PACKAGE_NAME
 
 type HostCtx = {
-  logger?: { info: (msg: string) => void }
+  logger?: { info: (msg: string) => void; warn?: (msg: string) => void }
   inject: (deps: string[], callback: (scoped: unknown) => void) => void
   effect?: (setup: () => (() => void) | void) => void
 }
@@ -29,8 +30,8 @@ export function apply(ctx: HostCtx): void {
     disposers.push(off)
   }
 
-  console.log('[zhiyuan] host loaded')
   ctx.logger?.info('[zhiyuan] host loaded')
+  setCatalogWarningSink((message) => ctx.logger?.warn?.(`[zhiyuan] ${message}`))
 
   ctx.inject(['commands'], (scoped) => {
     track(registerKbCommands(scoped as { commands: { register: (def: unknown) => () => void } }, jobs))
@@ -54,7 +55,6 @@ export function apply(ctx: HostCtx): void {
       alive = false
       for (const off of disposers.splice(0).reverse()) off()
       clearDataRootCache()
-      console.log('[zhiyuan] host unloaded')
     }
   })
 }

@@ -1,7 +1,8 @@
 import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
-import { cleanAliases, readCatalog, removeBase, upsertBase, writeCatalog } from './catalog.ts'
+import { MARK_USED_THROTTLE_MS } from './identity.ts'
+import { cleanAliases, readCatalog, removeBase, upsertBase, withCatalogTx } from './catalog.ts'
 import { contentRegistry, type CsvEditorPage, type CsvEntryPatch, type EntryPreviewOptions } from './content/host-api.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, basesRoot, resolveDest } from './paths.ts'
 import type { BaseCard, BaseSummary, Catalog, CreateBaseInput, ReadEntryResult, TreeNode, UpdateBasePatch } from './types.ts'
@@ -111,58 +112,64 @@ async function generateBaseId(dataRoot: string, catalog: Catalog): Promise<strin
 export async function createBase(dataRoot: string, input: CreateBaseInput): Promise<BaseCard> {
   const title = requireNonEmptyText(input.title, 'title')
   const description = requireNonEmptyText(input.description, 'description')
-  const catalog = await readCatalog(dataRoot)
-  if (await hasBaseTitle(dataRoot, catalog, title)) {
-    throw new KbError('title_exists', `知识库标题「${title}」已存在`)
-  }
-  const id = await generateBaseId(dataRoot, catalog)
-  const now = Date.now()
-  const card: BaseCard = { id, title, description, aliases: cleanAliases(input.aliases), createdAt: now, lastUsedAt: now }
-  await mkdir(baseDir(dataRoot, id), { recursive: true })
-  const nextCatalog = upsertBase(catalog, card)
-  if (!nextCatalog.lastUsedBaseId) nextCatalog.lastUsedBaseId = id
-  if (!nextCatalog.prefs.defaultBaseId) nextCatalog.prefs.defaultBaseId = id
-  await writeCatalog(dataRoot, nextCatalog)
-  return card
+  return withCatalogTx(dataRoot, async ({ catalog }) => {
+    if (await hasBaseTitle(dataRoot, catalog, title)) {
+      throw new KbError('title_exists', `知识库标题「${title}」已存在`)
+    }
+    const id = await generateBaseId(dataRoot, catalog)
+    const now = Date.now()
+    const card: BaseCard = { id, title, description, aliases: cleanAliases(input.aliases), createdAt: now, lastUsedAt: now }
+    await mkdir(baseDir(dataRoot, id), { recursive: true })
+    const nextCatalog = upsertBase(catalog, card)
+    if (!nextCatalog.lastUsedBaseId) nextCatalog.lastUsedBaseId = id
+    if (!nextCatalog.prefs.defaultBaseId) nextCatalog.prefs.defaultBaseId = id
+    return { result: card, catalog: nextCatalog }
+  })
 }
 
 export async function updateBase(dataRoot: string, id: string, patch: UpdateBasePatch): Promise<BaseCard> {
-  const catalog = await readCatalog(dataRoot)
-  const currentCard = catalog.bases.find((card) => card.id === id)
-  if (!currentCard) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
-  const title = patch.title !== undefined ? requireNonEmptyText(patch.title, 'title') : currentCard.title
-  if (await hasBaseTitle(dataRoot, catalog, title, id)) {
-    throw new KbError('title_exists', `知识库标题「${title}」已存在`)
-  }
-  const card: BaseCard = {
-    ...currentCard,
-    title,
-    description: patch.description !== undefined ? requireNonEmptyText(patch.description, 'description') : currentCard.description,
-    aliases: patch.aliases !== undefined ? cleanAliases(patch.aliases) : currentCard.aliases,
-  }
-  await writeCatalog(dataRoot, upsertBase(catalog, card))
-  return card
+  return withCatalogTx(dataRoot, async ({ catalog }) => {
+    const currentCard = catalog.bases.find((card) => card.id === id)
+    if (!currentCard) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
+    const title = patch.title !== undefined ? requireNonEmptyText(patch.title, 'title') : currentCard.title
+    if (await hasBaseTitle(dataRoot, catalog, title, id)) {
+      throw new KbError('title_exists', `知识库标题「${title}」已存在`)
+    }
+    const card: BaseCard = {
+      ...currentCard,
+      title,
+      description: patch.description !== undefined ? requireNonEmptyText(patch.description, 'description') : currentCard.description,
+      aliases: patch.aliases !== undefined ? cleanAliases(patch.aliases) : currentCard.aliases,
+    }
+    return { result: card, catalog: upsertBase(catalog, card) }
+  })
 }
 
 export async function deleteBase(dataRoot: string, id: string, confirm: boolean): Promise<void> {
   if (!confirm) throw new KbError('confirm_required', '删除知识库需要确认')
-  const catalog = await readCatalog(dataRoot)
-  const knownBaseIds = new Set([...catalog.bases.map((card) => card.id), ...await scanBaseIds(dataRoot)])
-  if (!knownBaseIds.has(id)) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
-  const basesDirectory = basesRoot(dataRoot)
-  const targetBaseDirectory = assertInside(basesDirectory, baseDir(dataRoot, id))
-  assertNoSymlinkEscape(basesDirectory, targetBaseDirectory)
-  await rm(targetBaseDirectory, { recursive: true, force: true })
-  await writeCatalog(dataRoot, removeBase(catalog, id))
+  await withCatalogTx(dataRoot, async ({ catalog }) => {
+    const knownBaseIds = new Set([...catalog.bases.map((card) => card.id), ...await scanBaseIds(dataRoot)])
+    if (!knownBaseIds.has(id)) throw new KbError('base_missing', `知识库 ${id} 不存在，请先建库`)
+    const basesDirectory = basesRoot(dataRoot)
+    const targetBaseDirectory = assertInside(basesDirectory, baseDir(dataRoot, id))
+    assertNoSymlinkEscape(basesDirectory, targetBaseDirectory)
+    await rm(targetBaseDirectory, { recursive: true, force: true })
+    return { result: undefined, catalog: removeBase(catalog, id) }
+  })
 }
 
 export async function markUsed(dataRoot: string, id: string): Promise<void> {
-  const catalog = await readCatalog(dataRoot)
-  const currentCard = catalog.bases.find((card) => card.id === id)
-  if (!currentCard) return
-  currentCard.lastUsedAt = Date.now()
-  catalog.lastUsedBaseId = id
-  await writeCatalog(dataRoot, catalog)
+  await withCatalogTx(dataRoot, ({ catalog }) => {
+    const currentCard = catalog.bases.find((card) => card.id === id)
+    if (!currentCard) return { result: undefined }
+    const now = Date.now()
+    if (catalog.lastUsedBaseId === id && now - currentCard.lastUsedAt < MARK_USED_THROTTLE_MS) {
+      return { result: undefined }
+    }
+    currentCard.lastUsedAt = now
+    catalog.lastUsedBaseId = id
+    return { result: undefined, catalog }
+  })
 }
 
 export async function requireBase(dataRoot: string, id: string): Promise<void> {
@@ -233,7 +240,7 @@ export async function writeEntry(dataRoot: string, baseId: string, relativePath:
   })
 }
 
-/** Reads one bounded CSV table page through the file-type registry. */
+/** 经文件类型 registry 读取一页有界 CSV 表格。 */
 export async function readCsvEditorPage(
   dataRoot: string,
   baseId: string,
@@ -249,7 +256,7 @@ export async function readCsvEditorPage(
   return contentRegistry.readCsvEditorPage({ absolutePath, relativePath, startRow, pageSize })
 }
 
-/** Writes a sparse CSV patch through the file-type registry. */
+/** 经文件类型 registry 写入稀疏 CSV patch。 */
 export async function writeCsvPatch(dataRoot: string, baseId: string, relativePath: string, patch: CsvEntryPatch): Promise<void> {
   await requireBase(dataRoot, baseId)
   const absolutePath = resolveDest(dataRoot, baseId, relativePath).absolute

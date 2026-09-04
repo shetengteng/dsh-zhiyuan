@@ -8,7 +8,7 @@
 - 修改 `src/client/**/*.{ts,tsx,js,css}` 时，适用 Client UI 规则。
 - 修改 `src/client/**/*.{ts,tsx}` 时，额外适用 React 规则。
 - 修改 `src/**/*.{ts,tsx,js,css}` 时，适用模块体积规则。
-- 修改 `**/*.{ts,tsx}` 时，适用 TypeScript 规则。
+- 修改 `**/*.{ts,tsx}` 时，适用 TypeScript 规则；源码注释必须使用中文。
 - 修改 Host/Client、`package.json`、`cordis.patch.yml` 或构建脚本时，适用插件契约规则。
 
 ## DeepSeek Harness 插件契约
@@ -166,6 +166,7 @@ dsh web
 - 测试文件使用被测模块名加 `.test.ts`，例如 `search.test.ts`；测试夹具目录和文件名可以使用业务语言或中文，以便对应验收数据。
 - 变量和函数使用 `camelCase`，类型、接口和 React 组件使用 `PascalCase`，真正的固定配置使用 `UPPER_SNAKE_CASE`。
 - 命名必须表达业务语义，例如 `currentBaseId`、`baseRoot`、`absolutePath`、`relativePath`；不要使用不必要的 `abs`、`rel`、`dest`、`rec`、`tmp` 等缩写。
+- **源码注释使用中文。** 不要写英文 JSDoc 或行内注释；标识符、RPC 字段名、错误码和对外 API 名保持英文。
 
 ### 类型边界
 

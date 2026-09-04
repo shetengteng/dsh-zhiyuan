@@ -25,7 +25,6 @@ export function apply(ctx: {
   effect?: (setup: () => (() => void) | void) => void
   connection?: KnowledgePrivateConnection
 }): void {
-  console.log('[zhiyuan] client loaded')
   const loadPreview = async (selection: PreviewSelection, signal: AbortSignal) => {
     const value = await callKnowledgeHost(ctx.connection, {
       op: 'read',
@@ -70,7 +69,6 @@ export function apply(ctx: {
         preview.dispose()
         offNav()
         disposeSettingsStyles()
-        console.log('[zhiyuan] client unloaded')
       }
     })
   } else {

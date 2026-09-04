@@ -1,6 +1,6 @@
 import { COMMAND_NAME } from './identity.ts'
 import { lastDestCategory } from './catalog.ts'
-import { ingest } from './ingest.ts'
+import { ingest, buildIngestInput } from './ingest.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
 import { searchBase } from './search.ts'
@@ -44,13 +44,13 @@ async function handleIngest(rest: string[], flags: ReturnType<typeof parseFlags>
   if (!baseId) throw new KbError('missing_field', '导入必须指定 --base')
   const dataRoot = await resolveDataRoot()
   const destCategory = await resolveIngestTo(dataRoot, baseId, flagString(flags, 'to'), flagBool(flags, 'root', false))
-  return jobs.enqueue('ingest', () => ingest(dataRoot, {
+  return jobs.enqueue('ingest', () => ingest(dataRoot, buildIngestInput({
     baseId,
     sourcePath,
     destCategory,
     preserveTree: flagBool(flags, 'preserve-tree'),
     createMissing: !flagBool(flags, 'no-create'),
-  }))
+  })))
 }
 
 export function registerKbCommands(

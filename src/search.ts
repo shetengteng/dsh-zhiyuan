@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT } from './identity.ts'
+import { DEFAULT_TOP_K, MAX_ALIASES, MAX_TOP_K, SEARCH_CONTEXT, SEARCH_RG_MAX_COUNT_PER_FILE, SEARCH_RG_MAX_FILESIZE, SEARCH_RG_MAX_STDOUT_BYTES, SEARCH_RG_TIMEOUT_MS } from './identity.ts'
 import { markUsed, requireBase } from './bases.ts'
 import { contentRegistry } from './content/host-api.ts'
 import type { SearchDocument } from './content/shared/search-document.ts'
@@ -101,15 +101,24 @@ function mergeAdjacent(hits: Array<SearchHit & { file: string }>): Array<SearchH
 }
 
 export function diversify(hits: Array<SearchHit & { file: string }>, topK: number): SearchHit[] {
-  const fileHitCounts = new Map<string, number>()
+  // 按文件分组后轮转挑选：每篇先各取一条，再按原顺序取第二条，直到凑满 topK。
+  const hitsByFile = new Map<string, Array<SearchHit & { file: string }>>()
+  for (const hit of hits) {
+    const group = hitsByFile.get(hit.file)
+    if (group) group.push(hit)
+    else hitsByFile.set(hit.file, [hit])
+  }
   const selectedHits: Array<SearchHit & { file: string }> = []
-  const remainingHits = [...hits]
-  while (selectedHits.length < topK && remainingHits.length) {
-    remainingHits.sort((a, b) => (fileHitCounts.get(a.file) ?? 0) - (fileHitCounts.get(b.file) ?? 0))
-    const nextHit = remainingHits.shift()
-    if (!nextHit) break
-    fileHitCounts.set(nextHit.file, (fileHitCounts.get(nextHit.file) ?? 0) + 1)
-    selectedHits.push(nextHit)
+  const groups = [...hitsByFile.values()]
+  for (let index = 0; selectedHits.length < topK; index += 1) {
+    const roundHasHit = groups.some((group) => index < group.length)
+    if (!roundHasHit) break
+    for (const group of groups) {
+      const hit = group[index]
+      if (!hit) continue
+      selectedHits.push(hit)
+      if (selectedHits.length >= topK) break
+    }
   }
   return selectedHits.map((hit, index) => ({
     n: index + 1,
@@ -130,31 +139,67 @@ async function resolveRg(): Promise<string> {
   return ripgrepPath
 }
 
-function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): Promise<string> {
+type RgRun = {
+  stdout: string
+  warnings: string[]
+}
+
+function runRg(binaryPath: string, rgArgs: string[], workingDirectory: string): Promise<RgRun> {
   return new Promise((resolve, reject) => {
     const child = spawn(binaryPath, rgArgs, { cwd: workingDirectory, windowsHide: true })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (chunk) => { stdout += String(chunk) })
+    let timedOut = false
+    let truncated = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      child.kill('SIGKILL')
+    }, SEARCH_RG_TIMEOUT_MS)
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+      if (Buffer.byteLength(stdout) > SEARCH_RG_MAX_STDOUT_BYTES) {
+        truncated = true
+        child.kill('SIGKILL')
+      }
+    })
     child.stderr.on('data', (chunk) => { stderr += String(chunk) })
-    child.on('error', reject)
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      reject(error)
+    })
     child.on('close', (code) => {
-      if (code === 0 || code === 1) resolve(stdout)
+      clearTimeout(timer)
+      const warnings: string[] = []
+      if (timedOut) warnings.push('检索超时，已返回部分结果')
+      if (truncated) warnings.push('检索结果过多，已截断')
+      if (code === 0 || code === 1 || timedOut || truncated) resolve({ stdout, warnings })
       else reject(new Error(stderr.trim() || `rg 退出 ${code}`))
     })
   })
 }
 
 export class RipgrepSearchEngine implements SearchEngine {
+  lastWarnings: string[] = []
+
   async search(input: SearchInput): Promise<SearchHit[]> {
+    this.lastWarnings = []
     if (!existsSync(input.rootDir)) return []
     const ripgrepBinary = await resolveRg()
-    const rgArgs = ['--json', '--column', '--glob-case-insensitive']
+    const rgArgs = [
+      '--json',
+      '--column',
+      '--glob-case-insensitive',
+      '--max-count',
+      String(SEARCH_RG_MAX_COUNT_PER_FILE),
+      '--max-filesize',
+      SEARCH_RG_MAX_FILESIZE,
+    ]
     for (const glob of contentRegistry.searchGlobs()) rgArgs.push('--glob', glob)
     for (const term of input.terms) rgArgs.push('-e', term)
     rgArgs.push('.')
-    const stdout = await runRg(ripgrepBinary, rgArgs, input.rootDir)
-    const matches = parseRg(stdout, input.rootDir)
+    const run = await runRg(ripgrepBinary, rgArgs, input.rootDir)
+    this.lastWarnings = run.warnings
+    const matches = parseRg(run.stdout, input.rootDir)
     const rawHits: Array<SearchHit & { file: string }> = []
     const fileCache = new Map<string, SearchDocument>()
     for (const match of matches) {
@@ -204,6 +249,7 @@ export async function searchBase(
     }
   }
   const hits = await engine.search({ baseId: input.baseId, rootDir, terms, topK })
+  const extraWarnings = engine instanceof RipgrepSearchEngine ? engine.lastWarnings : []
   await markUsed(dataRoot, input.baseId)
-  return { hits, warnings }
+  return { hits, warnings: [...warnings, ...extraWarnings] }
 }

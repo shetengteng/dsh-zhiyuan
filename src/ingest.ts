@@ -6,10 +6,27 @@ import { requireBase } from './bases.ts'
 import { readCatalog, rememberLastDest } from './catalog.ts'
 import { contentRegistry } from './content/host-api.ts'
 import { sha256File } from './content/shared/file-hash.ts'
-import { writePreparedEntry } from './content/shared/ingest-output.ts'
+import { writePreparedEntry, type PreparedEntry } from './content/shared/ingest-output.ts'
 import { assertInside, assertNoSymlinkEscape, baseDir, expandUserPath, resolveDest } from './paths.ts'
 import type { IngestFileResult, IngestInput, IngestResult } from './types.ts'
 import { KbError } from './types.ts'
+
+export function buildIngestInput(input: {
+  baseId: string
+  sourcePath: string
+  destCategory: string
+  preserveTree?: boolean
+  createMissing?: boolean
+}): IngestInput {
+  return {
+    baseId: input.baseId,
+    sourcePath: input.sourcePath,
+    destCategory: input.destCategory,
+    preserveTree: input.preserveTree ?? false,
+    createMissing: input.createMissing ?? true,
+    onConflict: 'skip',
+  }
+}
 
 function isTextFile(name: string): boolean {
   return contentRegistry.isStoredEntryPath(name)
@@ -129,7 +146,7 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
 
   let addedBytes = 0
   for (const file of files) {
-    const fileResult = await ingestOne({
+    const fileResults = await ingestOne({
       file,
       sourceRoot,
       destinationAbsolute: destination.absolute,
@@ -140,14 +157,16 @@ export async function ingest(dataRoot: string, input: IngestInput): Promise<Inge
       maxBaseBytes: catalog.prefs.maxBaseBytes,
       currentBytes: currentBytes + addedBytes,
     })
-    result.files.push(fileResult)
-    if (fileResult.status === 'skipped') result.skipped += 1
-    else if (fileResult.status === 'failed') result.failed += 1
-    else {
-      result.copied.push(fileResult.relPath)
-      if (fileResult.status === 'renamed') result.renamed.push(fileResult.relPath)
-      if (fileResult.relPath.includes('/')) createdDirs.add(dirname(fileResult.relPath).split(sep).join('/'))
-      addedBytes += fileResult.writtenBytes ?? 0
+    for (const fileResult of fileResults) {
+      result.files.push(fileResult)
+      if (fileResult.status === 'skipped') result.skipped += 1
+      else if (fileResult.status === 'failed') result.failed += 1
+      else {
+        result.copied.push(fileResult.relPath)
+        if (fileResult.status === 'renamed') result.renamed.push(fileResult.relPath)
+        if (fileResult.relPath.includes('/')) createdDirs.add(dirname(fileResult.relPath).split(sep).join('/'))
+        addedBytes += fileResult.writtenBytes ?? 0
+      }
     }
   }
   result.createdDirs = [...createdDirs].filter(Boolean)
@@ -165,7 +184,7 @@ async function ingestOne(args: {
   maxFileBytes: number
   maxBaseBytes: number
   currentBytes: number
-}): Promise<IngestFileResult> {
+}): Promise<IngestFileResult[]> {
   const name = basename(args.file)
   const sourceRelativePath = relativeSourcePath(args.sourceRoot, args.file, args.preserveTree)
   const failed = (code: NonNullable<IngestFileResult['code']>, reason: string): IngestFileResult => ({
@@ -180,10 +199,10 @@ async function ingestOne(args: {
     return await ingestOneUnsafe(args, name, sourceRelativePath, failed)
   } catch (error) {
     if (error instanceof KbError) {
-      if (isIngestFailureCode(error.code)) return failed(error.code, error.message)
-      return failed('io_failed', '文件处理失败，请检查权限或磁盘空间')
+      if (isIngestFailureCode(error.code)) return [failed(error.code, error.message)]
+      return [failed('io_failed', '文件处理失败，请检查权限或磁盘空间')]
     }
-    return failed('io_failed', '文件处理失败，请检查权限或磁盘空间')
+    return [failed('io_failed', '文件处理失败，请检查权限或磁盘空间')]
   }
 }
 
@@ -202,19 +221,44 @@ async function ingestOneUnsafe(
   name: string,
   sourceRelativePath: string,
   failed: (code: NonNullable<IngestFileResult['code']>, reason: string) => IngestFileResult,
-): Promise<IngestFileResult> {
+): Promise<IngestFileResult[]> {
   if (!contentRegistry.sourceFormatForPath(name)) {
-    return failed('ext_denied', `只支持 ${contentRegistry.sourceExtensions().join(' / ')}`)
+    return [failed('ext_denied', `只支持 ${contentRegistry.sourceExtensions().join(' / ')}`)]
   }
-  const prepared = await contentRegistry.prepareImport({
+  const preparedEntries = await contentRegistry.prepareImport({
     sourcePath: args.file,
     sourceName: name,
     maxFileBytes: args.maxFileBytes,
   })
+  if (!preparedEntries.length) return [failed('io_failed', '没有可导入的内容')]
+  const results: IngestFileResult[] = []
+  let extraBytes = 0
+  for (const prepared of preparedEntries) {
+    const written = await ingestPrepared(args, name, sourceRelativePath, failed, prepared, args.currentBytes + extraBytes)
+    results.push(written)
+    if (written.status === 'copied' || written.status === 'renamed') extraBytes += written.writtenBytes ?? 0
+  }
+  return results
+}
+
+async function ingestPrepared(
+  args: {
+    destinationAbsolute: string
+    baseRoot: string
+    hashes: Map<string, string>
+    maxFileBytes: number
+    maxBaseBytes: number
+  },
+  name: string,
+  sourceRelativePath: string,
+  failed: (code: NonNullable<IngestFileResult['code']>, reason: string) => IngestFileResult,
+  prepared: PreparedEntry,
+  currentBytes: number,
+): Promise<IngestFileResult> {
   if (prepared.byteLength > args.maxFileBytes) {
     return failed('file_too_large', `单文件超过 ${args.maxFileBytes} 字节`)
   }
-  if (args.currentBytes + prepared.byteLength > args.maxBaseBytes) {
+  if (currentBytes + prepared.byteLength > args.maxBaseBytes) {
     return failed('quota', '本批导入将超过单库文字上限')
   }
   if (args.hashes.has(prepared.digest)) {

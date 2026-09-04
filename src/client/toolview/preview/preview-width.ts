@@ -15,11 +15,10 @@ type LayoutFrame = {
 }
 
 /**
- * DSH 0.1.1-rc.2 exposes details open/close, but not a details-width action.
- * Widen the host's third column from the default 360px while this preview is
- * mounted, then stay out of the way: the host already allows dragging
- * 300–520px. Re-apply only when the host resets to that default column.
- * Restore inline values when the preview is released.
+ * DSH 0.1.1-rc.2 只暴露详情栏开/关，没有改宽度的动作。
+ * 预览挂载期间把壳的第三列从默认 360px 加宽，然后不再干预：
+ * 壳本身允许拖到 300–520px。仅当壳重置回默认列宽时再套一次。
+ * 预览释放时恢复原来的 inline 值。
  */
 export function widenPreviewDetailsPanel(panel: HTMLElement): () => void {
   const layout = findLayoutFrame(panel)

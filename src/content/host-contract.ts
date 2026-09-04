@@ -40,7 +40,7 @@ export type EntryCsvPatchContext = EntryPathContext & {
 export type SourceFormatHandler = {
   sourceFormat: SourceFormat
   sourceExtensions: readonly string[]
-  prepareImport: (context: PrepareImportContext) => Promise<PreparedEntry>
+  prepareImport: (context: PrepareImportContext) => Promise<PreparedEntry[]>
 }
 
 export type EntryFormatHandler = {
@@ -54,7 +54,7 @@ export type EntryFormatHandler = {
   writeCsvPatch?: (context: EntryCsvPatchContext) => Promise<void>
 }
 
-/** Internal registration contract for one file-type module. */
+/** 单个文件类型模块的内部注册契约。 */
 export type ContentFormatModule = {
   sourceHandlers: readonly SourceFormatHandler[]
   entryHandlers: readonly EntryFormatHandler[]

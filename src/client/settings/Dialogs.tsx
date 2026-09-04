@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Button, Modal, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
 
-/** Shared controls and dialogs for the settings workbench. */
+/** 设置工作台共用的控件与弹框。 */
 export { Modal }
 
 export function Field(props: { label: string; help?: string; children: unknown }) {

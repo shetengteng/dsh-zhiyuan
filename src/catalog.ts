@@ -1,8 +1,25 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import { DEFAULT_MAX_BASE_BYTES, DEFAULT_MAX_FILE_BYTES } from './identity.ts'
 import type { BaseCard, Catalog, CatalogPrefs } from './types.ts'
 import { catalogPath } from './paths.ts'
+
+let catalogChain = Promise.resolve()
+
+let catalogWarningSink: ((message: string) => void) | undefined
+
+/** Host 启动时注入 logger，catalog 读到不支持的 version 时输出 warning。 */
+export function setCatalogWarningSink(sink: (message: string) => void): void {
+  catalogWarningSink = sink
+}
+
+function warnOnUnknownVersion(raw: unknown): void {
+  const record = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+  if (record.version !== undefined && record.version !== 1) {
+    catalogWarningSink?.(`catalog.json version 为 ${String(record.version)}，已按 version 1 解析`)
+  }
+}
 
 export function emptyCatalog(): Catalog {
   return {
@@ -71,7 +88,9 @@ export function parseCatalog(raw: unknown): Catalog {
 export async function readCatalog(dataRoot: string): Promise<Catalog> {
   try {
     const text = await readFile(catalogPath(dataRoot), 'utf8')
-    return parseCatalog(JSON.parse(text) as unknown)
+    const raw = JSON.parse(text) as unknown
+    warnOnUnknownVersion(raw)
+    return parseCatalog(raw)
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code
     if (code === 'ENOENT') return emptyCatalog()
@@ -79,10 +98,42 @@ export async function readCatalog(dataRoot: string): Promise<Catalog> {
   }
 }
 
+/** Host 进程内 catalog 读改写的单写者。不锁文件 IO 本身。 */
+export async function withCatalogLock<T>(work: () => Promise<T>): Promise<T> {
+  const run = catalogChain.then(work, work)
+  catalogChain = run.then(() => undefined, () => undefined)
+  return run
+}
+
+export type CatalogContext = {
+  dataRoot: string
+  catalog: Catalog
+}
+
+/** 在写锁下读一次 catalog，执行 work，仅当 work 返回 catalog 时写入。 */
+export async function withCatalogTx<T>(
+  dataRoot: string,
+  work: (context: CatalogContext) => Promise<{ result: T; catalog?: Catalog }> | { result: T; catalog?: Catalog },
+): Promise<T> {
+  return withCatalogLock(async () => {
+    const catalog = await readCatalog(dataRoot)
+    const outcome = await work({ dataRoot, catalog })
+    if (outcome.catalog) await writeCatalog(dataRoot, outcome.catalog)
+    return outcome.result
+  })
+}
+
 export async function writeCatalog(dataRoot: string, catalog: Catalog): Promise<void> {
   const file = catalogPath(dataRoot)
   await mkdir(dirname(file), { recursive: true })
-  await writeFile(file, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
+  const temporaryPath = join(dirname(file), `.${basename(file)}.${randomUUID()}.tmp`)
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(catalog, null, 2)}\n`, { flag: 'wx' })
+    await rename(temporaryPath, file)
+  } catch (error) {
+    await rm(temporaryPath, { force: true }).catch(() => undefined)
+    throw error
+  }
 }
 
 export function upsertBase(catalog: Catalog, card: BaseCard): Catalog {
@@ -108,11 +159,12 @@ export async function lastDestCategory(dataRoot: string, baseId: string): Promis
 }
 
 export async function rememberLastDest(dataRoot: string, baseId: string, destCategory: string): Promise<void> {
-  const catalog = await readCatalog(dataRoot)
-  const currentCard = catalog.bases.find((card) => card.id === baseId)
-  if (!currentCard || currentCard.lastDestCategory === destCategory) return
-  currentCard.lastDestCategory = destCategory
-  await writeCatalog(dataRoot, catalog)
+  await withCatalogTx(dataRoot, ({ catalog }) => {
+    const currentCard = catalog.bases.find((card) => card.id === baseId)
+    if (!currentCard || currentCard.lastDestCategory === destCategory) return { result: undefined }
+    currentCard.lastDestCategory = destCategory
+    return { result: undefined, catalog }
+  })
 }
 
 export function cleanAliases(aliases: string[] | undefined): string[] {

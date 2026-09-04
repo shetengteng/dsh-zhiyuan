@@ -24,6 +24,7 @@ export function createJobRunner(): JobRunner {
             message: error instanceof Error ? error.message : String(error),
             at: Date.now(),
           })
+          if (failed.length > 20) failed.shift()
           throw error
         } finally {
           running = false

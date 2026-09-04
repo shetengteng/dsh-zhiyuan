@@ -1,7 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TableVirtuoso } from 'react-virtuoso'
-import type { CsvCellChange, CsvEditorPage, CsvEntryPatch } from '../../api.ts'
+import type { CsvEditorPage, CsvEntryPatch } from '../../api.ts'
 import type { ReadEntryResult } from '../../../client/models.ts'
+import {
+  buildPatch,
+  cellKey,
+  emptyCsvChanges,
+  storeEdit,
+  withActiveEdit,
+  type CsvActiveEdit,
+  type CsvChanges,
+} from './csv-patch.ts'
 
 export type CsvEditorHandle = {
   getText: () => string
@@ -15,37 +24,22 @@ export type CsvPreviewProps = {
   onLoadPage?: (startRow: number) => Promise<CsvEditorPage>
 }
 
-type ActiveEdit = {
-  row: number
-  column: number
-  originalValue: string
-  value: string
-  isHeader: boolean
-}
-
-type CsvChanges = {
-  headers: Map<number, string>
-  cells: Map<string, CsvCellChange>
-}
-
-const EMPTY_CHANGES: CsvChanges = { headers: new Map(), cells: new Map() }
-
-/** A virtualized native table for lightweight CSV viewing and in-cell editing. */
+/** 轻量 CSV 查看与单元格编辑用的虚拟原生表格。 */
 export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function CsvPreview(props, ref) {
   const csv = props.preview.csv
   const [page, setPage] = useState<CsvEditorPage | undefined>(() => editorPage(csv))
-  const [changes, setChanges] = useState<CsvChanges>(EMPTY_CHANGES)
-  const [activeEdit, setActiveEdit] = useState<ActiveEdit | null>(null)
+  const [changes, setChanges] = useState<CsvChanges>(emptyCsvChanges)
+  const [activeEdit, setActiveEdit] = useState<CsvActiveEdit | null>(null)
   const [pageBusy, setPageBusy] = useState(false)
   const [pageError, setPageError] = useState('')
   const requestId = useRef(0)
-  const cancelledEdit = useRef<ActiveEdit | null>(null)
+  const cancelledEdit = useRef<CsvActiveEdit | null>(null)
   const editable = props.mode === 'edit' && Boolean(page?.revision)
 
   useEffect(() => {
     requestId.current += 1
     setPage(editorPage(csv))
-    setChanges(EMPTY_CHANGES)
+    setChanges(emptyCsvChanges())
     setActiveEdit(null)
     setPageBusy(false)
     setPageError('')
@@ -65,8 +59,8 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
     return changes.cells.get(cellKey(row, column))?.value ?? source
   }
 
-  const persistEdit = (edit: ActiveEdit) => setChanges((current) => storeEdit(current, edit))
-  const beginEdit = (edit: ActiveEdit) => {
+  const persistEdit = (edit: CsvActiveEdit) => setChanges((current) => storeEdit(current, edit))
+  const beginEdit = (edit: CsvActiveEdit) => {
     if (!editable) return
     if (activeEdit) persistEdit(activeEdit)
     setActiveEdit(edit)
@@ -96,7 +90,7 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
         if (activeEdit) persistEdit(activeEdit)
         setActiveEdit(null)
         if (nextPage.revision !== page.revision) {
-          setChanges(EMPTY_CHANGES)
+          setChanges(emptyCsvChanges())
           setPageError('文件已变化，未保存的表格修改已清除')
         }
         setPage(nextPage)
@@ -186,37 +180,6 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
 
 function editorPage(csv: ReadEntryResult['csv']): CsvEditorPage | undefined {
   return csv?.revision ? csv : undefined
-}
-
-function withActiveEdit(changes: CsvChanges, activeEdit: ActiveEdit | null): CsvChanges {
-  return activeEdit ? storeEdit(changes, activeEdit) : changes
-}
-
-function storeEdit(changes: CsvChanges, edit: ActiveEdit): CsvChanges {
-  const headers = new Map(changes.headers)
-  const cells = new Map(changes.cells)
-  if (edit.isHeader) {
-    if (edit.value === edit.originalValue) headers.delete(edit.column)
-    else headers.set(edit.column, edit.value)
-  } else {
-    const key = cellKey(edit.row, edit.column)
-    if (edit.value === edit.originalValue) cells.delete(key)
-    else cells.set(key, { row: edit.row, column: edit.column, value: edit.value })
-  }
-  return { headers, cells }
-}
-
-function buildPatch(revision: string, changes: CsvChanges): CsvEntryPatch | undefined {
-  if (!changes.headers.size && !changes.cells.size) return undefined
-  return {
-    revision,
-    headerChanges: [...changes.headers].sort(([left], [right]) => left - right).map(([column, value]) => ({ column, value })),
-    cellChanges: [...changes.cells.values()].sort((left, right) => left.row - right.row || left.column - right.column),
-  }
-}
-
-function cellKey(row: number, column: number): string {
-  return `${row}:${column}`
 }
 
 function RawCsvFallback(props: { preview: ReadEntryResult; showPreviewStatus?: boolean }) {

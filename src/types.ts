@@ -38,8 +38,6 @@ export type TreeNode = {
   children?: TreeNode[]
 }
 
-export type CsvPreviewView = EntryPreviewView
-
 export type ReadEntryResult = {
   path: string
   text: string
@@ -133,6 +131,8 @@ export type UpdateBasePatch = {
 
 export type KbErrorCode =
   | 'missing_field'
+  | 'invalid_field'
+  | 'unknown_op'
   | 'base_exists'
   | 'title_exists'
   | 'base_missing'

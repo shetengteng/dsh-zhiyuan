@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SECTION_LABEL } from '../../identity.ts'
-import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
-import type { BaseSummary, DialogKind, IngestResult, JobStatus, Prefs, ReadEntryResult, SearchHit, TreeNode } from '../models.ts'
-import { parseCsvEditorPage, parseIngestResult, parseReadEntry, parseSearchResult } from '../host-payload.ts'
-import { createPreviewRequestManager } from './preview/preview-request.ts'
+import type { KnowledgePrivateConnection } from '../bridge.ts'
+import type { DialogKind, IngestResult, SearchHit } from '../models.ts'
+import { parseCsvEditorPage, parseIngestResult, parseSearchResult } from '../host-payload.ts'
+import { useWorkbenchData, splitAliases } from './use-workbench-data.ts'
+import { useEntryPreview } from './use-entry-preview.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ConfirmDialog, CreateDialog, EditDialog } from './Dialogs.tsx'
@@ -16,74 +17,33 @@ import { ensureSettingsStyles } from './styles.ts'
 
 type SettingsTab = 'bases' | 'prefs' | 'about'
 
-/** Creates the settings section and wires UI actions to the Host bridge. */
+/** 创建设置 section，并把 UI 操作接到 Host bridge。 */
 export function createSettingsSection(
   connection?: KnowledgePrivateConnection,
 ) {
   return function ZhiyuanSettings() {
     ensureSettingsStyles()
     const [tab, setTab] = useState('bases' as SettingsTab)
-    const [bases, setBases] = useState([] as BaseSummary[])
-    const [currentBaseId, setCurrentBaseId] = useState('')
-    const [tree, setTree] = useState([] as TreeNode[])
-    const [prefs, setPrefs] = useState({ defaultBaseId: '', maxFileBytes: 5_242_880, maxBaseBytes: 10_737_418_240 } as Prefs)
-    const [job, setJob] = useState(undefined as JobStatus | undefined)
     const [dialog, setDialog] = useState(null as DialogKind)
-    const [pending, setPending] = useState(false)
-    const [error, setError] = useState('')
-    const [note, setNote] = useState('')
     const [hits, setHits] = useState([] as SearchHit[])
     const [query, setQuery] = useState('')
     const [searched, setSearched] = useState(false)
     const [searchBusy, setSearchBusy] = useState(false)
-    const [previewOrigin, setPreviewOrigin] = useState('tree' as 'tree' | 'search')
-    const [preview, setPreview] = useState<ReadEntryResult | null>(null)
-    const [previewFallback, setPreviewFallback] = useState('')
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
-    const previewRequests = useRef(createPreviewRequestManager())
+
+    const { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, note, setError, setNote, call, refresh, run: runWork } = useWorkbenchData(connection)
+    const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, cancelPreviews } = useEntryPreview({
+      call,
+      onOpened: () => setDialog('preview'),
+      onTreeError: (message) => setNote(message),
+      onSearchError: (message) => setError(message),
+    })
 
     const currentBase = bases.find((item) => item.id === currentBaseId)
-    const call = (payload: Record<string, unknown>, signal?: AbortSignal) => callKnowledgeHost(connection, payload, signal)
 
-    useEffect(() => () => previewRequests.current.cancel(), [])
-
-    const refresh = async (baseId?: string) => {
-      setPending(true)
-      setNote('')
-      try {
-        const list = await call({ op: 'list' }) as BaseSummary[]
-        setBases(list)
-        const nextBaseId = baseId || currentBaseId || list.find((item) => item.lastUsed)?.id || list[0]?.id || ''
-        setCurrentBaseId(nextBaseId)
-        if (nextBaseId) setTree(await call({ op: 'tree', id: nextBaseId }) as TreeNode[])
-        else setTree([])
-        setPrefs(await call({ op: 'prefs' }) as Prefs)
-        setJob(await getKnowledgeJobStatus(connection) as JobStatus)
-      } catch (err) {
-        setNote(err instanceof Error ? err.message : String(err))
-      } finally {
-        setPending(false)
-      }
-    }
+    const run = <T,>(work: () => Promise<T>, after?: (value: T) => void) => runWork(work, { onSuccess: () => setDialog(null), after })
 
     useEffect(() => { void refresh() }, [])
-
-    const run = async <T,>(work: () => Promise<T>, after?: (value: T) => void) => {
-      setError('')
-      setPending(true)
-      try {
-        const value = await work()
-        setDialog(null)
-        await refresh(currentBaseId)
-        after?.(value)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
-      } finally {
-        setPending(false)
-      }
-    }
-
-    const aliases = (text: string) => text.split(/[,，]/).map((item) => item.trim()).filter(Boolean)
 
     return (
       <div className="zy">
@@ -136,21 +96,7 @@ export function createSettingsSection(
                 setConfirm({ message: `删除知识库「${base.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteBase', id: base.id, confirm: true }).then(() => undefined)) })
                 setDialog('confirm')
               }}
-              onOpenEntry={(entryPath) => {
-                const request = previewRequests.current.start()
-                void call({ op: 'read', id: currentBaseId, path: entryPath, view: 'tree', readMode: 'edit' }, request.signal).then((value) => {
-                  if (!previewRequests.current.isCurrent(request.id)) return
-                  const entry = parseReadEntry(value)
-                  setPreview(entry)
-                  setPreviewFallback('')
-                  setPreviewOrigin('tree')
-                  setDialog('preview')
-                }).catch((err) => {
-                  if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) setNote(err instanceof Error ? err.message : String(err))
-                }).finally(() => {
-                  previewRequests.current.clear(request.id)
-                })
-              }}
+              onOpenEntry={(entryPath) => openTreeEntry(currentBaseId, entryPath)}
               onDeleteEntry={(entryPath, kind) => {
                 setConfirm({
                   message: kind === 'dir' ? `删除类目「${entryPath}」？` : `删除文件「${entryPath}」？`,
@@ -165,7 +111,7 @@ export function createSettingsSection(
         </div>
 
         {dialog === 'create' ? (
-          <CreateDialog error={error} busy={pending} onClose={() => setDialog(null)} onSubmit={(input) => void run(() => call({ op: 'create', ...input, aliases: aliases(input.aliases) }).then(() => undefined))} />
+          <CreateDialog error={error} busy={pending} onClose={() => setDialog(null)} onSubmit={(input) => void run(() => call({ op: 'create', ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))} />
         ) : null}
         {dialog === 'edit' && currentBase ? (
           <EditDialog
@@ -177,12 +123,12 @@ export function createSettingsSection(
               setConfirm({ message: `删除知识库「${currentBase.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteBase', id: currentBase.id, confirm: true }).then(() => undefined)) })
               setDialog('confirm')
             }}
-            onSubmit={(input) => void run(() => call({ op: 'update', id: currentBase.id, ...input, aliases: aliases(input.aliases) }).then(() => undefined))}
+            onSubmit={(input) => void run(() => call({ op: 'update', id: currentBase.id, ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))}
           />
         ) : null}
         {dialog === 'import' && currentBase ? (
           <ImportDialog
-            baseId={currentBase.id}
+            baseTitle={currentBase.title}
             error={error}
             busy={pending}
             onClose={() => setDialog(null)}
@@ -226,29 +172,7 @@ export function createSettingsSection(
                 setSearched(true)
               }).finally(() => setSearchBusy(false))
             }}
-            onOpenHit={(hit) => {
-              const request = previewRequests.current.start()
-              void call({
-                op: 'read',
-                id: currentBase.id,
-                path: hit.path,
-                view: 'search-hit',
-                matchLine: hit.matchLine,
-                matchColumnByte: hit.matchColumnByte,
-                sourceFingerprint: hit.sourceFingerprint,
-              }, request.signal).then((value) => {
-                if (!previewRequests.current.isCurrent(request.id)) return
-                const entry = parseReadEntry(value, { view: 'search-hit', matchLine: hit.matchLine })
-                setPreview(entry)
-                setPreviewFallback(hit.excerpt)
-                setPreviewOrigin('search')
-                setDialog('preview')
-              }).catch((err) => {
-                if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) setError(err instanceof Error ? err.message : String(err))
-              }).finally(() => {
-                previewRequests.current.clear(request.id)
-              })
-            }}
+            onOpenHit={(hit) => openSearchHit(currentBase.id, hit)}
           />
         ) : null}
         {dialog === 'preview' && preview ? (
@@ -259,7 +183,7 @@ export function createSettingsSection(
             error={error}
             busy={pending}
             fallbackText={previewFallback || undefined}
-            onClose={() => { previewRequests.current.cancel(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
+            onClose={() => { cancelPreviews(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
             onSave={preview.format === 'markdown' ? (text) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, text }).then(() => undefined)) : undefined}
             onSaveCsv={(patch) => void run(() => call({ op: 'writeCsvPatch', id: currentBaseId, path: preview.path, patch }).then(() => undefined))}
             onLoadCsvPage={(startRow) => call({ op: 'readCsvPage', id: currentBaseId, path: preview.path, startRow }).then(parseCsvEditorPage)}

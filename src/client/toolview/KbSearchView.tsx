@@ -54,7 +54,7 @@ function isSearchHit(value: unknown): value is SearchHit {
 }
 
 export function createKbSearchView(preview: PreviewController) {
-  /** Renders kb_search results in the conversation tool view. */
+  /** 在会话 toolview 中渲染 kb_search 命中。 */
   return function KbSearchView(props: { toolName?: string; block?: ToolResultBlock }) {
     ensureSettingsStyles()
     const block = props.block

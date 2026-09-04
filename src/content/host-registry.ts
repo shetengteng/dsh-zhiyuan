@@ -61,7 +61,7 @@ function entryHandlerForPath(relativePath: string): EntryFormatHandler {
   return handler
 }
 
-/** The only Host API implementation for file-type routing. */
+/** 文件类型路由的唯一 Host 实现。 */
 export const contentRegistry = {
   sourceExtensions: (): readonly string[] => [...SOURCE_EXTENSIONS],
   entryExtensions: (): readonly string[] => [...ENTRY_EXTENSIONS],
@@ -69,7 +69,7 @@ export const contentRegistry = {
   sourceFormatForPath: (sourcePath: string): SourceFormat | undefined => SOURCE_ROUTES.get(extensionOf(sourcePath))?.format,
   entryFormatForPath: (relativePath: string): EntryFormatValue | undefined => ENTRY_ROUTES.get(extensionOf(relativePath))?.format,
   isStoredEntryPath: (relativePath: string): boolean => ENTRY_ROUTES.has(extensionOf(relativePath)),
-  prepareImport: (context: PrepareImportContext): Promise<PreparedEntry> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
+  prepareImport: (context: PrepareImportContext): Promise<PreparedEntry[]> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
   readPreview: (context: EntryPreviewContext): Promise<ReadEntryResult> => entryHandlerForPath(context.relativePath).readPreview(context),
   readForSearch: (context: EntryPathContext): Promise<SearchDocument> => entryHandlerForPath(context.relativePath).readForSearch(context),
   writeEntry: async (context: EntryWriteContext): Promise<void> => {

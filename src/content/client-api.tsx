@@ -5,7 +5,7 @@ import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/Ma
 import type { ReadEntryResult } from '../client/models.ts'
 import type { CsvEditorPage, CsvEntryPatch } from './api.ts'
 
-/** Client-facing editor handle; its concrete editor remains format-private. */
+/** 面向 Client 的编辑器句柄；具体编辑器仍由格式模块私有。 */
 export type EntryEditorHandle = {
   getText: () => string
   getCsvPatch?: () => CsvEntryPatch | undefined
@@ -35,7 +35,7 @@ const PREVIEW_RENDERERS: Record<ReadEntryResult['format'], PreviewRenderer> = {
   ),
 }
 
-/** Client-only preview dispatcher. It never reads local files or grants permissions. */
+/** 仅 Client 使用的预览分发器。不读本地文件，也不授予权限。 */
 export function EntryPreviewContent(props: EntryPreviewContentProps) {
   return PREVIEW_RENDERERS[props.preview.format](props)
 }

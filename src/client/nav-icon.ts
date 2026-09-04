@@ -54,7 +54,7 @@ function syncNav(getLabel: () => string, originals: Array<{ button: Element; svg
   }
 }
 
-/** DSH nav icons are hardcoded by section id; unknown pages get a gear. Swap ours for a book. */
+/** DSH 导航图标按 section id 写死；未知页是齿轮。这里换成书本。 */
 export function installZhiyuanNavIcon(getLabel: () => string = () => SECTION_LABEL): () => void {
   if (typeof document === 'undefined' || !document.body) return () => undefined
   const originals: Array<{ button: Element; svg: Element }> = []

@@ -14,6 +14,7 @@ alwaysApply: false
 - 测试文件使用被测模块名加 `.test.ts`，例如 `search.test.ts`；测试夹具目录和文件名可以使用业务语言或中文，以便直接对应验收数据。
 - 变量和函数使用 `camelCase`，类型、接口和 React 组件使用 `PascalCase`，真正的固定配置使用 `UPPER_SNAKE_CASE`。
 - 命名表达业务语义：使用 `currentBaseId`、`baseRoot`、`absolutePath`、`relativePath`；不要在局部变量中使用 `abs`、`rel`、`dest`、`rec`、`tmp` 等不必要缩写。
+- **源码注释使用中文。** 不要写英文 JSDoc 或行内注释；标识符、RPC 字段名、错误码和对外 API 名保持英文。
 
 ## 类型边界
 

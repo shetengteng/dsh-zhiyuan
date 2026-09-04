@@ -138,6 +138,24 @@ test('rememberLastDest 写入；同值不改；缺库静默', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+test('并发写 catalog 不丢另一张卡片的字段', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zy-cat-lock-'))
+  const catalog = emptyCatalog()
+  catalog.bases.push(
+    { id: 'a', title: 'A', description: '', aliases: [], createdAt: 1, lastUsedAt: 1 },
+    { id: 'b', title: 'B', description: '', aliases: [], createdAt: 1, lastUsedAt: 1 },
+  )
+  await writeCatalog(root, catalog)
+  await Promise.all([
+    rememberLastDest(root, 'a', 'one'),
+    rememberLastDest(root, 'b', 'two'),
+  ])
+  const loaded = await readCatalog(root)
+  assert.equal(loaded.bases.find((card) => card.id === 'a')?.lastDestCategory, 'one')
+  assert.equal(loaded.bases.find((card) => card.id === 'b')?.lastDestCategory, 'two')
+  await rm(root, { recursive: true, force: true })
+})
+
 test('readCatalog 遇到非 ENOENT 继续抛', async () => {
   const root = await mkdtemp(join(tmpdir(), 'zy-cat2-'))
   await mkdir(join(root, 'catalog.json'))

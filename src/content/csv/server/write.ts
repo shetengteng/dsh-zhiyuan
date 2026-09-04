@@ -12,7 +12,7 @@ const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf])
 
 type CsvWriteContext = Pick<EntryWriteContext | EntryCsvPatchContext, 'absolutePath' | 'baseBytesWithoutEntry' | 'maxBaseBytes' | 'maxFileBytes'>
 
-/** Writes edited tables as the defined UTF-8-BOM, comma-delimited CSV output. */
+/** 整文件替换 CSV。与 writeCsvPatch 不同，本路径不校验 revision，供命令和测试使用。 */
 export async function writeCsvEntry(context: EntryWriteContext): Promise<void> {
   const sourceBytes = Buffer.concat([UTF8_BOM, Buffer.from(stripUtf8Bom(context.text), 'utf8')])
   const maxFileBytes = Math.min(CSV_MAX_IMPORT_BYTES, context.maxFileBytes)
@@ -22,7 +22,7 @@ export async function writeCsvEntry(context: EntryWriteContext): Promise<void> {
   await writeCsvDocument(context, document)
 }
 
-/** Validates, canonicalizes, and atomically replaces a parsed CSV document. */
+/** 校验、规范化并原子替换已解析的 CSV 文档。 */
 export async function writeCsvDocument(context: CsvWriteContext, document: ReturnType<typeof parseCsvDocument>): Promise<void> {
   const maxFileBytes = Math.min(CSV_MAX_IMPORT_BYTES, context.maxFileBytes)
   const bytes = Buffer.concat([UTF8_BOM, Buffer.from(serializeCsvDocument(document), 'utf8')])
