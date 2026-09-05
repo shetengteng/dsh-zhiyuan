@@ -107,30 +107,38 @@ describe('kb tools', { concurrency: false }, () => {
       await assert.rejects(() => search.execute(null), /必须带 baseId/)
       await assert.rejects(() => search.execute({ baseId: 'work' }), /query 必填/)
       const base = await createBase(root, { title: '工作库', description: '描述' })
-      const empty = await search.execute({ baseId: base.id, query: '违约' }) as { hits: unknown[] }
-      assert.deepEqual(empty.hits, [])
+      const empty = await search.execute({ baseId: base.id, query: '违约' }) as { files: unknown[] }
+      assert.deepEqual(empty.files, [])
       assert.equal(search.output.render({}, empty)[0].text, '无命中')
       const meta = {
-        hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\n命中的正文\n第三行' }],
+        files: [{
+          path: 'a.md',
+          format: 'markdown',
+          totalHits: 1,
+          hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\n命中的正文\n第三行' }],
+        }],
+        totalFiles: 1,
+        totalHits: 1,
         warnings: [],
       }
       const rendered = search.output.render({}, meta)[0].text
       assert.match(rendered, /`1` a\.md:1–3/)
       assert.doesNotMatch(rendered, /\[1\]/)
       assert.match(rendered, /命中的正文/)
+      assert.match(rendered, /【命中概览】1 个文件 · 1 条命中 · 本页 1 条/)
       const incompleteRendered = search.output.render({}, {
         ...meta,
         scanComplete: false,
         hasMore: true,
         nextCursor: 'cursor',
       })[0].text
-      assert.match(incompleteRendered, /当前仅展示 1 条，仍有更多命中/)
+      assert.match(incompleteRendered, /仍有更多命中/)
       assert.match(incompleteRendered, /扫描未完成/)
       assert.match(incompleteRendered, /下一页游标：cursor/)
       assert.deepEqual(search.output.presentationMeta?.({}, meta), meta)
-      const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; hits?: unknown[]; warnings?: unknown[]; documents?: unknown[] }
+      const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; files?: unknown[]; warnings?: unknown[]; documents?: unknown[] }
       assert.equal(presentation.baseId, base.id)
-      assert.equal(presentation.hits, meta.hits)
+      assert.equal(presentation.files, meta.files)
       assert.deepEqual(presentation.warnings, meta.warnings)
       assert.equal(presentation.documents, undefined)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })

@@ -1,4 +1,4 @@
-import type { IngestResult, ReadEntryResult, SearchHit, SearchResult } from './models.ts'
+import type { IngestResult, ReadEntryResult, SearchFileGroup, SearchHit, SearchResult } from './models.ts'
 import type { TableEditorPage, TableWindowData } from '../content/api.ts'
 import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../content/api.ts'
 
@@ -21,8 +21,9 @@ function isNonNegativeInteger(value: unknown): value is number {
 
 function isTableWindowData(value: unknown): value is TableWindowData {
   const table = asRecord(value)
-  return Boolean(table)
-    && Array.isArray(table.headers) && table.headers.every((header) => typeof header === 'string')
+  if (!table) return false
+  return Array.isArray(table.headers)
+    && table.headers.every((header) => typeof header === 'string')
     && Array.isArray(table.rows) && table.rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === 'string'))
     && isNonNegativeInteger(table.totalRows)
     && isNonNegativeInteger(table.windowStartRow)
@@ -42,8 +43,8 @@ function isTableEditorPage(value: unknown): value is TableEditorPage {
 
 function isSearchHit(value: unknown): value is SearchHit {
   const hit = asRecord(value)
-  return Boolean(hit)
-    && isPositiveInteger(hit.n)
+  if (!hit) return false
+  return isPositiveInteger(hit.n)
     && typeof hit.path === 'string'
     && isPositiveInteger(hit.startLine)
     && isPositiveInteger(hit.endLine)
@@ -141,28 +142,51 @@ function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, conte
 
 export function parseSearchResult(value: unknown): SearchResult {
   const result = asRecord(value)
-  const hits = Array.isArray(result?.hits) ? result.hits.filter(isSearchHit) : []
+  const rawFiles = Array.isArray(result?.files) ? result.files : []
+  const files = rawFiles.filter(isSearchFileGroup)
   const warnings = Array.isArray(result?.warnings)
     ? result.warnings.filter((item): item is string => typeof item === 'string')
     : []
   const scanComplete = result?.scanComplete === undefined ? true : result.scanComplete
   const hasMore = result?.hasMore === undefined ? false : result.hasMore
   const nextCursor = result?.nextCursor
-  if (!result || !Array.isArray(result.hits) || !Array.isArray(result.warnings) || hits.length !== result.hits.length) {
+  if (!result || !Array.isArray(result.files) || !Array.isArray(result.warnings) || files.length !== rawFiles.length) {
     throw new Error('Host 返回的搜索结果无效')
   }
-  if (typeof scanComplete !== 'boolean' || typeof hasMore !== 'boolean'
+  if (typeof result.totalFiles !== 'number' || typeof result.totalHits !== 'number'
+    || typeof scanComplete !== 'boolean' || typeof hasMore !== 'boolean'
     || (nextCursor !== undefined && (typeof nextCursor !== 'string' || !nextCursor.trim()))
     || (hasMore && typeof nextCursor !== 'string')) {
     throw new Error('Host 返回的搜索结果无效')
   }
+  const restFiles = Array.isArray(result.restFiles)
+    ? result.restFiles.filter((item): item is { path: string; count: number } => {
+      const rest = asRecord(item)
+      return rest ? typeof rest.path === 'string' && typeof rest.count === 'number' : false
+    })
+    : []
   return {
-    hits,
+    files,
+    totalFiles: result.totalFiles,
+    totalHits: result.totalHits,
+    ...(restFiles.length ? { restFiles } : {}),
     warnings,
     scanComplete,
     hasMore,
     ...(typeof nextCursor === 'string' ? { nextCursor } : {}),
   }
+}
+
+/** 文件组结构收窄：组内命中逐条按 SearchHit 校验。 */
+function isSearchFileGroup(value: unknown): value is SearchFileGroup {
+  const group = asRecord(value)
+  if (!group) return false
+  return typeof group.path === 'string'
+    && (group.format === 'markdown' || group.format === 'csv')
+    && typeof group.totalHits === 'number'
+    && Array.isArray(group.hits)
+    && group.hits.every((hit) => isSearchHit(hit))
+    && (group.groupHeader === undefined || typeof group.groupHeader === 'string')
 }
 
 export function parseIngestResult(value: unknown): IngestResult {

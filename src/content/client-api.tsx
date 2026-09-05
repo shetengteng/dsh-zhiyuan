@@ -14,7 +14,7 @@ export type EntryEditorHandle = {
 export type EntryPreviewContentProps = {
   preview: ReadEntryResult
   mode: 'read' | 'edit'
-  editorRef?: RefObject<EntryEditorHandle | null>
+  editorRef?: RefObject<EntryEditorHandle>
   highlightText?: string
   showPreviewStatus?: boolean
   onLoadPage?: (startRow: number) => Promise<TableEditorPage>

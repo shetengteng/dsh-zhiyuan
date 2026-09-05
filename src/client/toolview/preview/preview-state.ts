@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ReadEntryResult, SearchHit } from '../models.ts'
+import type { ReadEntryResult, SearchHit } from '../../models.ts'
 
 export type PreviewLayout = {
   openDetails: () => void

@@ -11,10 +11,14 @@ export const COMMAND_NAME = 'kb'
 
 export const DEFAULT_MAX_FILE_BYTES = 5_242_880
 export const DEFAULT_MAX_BASE_BYTES = 10_737_418_240
-export const DEFAULT_TOP_K = 10
-export const MAX_TOP_K = 20
 export const MAX_ALIASES = 8
 export const SEARCH_CONTEXT = 8
+/** 列表档命中半径：MD 命中行 ±2 行；CSV 命中记录 + 相邻记录数 */
+export const SEARCH_LIST_CONTEXT = 2
+/** 每页渲染字符预算（含组头，不含概览尾注） */
+export const SEARCH_PAGE_MAX_CHARS = 4000
+/** restFiles 最多列出的未展示文件数 */
+export const SEARCH_REST_FILES_LIMIT = 8
 export const CSV_MAX_PHYSICAL_LINE_BYTES = 64 * 1024
 export const CSV_MAX_IMPORT_BYTES = 20 * 1024 * 1024
 export const CSV_PREVIEW_MAX_CHARS = 200_000

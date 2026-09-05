@@ -177,7 +177,7 @@ export function createSettingsSection(
               setError('')
               void call({ op: 'search', baseId: currentBase.id, query: next }).then((value) => {
                 const result = parseSearchResult(value)
-                setHits(result.hits)
+                setHits(result.files.flatMap((group) => group.hits))
                 setSearchScanComplete(result.scanComplete)
                 setSearchHasMore(result.hasMore)
                 setSearchCursor(result.nextCursor ?? '')
@@ -197,7 +197,7 @@ export function createSettingsSection(
               setError('')
               void call({ op: 'search', baseId: currentBase.id, query, cursor }).then((value) => {
                 const result = parseSearchResult(value)
-                setHits((previous) => [...previous, ...result.hits])
+                setHits((previous) => [...previous, ...result.files.flatMap((group) => group.hits)])
                 setSearchScanComplete(result.scanComplete)
                 setSearchHasMore(result.hasMore)
                 setSearchCursor(result.nextCursor ?? '')

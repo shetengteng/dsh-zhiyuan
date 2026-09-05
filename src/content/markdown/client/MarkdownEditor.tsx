@@ -5,9 +5,6 @@ import StarterKit from '@tiptap/starter-kit'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { EntryWriteChange } from '../../api.ts'
 
-export type TiptapEditorHandle = {
-  getText: () => string
-}
 export type MdEditorHandle = {
   getChange: () => EntryWriteChange | undefined
 }
@@ -21,7 +18,7 @@ export type TiptapEditorProps = {
   highlightText?: string
 }
 
-export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(function TiptapEditor(props, ref) {
+export const TiptapEditor = forwardRef<MdEditorHandle, TiptapEditorProps>(function TiptapEditor(props, ref) {
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Editor | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)

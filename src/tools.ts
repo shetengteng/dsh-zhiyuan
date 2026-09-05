@@ -2,8 +2,8 @@ import { buildIngestInput, ingest } from './ingest.ts'
 import { createJobRunner, type JobRunner } from './jobs.ts'
 import { listBases } from './bases.ts'
 import { resolveDataRoot } from './paths.ts'
+import { renderIngestResult, renderSearchResult } from './render-search.ts'
 import { searchBase } from './search.ts'
-import type { SearchHit } from './types.ts'
 import { KbError } from './types.ts'
 
 type Json = Record<string, unknown>
@@ -35,55 +35,6 @@ function asStringArray(value: unknown): string[] | undefined {
   return value.filter((item): item is string => typeof item === 'string')
 }
 
-function text(value: string) {
-  return [{ type: 'text' as const, text: value }]
-}
-
-function renderIngestResult(value: unknown) {
-  const result = asRecord(value)
-  const copied = Array.isArray(result?.copied) ? result.copied.filter((item): item is string => typeof item === 'string') : []
-  const skipped = typeof result?.skipped === 'number' ? result.skipped : 0
-  const failed = typeof result?.failed === 'number' ? result.failed : 0
-  const files = Array.isArray(result?.files) ? result.files : []
-  const failedFiles = files
-    .map((item) => asRecord(item))
-    .filter((item): item is Record<string, unknown> => Boolean(item) && item.status === 'failed')
-    .slice(0, 5)
-    .map((item) => `${typeof item.sourceRelPath === 'string' ? item.sourceRelPath : String(item.relPath ?? '文件')}：${typeof item.reason === 'string' ? item.reason : '处理失败'}`)
-  const summary = `导入 ${copied.length} · 跳过 ${skipped} · 失败 ${failed}`
-  return text(failedFiles.length ? `${summary}\n${failedFiles.join('\n')}` : summary)
-}
-
-function renderSearchResult(value: unknown) {
-  const result = value as {
-    hits?: SearchHit[]
-    warnings?: string[]
-    scanComplete?: boolean
-    hasMore?: boolean
-    nextCursor?: string
-  } | undefined
-  const hits = Array.isArray(result?.hits) ? result.hits : []
-  const warnings = Array.isArray(result?.warnings) ? result.warnings.filter((item): item is string => typeof item === 'string' && item.trim()) : []
-  const renderedHits = hits.map((hit) => {
-    const lineRange = hit.startLine === hit.endLine ? `${hit.startLine}` : `${hit.startLine}–${hit.endLine}`
-    return `\`${hit.n}\` ${hit.path}:${lineRange}（命中行 ${hit.matchLine}）\n${hit.excerpt}`
-  })
-  const scanComplete = result?.scanComplete !== false
-  const hasMore = result?.hasMore === true
-  const body = renderedHits.length
-    ? renderedHits.join('\n\n')
-    : scanComplete ? '无命中' : '当前扫描未完成，暂未找到可返回的命中'
-  const notes: string[] = []
-  if (hasMore) {
-    notes.push(result?.nextCursor
-      ? `当前仅展示 ${hits.length} 条，仍有更多命中；下一页游标：${result.nextCursor}`
-      : `当前仅展示 ${hits.length} 条，仍有更多命中。`)
-  }
-  if (!scanComplete) notes.push('本次扫描未完成，当前结果不能代表整个知识库。')
-  if (warnings.length) notes.push(`提示：${warnings.join('；')}`)
-  return text(notes.length ? `${body}\n\n${notes.join('\n')}` : body)
-}
-
 function fail(error: unknown): never {
   if (error instanceof KbError) throw new Error(error.message)
   throw error
@@ -99,7 +50,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       schema: { type: 'object', properties: { bases: { type: 'array' } } },
       render: (_args: unknown, value: unknown) => {
         const bases = (value as { bases?: Array<{ id: string; title: string }> })?.bases ?? []
-        return text(bases.map((item) => `${item.id} ${item.title}`).join(' · ') || '还没有知识库')
+        return [{ type: 'text' as const, text: bases.map((item) => `${item.id} ${item.title}`).join(' · ') || '还没有知识库' }]
       },
     },
     isConcurrencySafe: () => true,
@@ -159,7 +110,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
   }),
     ctx.tools.register({
     name: 'kb_search',
-    description: '在指定知识库里一次多词 grep，返回命中的原文 excerpt、文件路径和物理行号。CSV 命中 excerpt 带列名；必须带 baseId。换词放进 aliases（3～8）。结果可能分页，scanComplete=false 或 hasMore=true 时不能把当前页当成全量。',
+    description: '在指定知识库里一次多词 grep，结果按文件分组返回：每页不跨文件，先给命中概览（文件数、命中数、未展示清单），每条命中带原文 excerpt、路径和物理行号；CSV 命中 excerpt 带列名，表头在组头只出现一次。必须带 baseId。换词放进 aliases（3～8）。结果按字符预算分页，scanComplete=false 或 hasMore=true 时不能把当前页当成全量；需深读某个文件的全部命中时传 path（来自命中路径或未展示清单）。',
     parameters: {
       type: 'object',
       required: ['baseId', 'query'],
@@ -168,7 +119,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         query: { type: 'string', description: '主关键词' },
         aliases: { type: 'array', items: { type: 'string' }, description: '3～8 个同义词，与 query 合并一次 OR' },
         category: { type: 'string', description: '对上子文件夹则只扫那一层；对不上则本库全扫' },
-        topK: { type: 'number', description: '默认 10，上限 20；用于控制每页数量' },
+        path: { type: 'string', description: '明细档：只返回该文件的命中（类目内相对路径），excerpt 带更宽上下文' },
         cursor: { type: 'string', description: '上一页返回的 nextCursor；只用于继续同一查询' },
       },
     },
@@ -176,40 +127,60 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
       schema: {
         type: 'object',
         properties: {
-          hits: {
+          files: {
             type: 'array',
+            description: '本页文件组，一页不跨文件',
             items: {
               type: 'object',
-              required: ['n', 'path', 'startLine', 'endLine', 'matchLine', 'excerpt'],
+              required: ['path', 'format', 'totalHits', 'hits'],
               properties: {
-                n: { type: 'integer' },
                 path: { type: 'string' },
-                startLine: { type: 'integer' },
-                endLine: { type: 'integer' },
-                matchLine: { type: 'integer' },
-                excerpt: { type: 'string' },
-                matchedExcerpt: { type: 'string', description: '命中行展示文本，由格式模块给出' },
-                matchColumnByte: { type: 'integer', description: 'UI 预览使用的 UTF-8 字节列' },
-                sourceFingerprint: { type: 'string', description: 'UI 预览用的源文件指纹' },
+                format: { type: 'string', description: 'markdown 或 csv' },
+                totalHits: { type: 'integer', description: '该文件 rg 原始命中数' },
+                groupHeader: { type: 'string', description: 'CSV 表头行，组内只渲染一次' },
+                hits: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    required: ['n', 'path', 'startLine', 'endLine', 'matchLine', 'excerpt'],
+                    properties: {
+                      n: { type: 'integer', description: '跨页连续的全局命中编号' },
+                      path: { type: 'string' },
+                      startLine: { type: 'integer' },
+                      endLine: { type: 'integer' },
+                      matchLine: { type: 'integer' },
+                      excerpt: { type: 'string' },
+                      matchedExcerpt: { type: 'string', description: '命中行展示文本，由格式模块给出' },
+                      matchColumnByte: { type: 'integer', description: 'UI 预览使用的 UTF-8 字节列' },
+                      sourceFingerprint: { type: 'string', description: 'UI 预览用的源文件指纹' },
+                    },
+                  },
+                },
               },
             },
           },
+          totalFiles: { type: 'integer', description: '命中文件总数' },
+          totalHits: { type: 'integer', description: '命中总数；scanComplete=false 时为下限' },
+          restFiles: { type: 'array', description: '本页未展示的文件与命中数', items: { type: 'object', properties: { path: { type: 'string' }, count: { type: 'integer' } } } },
           warnings: { type: 'array', items: { type: 'string' } },
           scanComplete: { type: 'boolean', description: '是否完成了本次可搜索范围的扫描' },
           hasMore: { type: 'boolean', description: '当前页之后是否还有已发现的命中' },
           nextCursor: { type: 'string', description: '继续下一页的游标' },
         },
-        required: ['hits', 'warnings', 'scanComplete', 'hasMore'],
+        required: ['files', 'totalFiles', 'totalHits', 'warnings', 'scanComplete', 'hasMore'],
       },
-      render: (_args: unknown, value: unknown) => renderSearchResult(value),
+      render: (args: unknown, value: unknown) => renderSearchResult(args, value),
       presentationMeta: (args: unknown, value: unknown) => {
         const baseId = asString(asRecord(args)?.baseId)?.trim()
         const result = asRecord(value)
         if (!result) return value as Json
         const safeResult: Json = {
-          hits: Array.isArray(result.hits) ? result.hits : [],
+          files: Array.isArray(result.files) ? result.files : [],
+          totalFiles: typeof result.totalFiles === 'number' ? result.totalFiles : 0,
+          totalHits: typeof result.totalHits === 'number' ? result.totalHits : 0,
           warnings: Array.isArray(result.warnings) ? result.warnings : [],
         }
+        if (Array.isArray(result.restFiles)) safeResult.restFiles = result.restFiles
         if (typeof result.scanComplete === 'boolean') safeResult.scanComplete = result.scanComplete
         if (typeof result.hasMore === 'boolean') safeResult.hasMore = result.hasMore
         if (typeof result.nextCursor === 'string') safeResult.nextCursor = result.nextCursor
@@ -233,7 +204,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
           query: requireString(input, 'query'),
           aliases: asStringArray(input.aliases),
           category: asString(input.category),
-          topK: typeof input.topK === 'number' ? input.topK : undefined,
+          path: asString(input.path),
           cursor: asString(input.cursor),
         })
       } catch (error) {

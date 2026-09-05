@@ -90,7 +90,15 @@ test('表格编辑分页要求安全的版本标识和字符串单元格', () =>
 
 test('搜索结果协议保留分页和扫描完整性', () => {
   const payload = {
-    hits: [],
+    files: [{
+      path: 'a.md',
+      format: 'markdown',
+      totalHits: 1,
+      hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 1, matchLine: 1, excerpt: '正文' }],
+    }],
+    totalFiles: 1,
+    totalHits: 1,
+    restFiles: [{ path: 'b.md', count: 3 }],
     warnings: ['结果可能不完整'],
     scanComplete: false,
     hasMore: true,
@@ -99,10 +107,12 @@ test('搜索结果协议保留分页和扫描完整性', () => {
   assert.deepEqual(parseSearchResult(payload), payload)
 })
 
-test('旧搜索结果缺少分页字段时按完整且无下一页兼容', () => {
-  const payload = { hits: [], warnings: [] }
+test('搜索结果缺少扫描字段时按完整且无下一页兼容', () => {
+  const payload = { files: [], totalFiles: 0, totalHits: 0, warnings: [] }
   assert.deepEqual(parseSearchResult(payload), {
-    hits: [],
+    files: [],
+    totalFiles: 0,
+    totalHits: 0,
     warnings: [],
     scanComplete: true,
     hasMore: false,
@@ -111,7 +121,9 @@ test('旧搜索结果缺少分页字段时按完整且无下一页兼容', () =>
 
 test('搜索结果分页字段类型错误时拒绝', () => {
   assert.throws(() => parseSearchResult({
-    hits: [],
+    files: [],
+    totalFiles: 0,
+    totalHits: 0,
     warnings: [],
     scanComplete: 'true',
     hasMore: false,

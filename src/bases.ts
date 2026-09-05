@@ -1,3 +1,4 @@
+import type { Dirent } from 'node:fs'
 import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join, relative, sep } from 'node:path'
@@ -31,7 +32,7 @@ export async function scanBaseIds(dataRoot: string): Promise<string[]> {
 
 async function walkTextDocuments(directoryPath: string): Promise<string[]> {
   const documentPaths: string[] = []
-  let entries: Awaited<ReturnType<typeof readdir>>
+  let entries: Dirent<string>[]
   try {
     entries = await readdir(directoryPath, { withFileTypes: true })
   } catch {

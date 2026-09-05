@@ -1,11 +1,12 @@
 import { useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Button, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { BaseSummary } from '../models.ts'
 import { WorkbenchModal } from './WorkbenchModal.tsx'
 
 /** 设置工作台共用的控件与弹框。 */
 
-export function Field(props: { label: string; help?: string; children: unknown }) {
+export function Field(props: { label: string; help?: string; children: ReactNode }) {
   return (
     <div className="zy-field">
       <label>{props.label}</label>
@@ -30,7 +31,7 @@ function readFormData(event: { preventDefault: () => void; currentTarget: HTMLFo
   return new FormData(event.currentTarget)
 }
 
-function FormFooter(props: { children: unknown }) {
+function FormFooter(props: { children: ReactNode }) {
   return <div className="zy-footbar">{props.children}</div>
 }
 

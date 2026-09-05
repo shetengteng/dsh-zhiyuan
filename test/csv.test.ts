@@ -33,12 +33,15 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
     assert.deepEqual(await readFile(join(root, 'bases', base.id, 'table.CSV')), raw)
 
     const search = await searchBase(root, { baseId: base.id, query: '公司' })
-    const hit = search.hits[0]
+    const group = search.files[0]
+    const hit = group?.hits[0]
+    assert.equal(group?.path, 'table.CSV')
+    assert.equal(group?.groupHeader, '列: 名称 | 金额')
     assert.equal(hit?.path, 'table.CSV')
     assert.equal(hit?.matchLine, 2)
     assert.equal(hit?.startLine, 2)
     assert.equal(hit?.endLine, 2)
-    assert.equal(hit?.excerpt, '列: 名称 | 金额\n名称: 甲公司 | 金额: 120')
+    assert.equal(hit?.excerpt, '名称: 甲公司 | 金额: 120')
     assert.equal(hit?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
     assert.equal(hit?.matchColumnByte, 4)
     assert.equal('documents' in search, false)
@@ -68,6 +71,7 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
     })
 
     const editable = await readEntry(root, base.id, 'table.CSV', { view: 'tree', readMode: 'edit' })
+    if (editable.kind !== 'table') throw new Error('CSV 编辑预览应为表格形态')
     assert.equal(editable.table?.complete, true)
     assert.match(editable.table?.revision ?? '', /^[a-f0-9]{64}$/)
     await writeEntryContent(root, base.id, 'table.CSV', { kind: 'text', text: '名称,金额\n乙公司,"98,000"' })
@@ -90,11 +94,13 @@ test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越�
     await writeEntryContent(root, base.id, 'large.csv', { kind: 'text', text: `名称,编号\n${rows}` })
 
     const readOnly = await readEntry(root, base.id, 'large.csv')
+    if (readOnly.kind !== 'table') throw new Error('CSV 预览应为表格形态')
     assert.equal(readOnly.table?.rows.length, 500)
     assert.equal(readOnly.table?.totalRows, 650)
     assert.equal(readOnly.table?.complete, false)
 
     const initial = await readEntry(root, base.id, 'large.csv', { view: 'tree', readMode: 'edit' })
+    if (initial.kind !== 'table') throw new Error('CSV 编辑预览应为表格形态')
     assert.equal(initial.table?.rows.length, 200)
     assert.equal(initial.table?.windowStartRow, 1)
     assert.equal(initial.table?.windowEndRow, 200)
@@ -183,14 +189,16 @@ test('CSV 同值多行各自成条，搜后面的值不会落到第一条', asyn
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
 
     const sameValue = await searchBase(root, { baseId: base.id, query: '120' })
-    assert.equal(sameValue.hits.length, 2)
-    assert.equal(sameValue.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
-    assert.equal(sameValue.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
+    assert.equal(sameValue.files.length, 1)
+    assert.equal(sameValue.files[0]?.hits.length, 2)
+    assert.equal(sameValue.files[0]?.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
+    assert.equal(sameValue.files[0]?.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
 
     const later = await searchBase(root, { baseId: base.id, query: '丙公司' })
-    assert.equal(later.hits.length, 1)
-    assert.equal(later.hits[0]?.matchLine, 4)
-    assert.equal(later.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
+    assert.equal(later.files.length, 1)
+    assert.equal(later.files[0]?.hits.length, 1)
+    assert.equal(later.files[0]?.hits[0]?.matchLine, 4)
+    assert.equal(later.files[0]?.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -205,7 +213,7 @@ test('CSV 末段命中返回围绕命中的窗口，不退化为文件头', asyn
     await writeFile(source, body)
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
     const search = await searchBase(root, { baseId: base.id, query: '末段关键字' })
-    const hit = search.hits[0]
+    const hit = search.files[0]?.hits[0]
     if (!hit) throw new Error('未找到末段命中')
     const preview = await readEntry(root, base.id, hit.path, {
       view: 'search-hit',
@@ -229,10 +237,11 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
     await writeFile(source, '供应商;备注;金额\n甲公司;"第一行\n第二行, 含逗号";120\n乙公司;正常;80\n')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
     const search = await searchBase(root, { baseId: base.id, query: '第二行' })
-    const hit = search.hits[0]
+    const hit = search.files[0]?.hits[0]
     if (!hit) throw new Error('未找到引号内换行的命中')
     assert.equal(hit.matchLine, 3)
-    assert.match(hit.excerpt, /^列: 供应商 \| 备注 \| 金额/)
+    assert.equal(search.files[0]?.groupHeader, '列: 供应商 | 备注 | 金额')
+    assert.doesNotMatch(hit.excerpt, /^列: /)
     assert.match(hit.excerpt, /备注: 第一行↩第二行, 含逗号/)
     assert.equal(hit.matchedExcerpt, '供应商: 甲公司 | 备注: 第一行↩第二行, 含逗号 | 金额: 120')
 
@@ -242,6 +251,7 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
       matchColumnByte: hit.matchColumnByte,
       sourceFingerprint: hit.sourceFingerprint,
     })
+    if (preview.kind !== 'table') throw new Error('CSV 命中预览应为表格形态')
     assert.deepEqual(preview.table?.headers, ['供应商', '备注', '金额'])
     assert.deepEqual(preview.table?.rows[0], ['甲公司', '第一行\n第二行, 含逗号', '120'])
     assert.equal(preview.table?.focusedRow, 1)
@@ -262,6 +272,7 @@ test('CSV 支持 CR 物理换行，预览仍按记录展示', async () => {
     await writeFile(source, '名称,金额\r甲公司,120\r')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
     const preview = await readEntry(root, base.id, 'cr.csv')
+    if (preview.kind !== 'table') throw new Error('CSV 预览应为表格形态')
     assert.deepEqual(preview.table?.headers, ['名称', '金额'])
     assert.deepEqual(preview.table?.rows, [['甲公司', '120']])
   } finally {
@@ -340,9 +351,10 @@ test('UTF-16 CSV 导入后写成 UTF-8 BOM 且可按列名检索', async () => {
     assert.deepEqual(await readFile(join(root, 'bases', base.id, 'le.csv')), NORMALIZED_TABLE)
 
     const search = await searchBase(root, { baseId: base.id, query: '乙公司' })
-    const hit = search.hits[0]
-    assert.equal(hit?.path, 'be.csv')
-    assert.equal(hit?.excerpt, '列: 名称 | 金额\n名称: 乙公司 | 金额: 80')
+    const group = search.files[0]
+    assert.equal(group?.path, 'be.csv')
+    assert.equal(group?.groupHeader, '列: 名称 | 金额')
+    assert.equal(group?.hits[0]?.excerpt, '名称: 乙公司 | 金额: 80')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -381,7 +393,7 @@ test('表头命中只返回列名行，不把表头扩成列名: 列名', async 
     await writeFile(source, '供应商,金额\n甲公司,120\n')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
     const search = await searchBase(root, { baseId: base.id, query: '供应商' })
-    const hit = search.hits.find((item) => item.matchLine === 1)
+    const hit = search.files[0]?.hits.find((item) => item.matchLine === 1)
     assert.equal(hit?.excerpt, '列: 供应商 | 金额')
     assert.equal(hit?.matchedExcerpt, '列: 供应商 | 金额')
   } finally {
@@ -417,8 +429,8 @@ test('大量中文命中时嵌套类目下的中文文件名仍能打开', async
     await writeFile(source, `合同编号,供应商,备注\n${rows.join('\n')}\n`)
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '合同/2026' })
     const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链' })
-    assert.equal(search.hits[0]?.path, '合同/2026/供应商台账.csv')
-    assert.match(search.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
+    assert.equal(search.files[0]?.path, '合同/2026/供应商台账.csv')
+    assert.match(search.files[0]?.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
     assert.equal(search.scanComplete, false)
     assert.equal(search.hasMore, true)
     assert.match(search.warnings.join(' '), /扫描上限/)
@@ -427,11 +439,12 @@ test('大量中文命中时嵌套类目下的中文文件名仍能打开', async
   }
 })
 
-test('CSV 相邻 excerpt 由格式模块合并，只保留一行列名', () => {
+test('CSV 相邻 excerpt 合并按行去重，表头行不混入记录', () => {
   const text = '名称,金额\n甲公司,120\n乙公司,80\n'
   const document = createCsvSearchDocument(Buffer.from(text), text)
   const first = document.excerptAt(2, 0)
   const second = document.excerptAt(3, 0)
   const merged = document.mergeExcerpt(first, second, first.startLine, second.endLine)
-  assert.equal(merged, '列: 名称 | 金额\n名称: 甲公司 | 金额: 120\n名称: 乙公司 | 金额: 80')
+  assert.equal(merged, '名称: 甲公司 | 金额: 120\n名称: 乙公司 | 金额: 80')
+  assert.equal(document.mergeExcerpt(first, first, first.startLine, first.endLine), '名称: 甲公司 | 金额: 120')
 })

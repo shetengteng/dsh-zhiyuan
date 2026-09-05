@@ -10,7 +10,7 @@ export type PreviewFocus = {
 }
 
 function isPositiveInteger(value: number | undefined): value is number {
-  return Number.isInteger(value) && value >= 1
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1
 }
 
 function isUtf8Boundary(line: string, columnByte: number): boolean {

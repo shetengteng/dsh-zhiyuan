@@ -182,7 +182,8 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
 })
 
 function editorPage(table: TableWindowData | undefined): TableEditorPage | undefined {
-  return table?.revision ? table : undefined
+  if (!table?.revision) return undefined
+  return { ...table, revision: table.revision }
 }
 
 function RawCsvFallback(props: { preview: TableEntryPreview; showPreviewStatus?: boolean }) {

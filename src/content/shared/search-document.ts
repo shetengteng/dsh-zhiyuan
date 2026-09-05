@@ -19,6 +19,8 @@ export type SearchDocument = {
   normalizeColumnByte: (line: number, columnByte: number) => number | undefined
   /** 为 false 时只合并重叠区间，不把相邻记录收成一条 */
   mergeNeighbors?: boolean
+  /** 文件级组头（CSV 表头行）；列表与明细档都只在组头渲染一次 */
+  groupHeader?: string
   warnings?: string[]
 }
 

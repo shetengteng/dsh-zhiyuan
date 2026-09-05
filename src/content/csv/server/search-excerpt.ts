@@ -42,7 +42,7 @@ function headerExcerpt(document: CsvDocument, headerLine: string): SearchExcerpt
   }
 }
 
-/** 把命中改写成「列名: 值」；表头命中只保留列名行。 */
+/** 把命中改写成「列名: 值」记录行；表头行进组头 groupHeader，excerpt 不再重复表头。 */
 export function csvColumnExcerpt(document: CsvDocument, matchLine: number, radius: number): SearchExcerpt {
   const headerLine = formatHeaderLine(document.headers)
   if (isHeaderHit(document, matchLine)) return headerExcerpt(document, headerLine)
@@ -54,7 +54,7 @@ export function csvColumnExcerpt(document: CsvDocument, matchLine: number, radiu
   return {
     startLine: focus.startLine,
     endLine: focus.endLine,
-    excerpt: [headerLine, ...records.map((record) => formatRecord(document.headers, record.cells))].join('\n'),
+    excerpt: records.map((record) => formatRecord(document.headers, record.cells)).join('\n'),
     matchedExcerpt: formatRecord(document.headers, focus.cells),
   }
 }
@@ -63,19 +63,17 @@ function isCsvColumnExcerpt(excerpt: string): boolean {
   return excerpt.startsWith('列: ')
 }
 
-/** 合并相邻 CSV 列名 excerpt，避免按物理行错位拼接。 */
+/** 合并相邻 CSV 记录 excerpt，按行去重；表头命中行只保留一份。 */
 function mergeCsvColumnExcerpts(firstExcerpt: string, secondExcerpt: string): string {
-  const firstLines = firstExcerpt.split(/\r?\n/)
-  const secondLines = secondExcerpt.split(/\r?\n/)
-  const header = isCsvColumnExcerpt(firstLines[0] ?? '') ? firstLines[0] : secondLines[0]
   const seen = new Set<string>()
   const rows: string[] = []
-  for (const line of [...firstLines.slice(1), ...secondLines.slice(1)]) {
+  for (const line of [...firstExcerpt.split(/\r?\n/), ...secondExcerpt.split(/\r?\n/)]) {
     if (!line || isCsvColumnExcerpt(line) || seen.has(line)) continue
     seen.add(line)
     rows.push(line)
   }
-  return [header, ...rows].filter(Boolean).join('\n')
+  if (!rows.length) return firstExcerpt
+  return rows.join('\n')
 }
 
 export function createCsvSearchDocument(bytes: Buffer, text: string): SearchDocument {
@@ -88,6 +86,7 @@ export function createCsvSearchDocument(bytes: Buffer, text: string): SearchDocu
       excerptAt: (matchLine, radius) => csvColumnExcerpt(document, matchLine, radius),
       mergeExcerpt: (first, second) => mergeCsvColumnExcerpts(first.excerpt, second.excerpt),
       mergeNeighbors: false,
+      groupHeader: formatHeaderLine(document.headers),
     }
   } catch {
     return { ...physical, warnings: ['csv_parse_fallback：CSV 无法按列解析，已保留原文 excerpt'] }

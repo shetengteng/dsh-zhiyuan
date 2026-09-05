@@ -177,7 +177,7 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
         query: requireString(data, 'query'),
         aliases: optionalStringArray(data, 'aliases'),
         category: optionalString(data, 'category'),
-        topK: optionalPositiveInteger(data, 'topK'),
+        path: optionalString(data, 'path'),
         cursor: optionalString(data, 'cursor'),
       })
     case 'prefs':

@@ -5,7 +5,7 @@ import { MdEditor, type MdEditorHandle } from './MarkdownEditor.tsx'
 export type MarkdownPreviewProps = {
   preview: TextEntryPreview
   mode: 'read' | 'edit'
-  editorRef?: RefObject<MdEditorHandle | null>
+  editorRef?: RefObject<MdEditorHandle>
   highlightText?: string
   showPreviewStatus?: boolean
 }

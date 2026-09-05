@@ -4,9 +4,7 @@ export { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode, SourceF
 export { parseEntryWriteChange } from './shared/table-patch.ts'
 
 export type {
-  EntryContentKind,
   EntryPreviewOptions,
-  EntryReadMode,
   EntryWriteChange,
   PreviewStatus,
   PreviewTruncation,

@@ -76,6 +76,8 @@ export function registerKbCommands(
             query: parsed.rest.join(' ') || flagString(parsed.flags, 'query') || '',
             aliases: splitAliases(flagString(parsed.flags, 'aliases')),
             category: flagString(parsed.flags, 'to') ?? flagString(parsed.flags, 'category'),
+            path: flagString(parsed.flags, 'path'),
+            cursor: flagString(parsed.flags, 'cursor'),
           }))
         }
         return { kind: 'error', text: '用法：/kb ingest <path> --base <id> --to <类目> 或 /kb status' }

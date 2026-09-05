@@ -154,10 +154,11 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
       await writeFile(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md'), '若乙方违约则解约。\n')
       await writeFile(join(root, 'bases', base.id, '会议', '纪要.md'), '周会无合同。\n')
       const result = json(await run(`search 违约 --base ${base.id} --aliases 解约，termination --to 合同/2024`)) as {
-        hits: Array<{ path: string }>
+        files: Array<{ path: string; hits: unknown[] }>
       }
-      assert.ok(result.hits.length >= 1)
-      assert.ok(result.hits.every((hit) => hit.path.includes('供应商合同')))
+      assert.ok(result.files.length >= 1)
+      assert.ok(result.files.every((group) => group.path.includes('供应商合同')))
+      assert.ok(result.files[0].hits.length >= 1)
     })
   })
 
@@ -303,10 +304,9 @@ describe('kb call', { concurrency: false }, () => {
         query: '违约',
         aliases: ['条款'],
         category: '合同/2024',
-        topK: 5,
-      }))) as { hits: Array<{ path: string; excerpt: string }> }
-      assert.ok(found.hits.length >= 1)
-      assert.ok(found.hits[0].excerpt.includes('违约'))
+      }))) as { files: Array<{ hits: Array<{ excerpt: string }> }> }
+      assert.ok(found.files.length >= 1)
+      assert.ok(found.files[0].hits[0].excerpt.includes('违约'))
     }, jobs)
   })
 
