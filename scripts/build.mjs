@@ -6,6 +6,20 @@ import * as esbuild from 'esbuild'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const lib = join(root, 'lib')
 
+// Host 端运行时真正需要外部解析的依赖：
+// - 原生二进制（esbuild、@vscode/ripgrep）无法内联，必须 external；
+// - @deepseek-ai/* peer 依赖由 DSH 壳注入，同样必须 external。
+// 其余纯 JS 依赖（如 papaparse、@tiptap/*）内联打进单文件，使 lib/index.js
+// 自包含，link 安装后无需再单独安装依赖即可运行。
+const external = [
+  'esbuild',
+  '@vscode/ripgrep',
+  '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-home-paths',
+  '@deepseek-ai/dsh-settings',
+  '@deepseek-ai/schemastery',
+]
+
 await mkdir(lib, { recursive: true })
 
 await esbuild.build({
@@ -16,7 +30,7 @@ await esbuild.build({
   format: 'esm',
   platform: 'node',
   target: 'node20',
-  packages: 'external',
+  external,
   logLevel: 'info',
 })
 
