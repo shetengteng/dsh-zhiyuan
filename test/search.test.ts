@@ -1,21 +1,14 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { createBase } from '../src/bases.ts'
 import { matchedExcerptLine, parseLabeledFields, queryTerms } from '../src/client/search-utils.ts'
-import { canMergeWindows, groupMatchesByFile, prefixRawCounts, restFileList } from '../src/search-groups.ts'
-import { mergeTerms, searchBase } from '../src/search.ts'
-import type { SearchResult } from '../src/types.ts'
+import { searchBase, type SearchRequest, type SearchScanner } from '../src/search/index.ts'
+import { canMergeWindows, groupMatchesByFile } from '../src/search/file-summary.ts'
+import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/types.ts'
 import { KbError } from '../src/types.ts'
-
-test('aliases 超过 8 截断并警告', () => {
-  const { terms, warnings } = mergeTerms('违约', Array.from({ length: 12 }, (_, i) => `词${i}`))
-  assert.equal(terms.length, 9)
-  assert.equal(terms[0], '违约')
-  assert.ok(warnings[0]?.includes('截断'))
-})
 
 test('命中展示使用实际命中行，而不是上下文第一行', () => {
   assert.equal(matchedExcerptLine({
@@ -72,7 +65,7 @@ test('搜索关键词按空白拆开并去重', () => {
   assert.deepEqual(queryTerms('   '), [])
 })
 
-test('groupMatchesByFile 组间按命中数降序、同数字典序，组内按行号升序', () => {
+test('文件归组按命中数降序、同数字典序，组内按行号升序', () => {
   const groups = groupMatchesByFile([
     { path: 'b.md', line: 5, columnByte: 1 },
     { path: 'a.md', line: 9, columnByte: 1 },
@@ -81,56 +74,53 @@ test('groupMatchesByFile 组间按命中数降序、同数字典序，组内按�
     { path: 'c.md', line: 8, columnByte: 1 },
   ])
   assert.deepEqual(groups.map((group) => group.path), ['a.md', 'c.md', 'b.md'])
-  assert.deepEqual(groups[0].matches.map((match) => match.line), [2, 9])
-  assert.deepEqual(prefixRawCounts(groups), [0, 2, 4])
+  assert.deepEqual(groups[0]?.matches.map((match) => match.line), [2, 9])
 })
 
-test('canMergeWindows 只在重叠或（允许相邻时）差一行才合并', () => {
+test('命中窗口只在重叠或允许相邻时合并', () => {
   assert.equal(canMergeWindows({ startLine: 1, endLine: 5 }, { startLine: 6, endLine: 10 }, false), false)
   assert.equal(canMergeWindows({ startLine: 1, endLine: 5 }, { startLine: 6, endLine: 10 }, true), true)
   assert.equal(canMergeWindows({ startLine: 1, endLine: 5 }, { startLine: 5, endLine: 9 }, false), true)
 })
 
-test('restFileList 跳过本页已触碰的组并截断到 limit', () => {
-  const groups = groupMatchesByFile([
-    { path: 'a.md', line: 1, columnByte: 1 },
-    { path: 'b.md', line: 1, columnByte: 1 },
-    { path: 'c.md', line: 1, columnByte: 1 },
-    { path: 'd.md', line: 1, columnByte: 1 },
-    { path: 'e.md', line: 1, columnByte: 1 },
-  ])
-  assert.deepEqual(restFileList(groups, 1, 2), [{ path: 'c.md', count: 1 }, { path: 'd.md', count: 1 }])
-  assert.deepEqual(restFileList(groups, -1, 8).map((item) => item.path), ['a.md', 'b.md', 'c.md', 'd.md', 'e.md'])
-})
-
-test('空库搜索 → 空结果', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'zy-se-'))
+test('空库搜索返回 overview 空结果，不携带 hits', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'zy-search-empty-'))
   try {
     const base = await createBase(root, { title: '工作库', description: '描述' })
-    const result = await searchBase(root, { baseId: base.id, query: '违约' })
+    const result = asOverview(await searchBase(root, { baseId: base.id, query: '违约' }))
     assert.deepEqual(result.files, [])
     assert.equal(result.totalFiles, 0)
     assert.equal(result.totalHits, 0)
-    assert.equal(result.hasMore, false)
-    assert.equal(result.nextCursor, undefined)
+    assert.equal(result.page.hasMore, false)
+    assert.equal(result.page.nextCursor, undefined)
+    assert.equal('hits' in result, false)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 })
 
-test('不带 baseId 失败；空 query 失败', async () => {
+test('输入校验拒绝缺字段、非法正则、别名和 limit', async () => {
   await assert.rejects(() => searchBase('/tmp', { baseId: '', query: '违约' }), KbError)
   await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '  ' }), /query 必填/)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '(?=违约)' }), /不支持的正则语法/)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '违约', aliases: [''] }), /不能包含空正则/)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '违约', aliases: Array.from({ length: 9 }, (_, index) => `词${index}`) }), /不能超过 8 个/)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '违约', limit: 0 }), /limit 必须是/)
+  await assert.rejects(() => searchBase('/tmp', { baseId: 'work', query: '违约', limit: 101 }), /limit 必须是/)
 })
 
 /** 建临时库并在 bases/<id>/ 下写文件，结束后清理。 */
-async function withBase(prefix: string, files: Record<string, string>, work: (root: string, baseId: string) => Promise<void>): Promise<void> {
+async function withBase(
+  prefix: string,
+  files: Record<string, string>,
+  work: (root: string, baseId: string) => Promise<void>,
+): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), prefix))
   try {
     const base = await createBase(root, { title: '工作库', description: '描述' })
     for (const [relativePath, body] of Object.entries(files)) {
-      const target = join(root, 'bases', base.id, relativePath)
-      await mkdirp(target.slice(0, target.lastIndexOf('/')))
+      const target = join(root, 'bases', base.id, ...relativePath.split('/'))
+      await mkdir(dirname(target), { recursive: true })
       await writeFile(target, body)
     }
     await work(root, base.id)
@@ -139,210 +129,218 @@ async function withBase(prefix: string, files: Record<string, string>, work: (ro
   }
 }
 
-async function mkdirp(path: string): Promise<void> {
-  const { mkdir } = await import('node:fs/promises')
-  await mkdir(path, { recursive: true })
+function asOverview(result: SearchResult): SearchOverviewResult {
+  if (result.kind !== 'overview') throw new Error('应返回 overview')
+  return result
 }
 
-/** 按游标翻完所有页，收集每页结果。 */
-async function searchAllPages(root: string, baseId: string, query: string, extra: Record<string, string> = {}): Promise<SearchResult[]> {
-  const pages: SearchResult[] = []
-  let cursor: string | undefined
-  do {
-    const page = await searchBase(root, { baseId, query, ...(cursor ? { cursor } : {}), ...extra })
+function asFileDetail(result: SearchResult): SearchFileDetailResult {
+  if (result.kind !== 'file-detail') throw new Error('应返回 file-detail')
+  return result
+}
+
+async function searchAllOverviewPages(
+  root: string,
+  baseId: string,
+  query: string,
+  extra: { aliases?: string[]; category?: string; limit?: number } = {},
+): Promise<SearchOverviewResult[]> {
+  const pages: SearchOverviewResult[] = []
+  let request: SearchRequest = { baseId, query, ...extra }
+  for (let count = 0; count < 50; count += 1) {
+    const page = asOverview(await searchBase(root, request))
     pages.push(page)
-    cursor = page.nextCursor
-    if (pages.length > 50) throw new Error('翻页超过 50 页，疑似死循环')
-  } while (cursor)
-  return pages
+    if (!page.page.nextCursor) return pages
+    request = { cursor: page.page.nextCursor, ...(extra.limit === undefined ? {} : { limit: extra.limit }) }
+  }
+  throw new Error('翻页超过 50 页，疑似死循环')
 }
 
-/** 不变式：本页未消费完剩余命中的组只能是页内最后一个组。需要跨页累计命中数区分「续读组」与「截断组」。 */
-function assertTruncatedGroupIsLast(pages: SearchResult[]): void {
-  const cumulative = new Map<string, number>()
-  for (const page of pages) {
-    for (let index = 0; index < page.files.length; index += 1) {
-      const group = page.files[index]
-      cumulative.set(group.path, (cumulative.get(group.path) ?? 0) + group.hits.length)
-      const isLastGroup = index === page.files.length - 1
-      if (!isLastGroup || !page.hasMore) {
-        assert.equal(cumulative.get(group.path), group.totalHits, '非末组（或最后一页的组）必须已消费该文件全部命中')
-      }
-    }
+async function searchAllDetailPages(root: string, baseId: string, query: string, path: string, limit: number): Promise<SearchFileDetailResult[]> {
+  const pages: SearchFileDetailResult[] = []
+  let request: SearchRequest = { baseId, query, path, limit }
+  for (let count = 0; count < 50; count += 1) {
+    const page = asFileDetail(await searchBase(root, request))
+    pages.push(page)
+    if (!page.page.nextCursor) return pages
+    request = { cursor: page.page.nextCursor, limit }
   }
+  throw new Error('翻页超过 50 页，疑似死循环')
 }
 
-test('文件组分页：一页不跨文件、组内截断、续页编号连续、概览正确', async () => {
-  const matchLine = (index: number) => `违约条款${index}：` + '很长的内容'.repeat(60)
-  const bigLines: string[] = []
-  for (let index = 0; index < 12; index += 1) {
-    // 每个命中行间隔 6 行，避免列表档 ±2 窗口重叠
-    bigLines.push('填充', '填充', '填充', '填充', '填充', matchLine(index))
-  }
-  await withBase('zy-group-', {
-    'big.md': `${bigLines.join('\n')}\n`,
-    'small.md': '只有一条违约命中。\n',
+test('overview 返回文件摘要；path 使用知识库根目录相对 POSIX 路径', async () => {
+  await withBase('zy-search-overview-', {
+    '合同/2024/供应商合同.md': '若乙方违约则解约。\n',
+    '会议/纪要.md': '周会无合同。\n',
   }, async (root, baseId) => {
-    const first = await searchBase(root, { baseId, query: '违约' })
-    assert.equal(first.totalFiles, 2)
-    assert.equal(first.totalHits, 13)
-    assert.equal(first.files.length, 1, '预算内装不下的组整组顺延，第一页只有 big.md')
-    assert.equal(first.files[0].path, 'big.md')
-    assert.ok(first.files[0].hits.length >= 1 && first.files[0].hits.length < 12, 'big.md 在第一页被截断')
-    assert.equal(first.hasMore, true)
-    assert.deepEqual(first.restFiles, [{ path: 'small.md', count: 1 }])
-    assertTruncatedGroupIsLast([first])
-
-    const pages = await searchAllPages(root, baseId, '违约')
-    const allHits = pages.flatMap((page) => page.files.flatMap((group) => group.hits))
-    assert.equal(allHits.length, 13, '多页合计 12 条 big + 1 条 small')
-    assert.deepEqual(allHits.map((hit) => hit.n), Array.from({ length: 13 }, (_, index) => index + 1), '全局编号跨页连续')
-    const matchLines = allHits.filter((hit) => hit.path === 'big.md').map((hit) => hit.matchLine)
-    assert.equal(new Set(matchLines).size, 12, '翻页不重复、不遗漏')
-    const lastPage = pages[pages.length - 1]
-    assert.ok(lastPage, '应有最后一页')
-    assert.equal(lastPage?.hasMore, false)
-    assert.equal(lastPage?.nextCursor, undefined)
-    assert.ok(lastPage?.files.some((group) => group.path === 'small.md'), '最后一页包含 small.md')
-    assertTruncatedGroupIsLast(pages)
-  })
-})
-
-test('CSV 分页：表头只在组头出现一次，记录不带表头前缀', async () => {
-  const rows = Array.from({ length: 12 }, (_, index) => `第${index + 1}条,重复值${'长'.repeat(400)}`)
-  await withBase('zy-csv-page-', {
-    'ledger.csv': `名称,状态\n${rows.join('\n')}\n`,
-  }, async (root, baseId) => {
-    const pages = await searchAllPages(root, baseId, '重复值')
-    assert.ok(pages.length >= 2, '12 条宽记录按字符预算分成多页')
-    assert.equal(pages[0].totalFiles, 1)
-    assert.equal(pages[0].totalHits, 12)
-    const allHits = pages.flatMap((page) => page.files.flatMap((group) => group.hits))
-    assert.deepEqual(allHits.map((hit) => hit.n), Array.from({ length: 12 }, (_, index) => index + 1))
-    for (const page of pages) {
-      for (const group of page.files) {
-        assert.equal(group.format, 'csv')
-        assert.equal(group.groupHeader, '列: 名称 | 状态')
-        for (const hit of group.hits) {
-          assert.ok(!hit.excerpt.includes('列: '), '记录 excerpt 不再重复表头')
-          assert.ok(hit.matchedExcerpt?.startsWith('名称: 第'), '命中记录保持「列名: 值」格式')
-        }
-      }
-    }
-    assertTruncatedGroupIsLast(pages)
-  })
-})
-
-test('CSV 同一记录多行命中合并为一条', async () => {
-  await withBase('zy-csv-merge-', {
-    'notes.csv': '名称,备注\n甲,"第一行 违约\n第二行 违约"\n',
-  }, async (root, baseId) => {
-    const result = await searchBase(root, { baseId, query: '违约' })
+    const result = asOverview(await searchBase(root, {
+      baseId,
+      query: '违约',
+      aliases: ['解约'],
+      category: '合同/2024',
+    }))
+    assert.deepEqual(result.query, { terms: ['违约', '解约'], aliases: ['解约'] })
+    assert.equal(result.category, '合同/2024')
+    assert.deepEqual(result.files, [{ path: '合同/2024/供应商合同.md', format: 'markdown', totalHits: 1 }])
     assert.equal(result.totalFiles, 1)
-    assert.equal(result.totalHits, 2, 'rg 原始计数是 2')
-    assert.equal(result.files[0].hits.length, 1, '同一记录合并为 1 条命中')
-    assert.ok(result.files[0].hits[0].matchedExcerpt?.includes('第一行 违约'))
+    assert.equal(result.totalHits, 1)
+    assert.equal('hits' in result, false)
+
+    const detail = asFileDetail(await searchBase(root, {
+      baseId,
+      query: '违约',
+      aliases: ['解约'],
+      category: '合同/2024',
+      path: '合同/2024/供应商合同.md',
+    }))
+    assert.equal(detail.path, '合同/2024/供应商合同.md')
+    assert.equal(detail.hits.length, 1)
+    assert.equal(detail.hits[0]?.matchLine, 1)
+    assert.ok(detail.hits[0]?.excerpt.includes('违约'))
   })
 })
 
-test('一次多词 OR 与类目收窄；列表档 MD excerpt 是 ±2 行窗口', async () => {
-  const body = [
-    '供应商合同',
-    ...Array.from({ length: 20 }, () => '前文'),
-    '若乙方违约，甲方可解除合同并收取违约金。',
-    'termination 条款见附件三。',
-    '解约需书面通知。',
-  ].join('\n')
-  await withBase('zy-multi-', {
-    '合同/2024/供应商合同.md': `${body}\n`,
-    '会议/纪要.md': '周会纪要，无合同条款。\n',
+test('不存在的类目不会静默回退到知识库根目录', async () => {
+  await withBase('zy-search-category-', { '会议/纪要.md': '违约金条款。\n' }, async (root, baseId) => {
+    await assert.rejects(
+      () => searchBase(root, { baseId, query: '违约', category: '没有这个类目' }),
+      (error: unknown) => error instanceof KbError && error.code === 'not_found',
+    )
+  })
+})
+
+test('overview 按文件分页，续页只使用自包含 cursor', async () => {
+  await withBase('zy-search-pages-', {
+    'b.md': '违约\n',
+    'a.md': '违约\n违约\n',
+    'c.md': '违约\n',
   }, async (root, baseId) => {
-    const result = await searchBase(root, {
+    const pages = await searchAllOverviewPages(root, baseId, '违约', { limit: 1 })
+    assert.equal(pages.length, 3)
+    assert.deepEqual(pages.flatMap((page) => page.files.map((file) => file.path)), ['a.md', 'b.md', 'c.md'])
+    assert.deepEqual(pages.map((page) => page.totalHits), [4, 4, 4])
+    assert.equal(pages[0]?.page.hasMore, true)
+    assert.equal(pages[2]?.page.hasMore, false)
+    assert.equal(pages[2]?.page.nextCursor, undefined)
+    assert.ok(pages.every((page) => page.files.every((file) => !('hits' in file))))
+  })
+})
+
+test('file-detail 锁定单文件并按命中分页，其他文件不参与结果', async () => {
+  const lines = Array.from({ length: 40 }, (_, index) => [1, 20, 40].includes(index + 1) ? `违约明细${index + 1}` : '填充')
+  await withBase('zy-search-detail-', {
+    'aa/bb/cc.md': `${lines.join('\n')}\n`,
+    'other.md': '违约但不应返回。\n',
+  }, async (root, baseId) => {
+    const pages = await searchAllDetailPages(root, baseId, '违约', 'aa/bb/cc.md', 1)
+    assert.equal(pages.length, 3)
+    assert.ok(pages.every((page) => page.path === 'aa/bb/cc.md'))
+    assert.ok(pages.every((page) => page.totalHits === 3))
+    assert.deepEqual(pages.flatMap((page) => page.hits.map((hit) => hit.n)), [1, 2, 3])
+    assert.deepEqual(pages.flatMap((page) => page.hits.map((hit) => hit.matchLine)), [1, 20, 40])
+    assert.equal(pages[0]?.page.hasMore, true)
+    assert.equal(pages[2]?.page.hasMore, false)
+    assert.equal('files' in pages[0]!, false)
+  })
+})
+
+test('正则 OR、类目收窄和文件明细保持同一 path 语义', async () => {
+  await withBase('zy-search-regex-', {
+    '合同/2024/供应商合同.md': '若乙方违约，甲方可解约。\ntermination 条款见附件。\n',
+    '会议/纪要.md': '会议中提到违约，但不在目标类目。\n',
+  }, async (root, baseId) => {
+    const overview = asOverview(await searchBase(root, {
       baseId,
       query: '违约',
       aliases: ['解约', 'termination'],
       category: '合同/2024',
-    })
-    assert.equal(result.totalFiles, 1)
-    assert.ok(result.files[0].path.includes('供应商合同'))
-    assert.ok(result.files[0].totalHits >= 3, '违约 / termination / 解约 各命中一次')
-    const hit = result.files[0].hits[0]
-    assert.ok(hit.excerpt.includes('违约') || hit.excerpt.includes('termination'))
-    assert.ok(hit.matchLine >= hit.startLine && hit.matchLine <= hit.endLine)
-    assert.equal(hit.excerpt.split('\n').length, hit.endLine - hit.startLine + 1)
+    }))
+    assert.equal(overview.files[0]?.path, '合同/2024/供应商合同.md')
+    assert.equal(overview.files[0]?.totalHits, 2)
+    const detail = asFileDetail(await searchBase(root, {
+      baseId,
+      query: '违约',
+      aliases: ['解约', 'termination'],
+      category: '合同/2024',
+      path: '合同/2024/供应商合同.md',
+    }))
+    assert.equal(detail.totalHits, 2)
+    assert.ok(detail.hits.some((hit) => hit.excerpt.includes('termination')))
+    assert.ok(detail.hits.every((hit) => hit.matchLine >= hit.startLine && hit.matchLine <= hit.endLine))
   })
 })
 
-test('类目对不上则本库全扫；mergeTerms 去重', async () => {
-  const { terms } = mergeTerms('违约', ['违约', ' 解约 ', ''])
-  assert.deepEqual(terms, ['违约', '解约'])
-  await withBase('zy-se3-', {
-    '会议/纪要.md': '违约金条款。\n',
+test('游标拒绝旧结构和跨 scope 请求，并可单独续页', async () => {
+  await withBase('zy-search-cursor-', {
+    'a.md': '违约\n',
+    'b.md': '违约\n',
   }, async (root, baseId) => {
-    const result = await searchBase(root, { baseId, query: '违约', category: '没有这个类目' })
-    assert.ok(result.files.some((group) => group.path.includes('纪要')))
-  })
-})
+    const first = asOverview(await searchBase(root, { baseId, query: '违约', limit: 1 }))
+    const cursor = first.page.nextCursor
+    if (!cursor) throw new Error('缺少下一页游标')
+    const second = asOverview(await searchBase(root, { cursor }))
+    assert.equal(second.files.length, 1)
+    assert.notEqual(second.files[0]?.path, first.files[0]?.path)
 
-test('游标失效：v1 结构、换词、跨档位都拒绝', async () => {
-  // 两条长命中让首页只装得下第一条，从而产生 nextCursor
-  const longHit = (label: string) => `${label}：` + '背景说明'.repeat(800)
-  await withBase('zy-cursor-', {
-    'a.md': `${longHit('违约第一处')}\n\n\n\n\n${longHit('违约第二处')}\n`,
-  }, async (root, baseId) => {
-    const legacyCursor = Buffer.from(JSON.stringify({ version: 1, offset: 3, queryKey: 'x' }), 'utf8').toString('base64url')
+    const legacyCursor = Buffer.from(JSON.stringify({ version: 1, offset: 1, queryKey: 'x' }), 'utf8').toString('base64url')
+    await assert.rejects(() => searchBase(root, { cursor: legacyCursor }), /搜索游标无效或已过期/)
     await assert.rejects(
-      () => searchBase(root, { baseId, query: '违约', cursor: legacyCursor }),
-      /搜索游标无效或已过期/,
-    )
-
-    const first = await searchBase(root, { baseId, query: '违约' })
-    if (!first.nextCursor) throw new Error('缺少下一页游标')
-    await assert.rejects(
-      () => searchBase(root, { baseId, query: '解约', cursor: first.nextCursor }),
-      /搜索游标无效或已过期/,
+      () => searchBase(root, { cursor, path: 'a.md' } as SearchRequest),
+      /续页请求只能包含 cursor 和 limit/,
     )
     await assert.rejects(
-      () => searchBase(root, { baseId, query: '违约', path: 'a.md', cursor: first.nextCursor }),
-      /搜索游标无效或已过期/,
+      () => searchBase(root, { cursor, query: '解约' } as SearchRequest),
+      /续页请求只能包含 cursor 和 limit/,
     )
   })
 })
 
-test('path 明细档：锁定单文件、相邻合并成宽上下文', async () => {
-  const detailLines: string[] = []
-  for (let index = 0; index < 3; index += 1) {
-    detailLines.push('填充', '填充', '填充', '填充', '填充', `违约明细${index}`)
-  }
-  await withBase('zy-detail-', {
-    'detail.md': `${detailLines.join('\n')}\n`,
-    'other.md': '这里也有违约。\n',
-  }, async (root, baseId) => {
-    const result = await searchBase(root, { baseId, query: '违约', path: 'detail.md' })
-    assert.equal(result.totalFiles, 1)
-    assert.equal(result.files.length, 1)
-    assert.equal(result.files[0].path, 'detail.md')
-    assert.equal(result.files[0].hits.length, 1, '明细档 ±8 窗口互相重叠，合并为一条')
-    const hit = result.files[0].hits[0]
-    assert.equal(hit.excerpt.split('\n').length, hit.endLine - hit.startLine + 1)
-    assert.equal(hit.excerpt.split('违约明细').length - 1, 3, '三处命中都在同一条宽摘录里')
-  })
-})
-
-test('path 无命中返回空结果；越界与绝对路径被拒绝', async () => {
-  await withBase('zy-path-guard-', {
+test('path 明细的文件不存在、越界和跨类目都会被拒绝', async () => {
+  await withBase('zy-search-path-', {
     'a.md': '违约一处。\n',
+    'empty.md': '没有相关内容。\n',
+    '合同/2024/contract.md': '违约。\n',
   }, async (root, baseId) => {
-    const empty = await searchBase(root, { baseId, query: '违约', path: '没有这个文件.md' })
-    assert.deepEqual(empty.files, [])
-    assert.equal(empty.totalFiles, 0)
-
-    await assert.rejects(() => searchBase(root, { baseId, query: '违约', path: '../outside.md' }), (error: unknown) => {
-      return error instanceof KbError && error.code === 'path_escape'
-    })
+    const empty = asFileDetail(await searchBase(root, { baseId, query: '违约', path: 'empty.md' }))
+    assert.equal(empty.hits.length, 0)
+    assert.equal(empty.totalHits, 0)
+    await assert.rejects(
+      () => searchBase(root, { baseId, query: '违约', path: '没有这个文件.md' }),
+      (error: unknown) => error instanceof KbError && error.code === 'not_found',
+    )
+    await assert.rejects(
+      () => searchBase(root, { baseId, query: '违约', path: '../outside.md' }),
+      (error: unknown) => error instanceof KbError && error.code === 'path_escape',
+    )
+    await assert.rejects(
+      () => searchBase(root, { baseId, query: '违约', category: '合同/2024', path: 'a.md' }),
+      (error: unknown) => error instanceof KbError && error.code === 'path_escape',
+    )
     await assert.rejects(
       () => searchBase(root, { baseId, query: '违约', path: '/etc/passwd' }),
-      /path 必须是检索范围内的相对路径/,
+      /POSIX 相对路径/,
     )
+  })
+})
+
+test('扫描器不完整时返回 scan.stopReason，不能伪造可续页 cursor', async () => {
+  await withBase('zy-search-scan-', { 'a.md': '违约。\n' }, async (root, baseId) => {
+    const scanner: SearchScanner = {
+      scan: async (input) => {
+        assert.equal(input.rootDir, join(root, 'bases', baseId))
+        return {
+          matches: [{ path: 'a.md', line: 1, columnByte: 1 }],
+          warnings: ['检索结果过多，已截断'],
+          complete: false,
+          stopReason: 'stdout-limit',
+        }
+      },
+    }
+    const result = asOverview(await searchBase(root, { baseId, query: '违约', limit: 1 }, scanner))
+    assert.equal(result.scan.complete, false)
+    assert.equal(result.scan.stopReason, 'stdout-limit')
+    assert.deepEqual(result.scan.warnings, ['检索结果过多，已截断'])
+    assert.equal(result.page.hasMore, false)
+    assert.equal(result.page.nextCursor, undefined)
   })
 })

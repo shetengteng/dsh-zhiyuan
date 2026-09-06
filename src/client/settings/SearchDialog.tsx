@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
-import { CitationTag } from '../CitationTag.tsx'
-import type { SearchHit } from '../models.ts'
-import { matchedExcerptLine, parseLabeledFields, queryTerms, type LabeledField } from '../search-utils.ts'
+import type { SearchHit, SearchResult } from '../models.ts'
+import { SearchHitCard } from '../search/SearchHitCard.tsx'
 import { Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
 import { WorkbenchModal } from './WorkbenchModal.tsx'
@@ -9,20 +8,19 @@ import { WorkbenchModal } from './WorkbenchModal.tsx'
 export type SearchDialogProps = {
   baseTitle: string
   query: string
-  hits: SearchHit[]
+  result: SearchResult | null
   warning: string
   busy: boolean
   searched: boolean
-  scanComplete: boolean
-  hasMore: boolean
-  nextCursor?: string
+  openingPath?: string
   onClose: () => void
   onSearch: (query: string) => void
   onLoadMore: (cursor: string) => void
+  onOpenFile: (entryPath: string) => void
+  onBack: () => void
   onOpenHit: (hit: SearchHit) => void
 }
 
-/** 工作台试搜：加宽弹框，命中以卡片列出，CSV 行拆成字段。 */
 export function SearchDialog(props: SearchDialogProps) {
   return (
     <WorkbenchModal open onClose={props.onClose} title={`搜索 ${props.baseTitle}`} className="zy-modal-search">
@@ -33,7 +31,7 @@ export function SearchDialog(props: SearchDialogProps) {
         }}
       >
         <div className="zy-search-bar">
-          <input className="zy-box" name="query" placeholder="关键词" defaultValue={props.query} autoFocus />
+          <input className="zy-box" name="query" placeholder="正则表达式" defaultValue={props.query} autoFocus />
           <button className="zy-icon" type="submit" aria-label="搜索" disabled={props.busy}>
             <SearchIcon />
           </button>
@@ -41,15 +39,13 @@ export function SearchDialog(props: SearchDialogProps) {
       </form>
       <Note text={props.warning} />
       <SearchResults
-        query={props.query}
-        hits={props.hits}
-        warning={props.warning}
+        result={props.result}
         busy={props.busy}
         searched={props.searched}
-        scanComplete={props.scanComplete}
-        hasMore={props.hasMore}
-        nextCursor={props.nextCursor}
+        openingPath={props.openingPath}
         onLoadMore={props.onLoadMore}
+        onOpenFile={props.onOpenFile}
+        onBack={props.onBack}
         onOpenHit={props.onOpenHit}
       />
     </WorkbenchModal>
@@ -57,112 +53,102 @@ export function SearchDialog(props: SearchDialogProps) {
 }
 
 function SearchResults(props: {
-  query: string
-  hits: SearchHit[]
-  warning: string
+  result: SearchResult | null
   busy: boolean
   searched: boolean
-  scanComplete: boolean
-  hasMore: boolean
-  nextCursor?: string
+  openingPath?: string
   onLoadMore: (cursor: string) => void
+  onOpenFile: (entryPath: string) => void
+  onBack: () => void
   onOpenHit: (hit: SearchHit) => void
 }) {
-  let body: ReactNode = null
-  if (props.busy) {
-    body = <p className="zy-search-status">检索中…</p>
-  } else if (props.hits.length) {
-    body = (
-      <>
-        <p className="zy-search-status">
-          {props.hits.length} 条命中 · 点击查看原文
-          {props.hasMore ? ' · 还有更多' : props.scanComplete ? ' · 扫描完成' : ' · 扫描未完成'}
-        </p>
-        <div className="zy-search-hits">
-          {props.hits.map((hit) => (
-            <SearchHitCard key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} hit={hit} query={props.query} onOpenHit={props.onOpenHit} />
+  if (!props.result && props.busy) return <p className="zy-search-status">检索中…</p>
+  if (!props.result && !props.searched) return <p className="zy-search-empty">输入正则表达式后回车，在这个知识库里查找文件。</p>
+  if (!props.result) return <p className="zy-search-empty">没有可展示的检索结果。</p>
+  if (props.result.kind === 'overview') return <OverviewResults {...props} result={props.result} />
+  return <DetailResults {...props} result={props.result} />
+}
+
+function OverviewResults(props: {
+  result: Extract<SearchResult, { kind: 'overview' }>
+  busy: boolean
+  openingPath?: string
+  onLoadMore: (cursor: string) => void
+  onOpenFile: (entryPath: string) => void
+}) {
+  const { result } = props
+  const totalLabel = result.scan.complete ? `${result.totalFiles} 个文件 · ${result.totalHits} 条命中` : `至少 ${result.totalFiles} 个文件 · 至少 ${result.totalHits} 条命中`
+  return (
+    <div className="zy-search-body">
+      <p className="zy-search-status">{totalLabel} · 本页 {result.files.length} 个文件</p>
+      {result.files.length ? (
+        <div className="zy-search-files">
+          {result.files.map((file) => (
+            <div key={file.path} className="zy-search-file-row">
+              <div className="zy-search-file-copy">
+                <code className="zy-search-file-path" title={file.path}>{file.path}</code>
+                <span className="zy-search-file-meta">{file.format} · {file.totalHits} 条命中</span>
+              </div>
+              <button
+                className="zy-btn zy-search-file-open"
+                type="button"
+                disabled={props.busy && props.openingPath === file.path}
+                onClick={() => props.onOpenFile(file.path)}
+              >
+                {props.busy && props.openingPath === file.path ? '加载中…' : '查看详情'}
+              </button>
+            </div>
           ))}
         </div>
-        {props.hasMore && props.nextCursor ? (
-          <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(props.nextCursor ?? '')}>
-            加载更多
-          </button>
-        ) : null}
-      </>
-    )
-  } else if (!props.searched) {
-    body = <p className="zy-search-empty">输入关键词后回车，在这个知识库里查找原文。</p>
-  } else if (!props.warning) {
-    body = <p className="zy-search-empty">没有找到相关内容，换个词试试。</p>
-  }
-  return <div className="zy-search-body">{body}</div>
-}
-
-function SearchHitCard(props: {
-  hit: SearchHit
-  query: string
-  onOpenHit: (hit: SearchHit) => void
-}) {
-  const { hit } = props
-  return (
-    <button
-      className="zy-hit"
-      type="button"
-      aria-label={`打开 ${hit.path} 第 ${hit.matchLine} 行`}
-      onClick={() => props.onOpenHit(hit)}
-    >
-      <div className="zy-src">
-        <CitationTag n={hit.n} />
-        <span className="zy-path" title={hit.path}>{hit.path}</span>
-        <span className="zy-hit-loc">{hitLineLabel(hit)}</span>
-      </div>
-      <HitExcerpt text={matchedExcerptLine(hit)} query={props.query} />
-    </button>
-  )
-}
-
-function hitLineLabel(hit: SearchHit): string {
-  if (hit.startLine === hit.endLine) return `第 ${hit.matchLine} 行`
-  return `第 ${hit.startLine}–${hit.endLine} 行`
-}
-
-function HitExcerpt(props: { text: string; query: string }) {
-  const fields = parseLabeledFields(props.text)
-  if (fields) return <HitFields fields={fields} query={props.query} />
-  return <div className="zy-quote"><HitMark text={props.text} query={props.query} /></div>
-}
-
-function HitFields(props: { fields: LabeledField[]; query: string }) {
-  return (
-    <div className="zy-hit-fields">
-      {props.fields.map((field, index) => (
-        <span key={`${field.label}-${index}`} className="zy-hit-field">
-          <span className="zy-hit-k">{field.label}</span>
-          <span className="zy-hit-v" title={field.value}><HitMark text={field.value} query={props.query} /></span>
-        </span>
-      ))}
+      ) : <p className="zy-search-empty">{result.scan.complete ? '没有找到相关文件。' : '扫描尚未完成，当前没有可展示的文件。'}</p>}
+      <SearchScanNote complete={result.scan.complete} warnings={result.scan.warnings} />
+      {result.page.hasMore && result.page.nextCursor ? (
+        <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(result.page.nextCursor ?? '')}>加载更多文件</button>
+      ) : null}
     </div>
   )
 }
 
-function HitMark(props: { text: string; query: string }) {
-  const terms = queryTerms(props.query)
-  if (!terms.length) return <>{props.text}</>
-  const pattern = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi')
-  const nodes: ReactNode[] = []
-  let cursor = 0
-  for (const match of props.text.matchAll(pattern)) {
-    const start = match.index ?? 0
-    const token = match[0]
-    if (!token) break
-    if (start > cursor) nodes.push(props.text.slice(cursor, start))
-    nodes.push(<mark key={`${start}-${token}`}>{token}</mark>)
-    cursor = start + token.length
-  }
-  if (cursor < props.text.length) nodes.push(props.text.slice(cursor))
-  return <>{nodes}</>
+function DetailResults(props: {
+  result: Extract<SearchResult, { kind: 'file-detail' }>
+  busy: boolean
+  onLoadMore: (cursor: string) => void
+  onBack: () => void
+  onOpenHit: (hit: SearchHit) => void
+}) {
+  const { result } = props
+  const totalLabel = result.scan.complete ? `${result.totalHits} 条命中` : `至少 ${result.totalHits} 条命中`
+  return (
+    <div className="zy-search-body">
+      <div className="zy-search-detail-head">
+        <button className="zy-btn zy-search-back" type="button" onClick={props.onBack}>返回文件概览</button>
+        <div className="zy-search-detail-copy">
+          <code className="zy-search-file-path" title={result.path}>{result.path}</code>
+          <span className="zy-search-file-meta">{result.format} · {totalLabel} · 本页 {result.hits.length} 条</span>
+        </div>
+      </div>
+      {result.groupHeader ? <div className="zy-search-file-header">{result.groupHeader}</div> : null}
+      {result.hits.length ? (
+        <div className="zy-search-hits">
+          {result.hits.map((hit) => (
+            <SearchHitCard key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`} hit={hit} onOpenHit={(nextHit) => props.onOpenHit(nextHit)} />
+          ))}
+        </div>
+      ) : <p className="zy-search-empty">{result.scan.complete ? '这个文件没有找到相关命中。' : '扫描尚未完成，当前没有可展示的命中。'}</p>}
+      <SearchScanNote complete={result.scan.complete} warnings={result.scan.warnings} />
+      {result.page.hasMore && result.page.nextCursor ? (
+        <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(result.page.nextCursor ?? '')}>加载更多命中</button>
+      ) : null}
+    </div>
+  )
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function SearchScanNote(props: { complete: boolean; warnings: string[] }): ReactNode {
+  if (props.complete && !props.warnings.length) return null
+  return (
+    <div className="zy-search-coverage">
+      {props.complete ? '' : '本次扫描未完成，计数是当前已发现结果的下限。'}
+      {props.warnings.length ? ` ${props.warnings.join('；')}` : ''}
+    </div>
+  )
 }

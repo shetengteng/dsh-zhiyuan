@@ -13,6 +13,8 @@ type DetailsPanelProps = {
   sessionId?: string
 }
 
+const PREVIEW_HEAD_MIN_HEIGHT = 45
+
 export function createKbPreviewPanel(preview: PreviewController) {
   return function KbPreviewPanel(props: DetailsPanelProps) {
     ensureSettingsStyles()
@@ -36,8 +38,9 @@ export function createKbPreviewPanel(preview: PreviewController) {
       if (!head || !mainHeader) return
 
       const syncHeight = () => {
-        const height = Math.round(mainHeader.getBoundingClientRect().height)
-        if (!Number.isFinite(height) || height < 40 || height > 180) return
+        const measuredHeight = Math.round(mainHeader.getBoundingClientRect().height)
+        if (!Number.isFinite(measuredHeight) || measuredHeight < 40 || measuredHeight > 180) return
+        const height = Math.max(PREVIEW_HEAD_MIN_HEIGHT, measuredHeight)
         head.style.setProperty('height', `${height}px`)
         head.style.setProperty('min-height', `${height}px`)
       }
@@ -96,9 +99,14 @@ export function createKbPreviewPanel(preview: PreviewController) {
 
 function findConversationHeader(): HTMLElement | null {
   const scrollBody = document.querySelector<HTMLElement>('[data-conversation-scroll]')
-  const headerSlot = scrollBody?.previousElementSibling
-  const header = headerSlot?.matches('header') ? headerSlot : headerSlot?.querySelector('header')
-  return header instanceof HTMLElement && header.tagName === 'HEADER' ? header : null
+  let scope = scrollBody?.parentElement ?? null
+  while (scope) {
+    const header = scope.querySelector('header')
+    if (header instanceof HTMLElement) return header
+    scope = scope.parentElement
+  }
+  const header = document.querySelector('header')
+  return header instanceof HTMLElement ? header : null
 }
 
 function PreviewLocation(props: { hit: SearchHit }) {

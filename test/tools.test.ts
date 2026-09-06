@@ -6,6 +6,7 @@ import { describe, test } from 'node:test'
 import { createBase } from '../src/bases.ts'
 import { type JobRunner } from '../src/jobs.ts'
 import { setDataRootForTest } from '../src/paths.ts'
+import { VERSION_LABEL } from '../src/identity.ts'
 import { registerKbTools } from '../src/tools.ts'
 
 type ToolDef = {
@@ -18,7 +19,10 @@ type ToolDef = {
   presentCall?: () => { card: string; title: string }
   presentResult?: (args: unknown, result: { isError: boolean }) => { card: string; title: string }
   isConcurrencySafe?: () => boolean
-  parameters?: { required?: string[] }
+  parameters?: {
+    required?: string[]
+    oneOf?: Array<{ required?: string[] }>
+  }
 }
 
 function instantJobs(): JobRunner {
@@ -59,7 +63,8 @@ describe('kb tools', { concurrency: false }, () => {
     assert.deepEqual([...tools.keys()].sort(), ['kb_ingest', 'kb_list_bases', 'kb_search'])
     assert.equal(tools.get('kb_list_bases')?.isConcurrencySafe?.(), true)
     assert.deepEqual(tools.get('kb_ingest')?.parameters?.required, ['baseId', 'sourcePath'])
-    assert.deepEqual(tools.get('kb_search')?.parameters?.required, ['baseId', 'query'])
+    const searchParameters = tools.get('kb_search')?.parameters
+    assert.deepEqual(searchParameters?.oneOf?.map((item) => item.required), [['baseId', 'query'], ['cursor']])
   })
 
   test('kb_list_bases：空库文案与有库卡片', async () => {
@@ -72,8 +77,9 @@ describe('kb tools', { concurrency: false }, () => {
       const base = await createBase(root, { title: '工作库', description: '描述' })
       const filled = await list.execute() as { bases: Array<{ id: string; title: string }> }
       assert.equal(filled.bases[0].id, base.id)
+      assert.equal(filled.bases[0].title, '工作库')
       assert.equal(Object.prototype.hasOwnProperty.call(filled.bases[0], 'lastDestCategory'), false)
-      assert.match(list.output.render({}, filled)[0].text, new RegExp(`${base.id} 工作库`))
+      assert.equal(list.output.render({}, filled)[0].text, `${base.id} 工作库 · 知源 ${VERSION_LABEL}`)
     })
   })
 
@@ -99,50 +105,70 @@ describe('kb tools', { concurrency: false }, () => {
     })
   })
 
-  test('kb_search：必须带 baseId；query 必填；无命中空列表', async () => {
+  test('kb_search：首次返回 overview，path 查询返回 file-detail', async () => {
     await withRoot(async (root, tools) => {
       const search = tools.get('kb_search')
       if (!search) throw new Error('missing')
-      await assert.rejects(() => search.execute({ query: '违约' }), /必须带 baseId/)
-      await assert.rejects(() => search.execute(null), /必须带 baseId/)
+      await assert.rejects(() => search.execute({ query: '违约' }), /baseId 必填/)
+      await assert.rejects(() => search.execute(null), /baseId 必填/)
       await assert.rejects(() => search.execute({ baseId: 'work' }), /query 必填/)
       const base = await createBase(root, { title: '工作库', description: '描述' })
-      const empty = await search.execute({ baseId: base.id, query: '违约' }) as { files: unknown[] }
+      const empty = await search.execute({ baseId: base.id, query: '违约' }) as {
+        kind: string
+        scope: string
+        files: unknown[]
+        page: { scope: string; returnedFiles: number; hasMore: boolean }
+      }
+      assert.equal(empty.kind, 'overview')
+      assert.equal(empty.scope, 'files')
       assert.deepEqual(empty.files, [])
-      assert.equal(search.output.render({}, empty)[0].text, '无命中')
-      const meta = {
-        files: [{
-          path: 'a.md',
-          format: 'markdown',
-          totalHits: 1,
-          hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\n命中的正文\n第三行' }],
-        }],
+      assert.equal(empty.page.returnedFiles, 0)
+      assert.equal(search.output.render({}, empty)[0].text, '知识库中没有找到相关文件')
+      const overview = {
+        kind: 'overview' as const,
+        scope: 'files' as const,
+        baseId: base.id,
+        query: { terms: ['违约'], aliases: [] },
+        files: [{ path: 'a.md', format: 'markdown' as const, totalHits: 1 }],
         totalFiles: 1,
         totalHits: 1,
-        warnings: [],
+        page: { scope: 'files' as const, returnedFiles: 1, hasMore: true, nextCursor: 'cursor' },
+        scan: { complete: true, warnings: [] },
+        presentation: { template: 'search-overview-card' as const, version: 1 as const },
       }
-      const rendered = search.output.render({}, meta)[0].text
-      assert.match(rendered, /`1` a\.md:1–3/)
-      assert.doesNotMatch(rendered, /\[1\]/)
-      assert.match(rendered, /命中的正文/)
-      assert.match(rendered, /【命中概览】1 个文件 · 1 条命中 · 本页 1 条/)
+      const renderedOverview = search.output.render({}, overview)[0].text
+      assert.match(renderedOverview, /【文件概览】1 个文件 · 1 条命中 · 本页 1 个文件/)
+      assert.match(renderedOverview, /a\.md（1 条）/)
+      assert.doesNotMatch(renderedOverview, /命中的正文/)
+      assert.match(renderedOverview, /仍有更多文件/)
       const incompleteRendered = search.output.render({}, {
-        ...meta,
-        scanComplete: false,
-        hasMore: true,
-        nextCursor: 'cursor',
+        ...overview,
+        scan: { complete: false, warnings: ['检索结果过多，已截断'], stopReason: 'stdout-limit' },
+        page: { scope: 'files' as const, returnedFiles: 1, hasMore: false },
       })[0].text
-      assert.match(incompleteRendered, /仍有更多命中/)
       assert.match(incompleteRendered, /扫描未完成/)
-      assert.match(incompleteRendered, /下一页游标：cursor/)
-      assert.deepEqual(search.output.presentationMeta?.({}, meta), meta)
-      const presentation = search.output.presentationMeta?.({ baseId: base.id }, meta) as { baseId?: string; files?: unknown[]; warnings?: unknown[]; documents?: unknown[] }
-      assert.equal(presentation.baseId, base.id)
-      assert.equal(presentation.files, meta.files)
-      assert.deepEqual(presentation.warnings, meta.warnings)
-      assert.equal(presentation.documents, undefined)
+      assert.match(incompleteRendered, /停止原因：stdout-limit/)
+      const detail = {
+        kind: 'file-detail' as const,
+        scope: 'hits' as const,
+        baseId: base.id,
+        query: { terms: ['违约'], aliases: [] },
+        path: 'a.md',
+        format: 'markdown' as const,
+        totalHits: 1,
+        hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 3, matchLine: 2, excerpt: '第一行\\n命中的正文\\n第三行' }],
+        page: { scope: 'hits' as const, returnedHits: 1, hasMore: false },
+        scan: { complete: true, warnings: [] },
+        presentation: { template: 'search-file-detail-card' as const, version: 1 as const },
+      }
+      const renderedDetail = search.output.render({}, detail)[0].text
+      assert.match(renderedDetail, /`1` a\.md:1–3（命中行 2）/)
+      assert.match(renderedDetail, /命中的正文/)
+      assert.match(renderedDetail, /【文件详情】a\.md · 1 条命中 · 本页 1 条/)
+      assert.deepEqual(search.output.presentationMeta?.({}, overview), overview)
+      assert.deepEqual(search.output.presentationMeta?.({}, detail), detail)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })
-      assert.deepEqual(search.presentResult?.({}, { isError: false }), { card: 'generic', title: '知识库命中' })
+      assert.deepEqual(search.presentResult?.({}, { isError: false }), { card: 'generic', title: '知识库检索结果' })
       assert.deepEqual(search.presentResult?.({}, { isError: true }), { card: 'generic', title: '检索失败' })
     })
   })

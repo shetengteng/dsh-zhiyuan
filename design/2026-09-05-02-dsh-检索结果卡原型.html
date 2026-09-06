@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>知源 · 两层检索结果与预览原型</title>
+  <style>
+    :root {
+      --dsw-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --dsw-font-code: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, monospace;
+      --dsw-alias-bg-base: oklch(97.8% 0.008 250);
+      --dsw-alias-bg-layer-1: oklch(99.5% 0.003 250);
+      --dsw-alias-bg-layer-2: oklch(95.8% 0.009 250);
+      --dsw-alias-bg-layer-3: oklch(93.8% 0.012 250);
+      --dsw-alias-border-l1: oklch(86% 0.012 250 / 0.55);
+      --dsw-alias-border-l2: oklch(80% 0.015 250 / 0.68);
+      --dsw-alias-label-primary: oklch(25% 0.014 250);
+      --dsw-alias-label-secondary: oklch(42% 0.015 250);
+      --dsw-alias-label-tertiary: oklch(56% 0.014 250);
+      --dsw-alias-label-dimmed: oklch(66% 0.012 250);
+      --dsw-alias-state-business-primary: oklch(55% 0.17 257);
+      --dsw-alias-state-business-secondary: oklch(94% 0.035 257);
+      --dsw-alias-state-business-tertiary: oklch(97% 0.018 257);
+      --dsw-alias-state-warn-primary: oklch(69% 0.15 72);
+      --dsw-alias-state-warn-secondary: oklch(94% 0.045 82);
+      --dsw-alias-state-warn-tertiary: oklch(97% 0.026 82);
+      --dsw-alias-state-error-primary: oklch(58% 0.19 25);
+      --dsw-alias-state-error-secondary: oklch(94% 0.045 25);
+      --dsw-alias-state-success-primary: oklch(58% 0.15 150);
+      --dsw-alias-state-success-secondary: oklch(94% 0.04 150);
+      --dsw-shadow-lv1: 0 1px 2px oklch(25% 0.014 250 / 0.08), 0 4px 12px oklch(25% 0.014 250 / 0.035);
+      --dsw-shadow-lv2: 0 12px 30px oklch(25% 0.014 250 / 0.07), 0 2px 8px oklch(25% 0.014 250 / 0.045);
+      --dsw-radius-card: 16px;
+      --dsw-radius-control: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--dsw-alias-label-primary);
+      background: var(--dsw-alias-bg-base);
+      font-family: var(--dsw-font-family);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    button { font: inherit; color: inherit; }
+    button:focus-visible {
+      outline: 2px solid var(--dsw-alias-state-business-primary);
+      outline-offset: 3px;
+    }
+
+    .prototype-page {
+      width: min(1240px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    .prototype-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .prototype-kicker {
+      margin: 0 0 6px;
+      color: var(--dsw-alias-state-business-primary);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .prototype-title {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 34px);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.18;
+    }
+
+    .prototype-subtitle {
+      max-width: 720px;
+      margin: 10px 0 0;
+      color: var(--dsw-alias-label-secondary);
+      line-height: 1.7;
+    }
+
+    .prototype-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: none;
+    }
+
+    .prototype-segment {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 12px;
+      background: var(--dsw-alias-bg-layer-1);
+    }
+
+    .prototype-button,
+    .zy-button {
+      min-height: 32px;
+      padding: 5px 11px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      cursor: pointer;
+      color: var(--dsw-alias-label-secondary);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .prototype-button:hover,
+    .zy-button:hover {
+      background: var(--dsw-alias-bg-layer-2);
+      color: var(--dsw-alias-label-primary);
+    }
+
+    .prototype-button[aria-pressed="true"] {
+      border-color: var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-state-business-tertiary);
+      color: var(--dsw-alias-state-business-primary);
+      font-weight: 650;
+    }
+
+    .prototype-button.is-secondary,
+    .zy-button.is-secondary {
+      border-color: var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-bg-layer-1);
+    }
+
+    .prototype-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+      align-items: start;
+      gap: 20px;
+    }
+
+    .prototype-conversation {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--dsw-alias-border-l1);
+      border-radius: 22px;
+      background: var(--dsw-alias-bg-layer-2);
+      box-shadow: var(--dsw-shadow-lv1);
+    }
+
+    .conversation-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 48px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+      color: var(--dsw-alias-label-secondary);
+      font-size: 12px;
+    }
+
+    .conversation-head strong {
+      color: var(--dsw-alias-label-primary);
+      font-weight: 650;
+    }
+
+    .conversation-head-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--dsw-alias-label-tertiary);
+      white-space: nowrap;
+    }
+
+    .conversation-head-status::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dsw-alias-state-success-primary);
+      content: "";
+    }
+
+    .conversation-thread {
+      padding: 28px 24px 32px;
+    }
+
+    .model-text {
+      max-width: 680px;
+      margin: 0 auto 14px;
+      color: var(--dsw-alias-label-secondary);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .model-text strong { color: var(--dsw-alias-label-primary); font-weight: 650; }
+    .model-text code,
+    .zy-code,
+    .zy-path {
+      color: var(--dsw-alias-state-business-primary);
+      font-family: var(--dsw-font-code);
+      font-size: 0.92em;
+    }
+
+    .state-view[hidden],
+    [data-right-view][hidden],
+    [data-overview-page][hidden],
+    [data-detail-page][hidden],
+    [data-narration][hidden] {
+      display: none;
+    }
+
+    .zy-search-card {
+      overflow: hidden;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: var(--dsw-radius-card);
+      background: var(--dsw-alias-bg-layer-1);
+      box-shadow: var(--dsw-shadow-lv2);
+    }
+
+    .zy-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 18px 16px;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+      background: color-mix(in oklch, var(--dsw-alias-state-business-tertiary) 42%, var(--dsw-alias-bg-layer-1));
+    }
+
+    .zy-card-head-copy { min-width: 0; }
+    .zy-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 5px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+    }
+
+    .zy-eyebrow-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border: 1px solid color-mix(in oklch, var(--dsw-alias-state-business-primary) 30%, var(--dsw-alias-bg-layer-1));
+      border-radius: 6px;
+      color: var(--dsw-alias-state-business-primary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .zy-card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .zy-card-subtitle {
+      margin: 5px 0 0;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .zy-card-page {
+      flex: none;
+      padding: 4px 8px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 999px;
+      color: var(--dsw-alias-label-tertiary);
+      font-family: var(--dsw-font-code);
+      font-size: 11px;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .zy-query-bar {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      padding: 11px 18px;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+    }
+
+    .zy-query-bar strong { color: var(--dsw-alias-label-secondary); font-weight: 650; }
+    .zy-query-bar code { color: var(--dsw-alias-state-business-primary); font-family: var(--dsw-font-code); }
+
+    .zy-file-list { display: flex; flex-direction: column; }
+
+    .zy-file-row {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 16px 18px;
+      border: 0;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+      background: transparent;
+      text-align: left;
+    }
+
+    .zy-file-row:last-child { border-bottom: 0; }
+
+    .zy-file-row:hover { background: var(--dsw-alias-bg-layer-2); }
+
+    .zy-file-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 9px;
+      background: var(--dsw-alias-bg-layer-2);
+      color: var(--dsw-alias-state-business-primary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .zy-file-copy { min-width: 0; }
+
+    .zy-file-path {
+      display: block;
+      overflow: hidden;
+      color: var(--dsw-alias-label-primary);
+      font-family: var(--dsw-font-code);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.5;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .zy-file-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      margin-top: 4px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+    }
+
+    .zy-file-count {
+      flex: none;
+      color: var(--dsw-alias-label-secondary);
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .zy-file-action {
+      min-height: 30px;
+      padding: 4px 9px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 8px;
+      background: var(--dsw-alias-bg-layer-1);
+      color: var(--dsw-alias-state-business-primary);
+      cursor: pointer;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .zy-file-action:hover { background: var(--dsw-alias-state-business-tertiary); }
+
+    .zy-card-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 13px 18px;
+      border-top: 1px solid var(--dsw-alias-border-l1);
+      background: var(--dsw-alias-bg-layer-2);
+      color: var(--dsw-alias-label-secondary);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .zy-note-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex: none;
+      border-radius: 50%;
+      background: var(--dsw-alias-state-business-secondary);
+      color: var(--dsw-alias-state-business-primary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .zy-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 18px 14px;
+      border-top: 1px solid var(--dsw-alias-border-l1);
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+    }
+
+    .zy-pagination-actions { display: flex; gap: 6px; }
+    .zy-pagination .zy-button { min-height: 28px; padding: 3px 8px; font-size: 11px; }
+    .zy-button:disabled { cursor: not-allowed; opacity: 0.45; }
+
+    .zy-detail-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--dsw-alias-border-l1);
+    }
+
+    .zy-breadcrumb {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-width: 0;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 11px;
+    }
+
+    .zy-breadcrumb button {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--dsw-alias-state-business-primary);
+      cursor: pointer;
+      font-size: inherit;
+    }
+
+    .zy-breadcrumb button:hover { text-decoration: underline; }
+    .zy-breadcrumb-current { min-width: 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-secondary); font-family: var(--dsw-font-code); }
+
+    .zy-scope-badge,
+    .zy-status-badge {
+      display: inline-flex;
+      align-items: center;
+      flex: none;
+      min-height: 24px;
+      padding: 3px 8px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 999px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .zy-status-badge.is-success { border-color: color-mix(in oklch, var(--dsw-alias-state-success-primary) 28%, var(--dsw-alias-border-l2)); color: var(--dsw-alias-state-success-primary); }
+    .zy-status-badge.is-pending { border-color: color-mix(in oklch, var(--dsw-alias-state-warn-primary) 35%, var(--dsw-alias-border-l2)); color: var(--dsw-alias-state-warn-primary); }
+    .zy-status-badge.is-error { border-color: color-mix(in oklch, var(--dsw-alias-state-error-primary) 30%, var(--dsw-alias-border-l2)); color: var(--dsw-alias-state-error-primary); }
+
+    .zy-path-banner {
+      margin: 14px 18px 0;
+      padding: 10px 11px;
+      border: 1px solid var(--dsw-alias-border-l1);
+      border-radius: 9px;
+      background: var(--dsw-alias-bg-layer-2);
+    }
+
+    .zy-path-banner-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--dsw-alias-label-tertiary);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+    }
+
+    .zy-path-banner code { overflow-wrap: anywhere; color: var(--dsw-alias-state-business-primary); font-family: var(--dsw-font-code); font-size: 12px; }
+    .zy-path-banner p { margin: 4px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 1.5; }
+
+    .zy-hit-list { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px 17px; }
+
+    .zy-hit {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+      width: 100%;
+      padding: 11px;
+      border: 1px solid var(--dsw-alias-border-l1);
+      border-radius: var(--dsw-radius-control);
+      background: var(--dsw-alias-bg-layer-1);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .zy-hit:hover {
+      border-color: var(--dsw-alias-border-l2);
+      background: var(--dsw-alias-bg-layer-2);
+      transform: translateY(-1px);
+    }
+
+    .zy-hit.is-selected {
+      border-color: color-mix(in oklch, var(--dsw-alias-state-business-primary) 45%, var(--dsw-alias-border-l2));
+      background: color-mix(in oklch, var(--dsw-alias-state-business-tertiary) 62%, var(--dsw-alias-bg-layer-1));
+    }
+
+    .zy-hit-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 27px;
+      padding: 0 5px;
+      border: 1px solid color-mix(in oklch, var(--dsw-alias-state-business-primary) 24%, var(--dsw-alias-bg-layer-1));
+      border-radius: 7px;
+      background: color-mix(in oklch, var(--dsw-alias-state-business-primary) 9%, var(--dsw-alias-bg-layer-1));
+      color: var(--dsw-alias-state-business-primary);
+      font-family: var(--dsw-font-code);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .zy-hit-copy { min-width: 0; }
+    .zy-hit-source { display: block; margin-bottom: 3px; color: var(--dsw-alias-label-tertiary); font-family: var(--dsw-font-code); font-size: 11px; line-height: 1.45; }
+    .zy-hit-excerpt { color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.55; }
+    .zy-hit-action { align-self: center; color: var(--dsw-alias-label-dimmed); font-size: 11px; white-space: nowrap; }
+    .zy-hit:hover .zy-hit-action, .zy-hit.is-selected .zy-hit-action { color: var(--dsw-alias-state-business-primary); }
+
+    .zy-detail-footer {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 13px 18px;
+      border-top: 1px solid var(--dsw-alias-border-l1);
+      background: var(--dsw-alias-bg-layer-2);
+      color: var(--dsw-alias-label-secondary);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .zy-loading-card,
+    .zy-state-card {
+      min-height: 330px;
+      padding: 28px 22px;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: var(--dsw-radius-card);
+      background: var(--dsw-alias-bg-layer-1);
+      box-shadow: var(--dsw-shadow-lv2);
+    }
+
+    .zy-loading-card { display: flex; flex-direction: column; justify-content: center; }
+    .zy-loading-line { height: 12px; margin-bottom: 12px; border-radius: 999px; background: var(--dsw-alias-bg-layer-3); }
+    .zy-loading-line.is-short { width: 42%; }
+    .zy-loading-line.is-medium { width: 68%; }
+    .zy-loading-copy { margin: 10px 0 0; color: var(--dsw-alias-label-secondary); font-size: 13px; }
+    .zy-loading-note { margin: 5px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
+
+    .zy-state-card { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+    .zy-state-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-bottom: 12px; border-radius: 10px; background: var(--dsw-alias-state-error-secondary); color: var(--dsw-alias-state-error-primary); font-weight: 700; }
+    .zy-state-card h2 { margin: 0; font-size: 16px; }
+    .zy-state-card p { max-width: 430px; margin: 7px 0 16px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.7; }
+
+    .prototype-panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+    .prototype-card {
+      padding: 17px;
+      border: 1px solid var(--dsw-alias-border-l1);
+      border-radius: 16px;
+      background: var(--dsw-alias-bg-layer-1);
+      box-shadow: var(--dsw-shadow-lv1);
+    }
+
+    .prototype-card-title { margin: 0; font-size: 13px; font-weight: 700; }
+    .prototype-card-copy { margin: 7px 0 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.65; }
+
+    .layer-list { display: flex; flex-direction: column; gap: 9px; margin: 15px 0 0; padding: 0; list-style: none; }
+    .layer-item { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 9px; align-items: start; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.5; }
+    .layer-item::before { width: 8px; height: 8px; margin-top: 5px; border-radius: 3px; background: var(--dsw-alias-state-business-primary); content: ""; }
+    .layer-item:nth-child(2)::before { background: var(--dsw-alias-state-warn-primary); }
+    .layer-item:nth-child(3)::before { background: var(--dsw-alias-state-success-primary); }
+    .layer-item strong { display: block; color: var(--dsw-alias-label-primary); font-weight: 650; }
+
+    .zy-preview-locked,
+    .zy-preview-panel {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--dsw-alias-border-l2);
+      border-radius: 16px;
+      background: var(--dsw-alias-bg-layer-1);
+      box-shadow: var(--dsw-shadow-lv2);
+    }
+
+    .zy-preview-locked { min-height: 390px; padding: 24px 20px; }
+    .zy-preview-locked[data-right-view="overview"] { min-height: 430px; }
+    .zy-preview-locked-content { display: flex; min-height: 340px; flex-direction: column; justify-content: center; align-items: flex-start; }
+    .zy-preview-lock-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin-bottom: 12px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 11px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-state-business-primary); font-size: 16px; }
+    .zy-preview-locked h2 { margin: 0; font-size: 16px; line-height: 1.4; }
+    .zy-preview-locked p { margin: 8px 0 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 1.7; }
+    .zy-preview-locked code { color: var(--dsw-alias-state-business-primary); font-family: var(--dsw-font-code); font-size: 11px; }
+    .zy-preview-locked .zy-button { margin-top: 16px; }
+
+    .zy-preview-panel { display: flex; min-height: 650px; flex-direction: column; }
+    .zy-preview-head { display: flex; align-items: flex-start; gap: 12px; min-height: 92px; padding: 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+    .zy-preview-head-copy { min-width: 0; flex: 1; }
+    .zy-preview-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 700; line-height: 1.45; }
+    .zy-preview-filename { min-width: 0; overflow-wrap: anywhere; font-family: var(--dsw-font-code); }
+    .zy-preview-citation { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid color-mix(in oklch, var(--dsw-alias-state-business-primary) 26%, var(--dsw-alias-bg-layer-1)); border-radius: 6px; background: color-mix(in oklch, var(--dsw-alias-state-business-primary) 10%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-state-business-primary); font-family: var(--dsw-font-code); font-size: 10px; font-weight: 700; }
+    .zy-preview-path { margin-top: 5px; overflow-wrap: anywhere; color: var(--dsw-alias-label-tertiary); font-family: var(--dsw-font-code); font-size: 10px; line-height: 1.45; }
+    .zy-preview-location { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.45; }
+    .zy-preview-close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; font-size: 20px; line-height: 1; }
+    .zy-preview-close:hover { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
+
+    .zy-preview-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-2); }
+    .zy-preview-meta-item { min-width: 0; }
+    .zy-preview-meta-label { display: block; color: var(--dsw-alias-label-dimmed); font-size: 10px; }
+    .zy-preview-meta-value { display: block; overflow-wrap: anywhere; margin-top: 2px; color: var(--dsw-alias-label-secondary); font-family: var(--dsw-font-code); font-size: 10px; line-height: 1.45; }
+    .zy-preview-body { min-height: 0; flex: 1; overflow: auto; padding: 0 16px 24px; }
+    .zy-preview-document { padding: 21px 2px 24px; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.75; }
+    .zy-preview-document h2, .zy-preview-document h3 { margin: 0 0 12px; color: var(--dsw-alias-label-primary); font-weight: 700; line-height: 1.4; }
+    .zy-preview-document h2 { font-size: 17px; }
+    .zy-preview-document h3 { margin-top: 23px; font-size: 14px; }
+    .zy-preview-document p { margin: 0 0 13px; }
+    .zy-preview-document ul { margin: 0 0 16px; padding-left: 20px; }
+    .zy-preview-document li + li { margin-top: 5px; }
+    .zy-preview-document mark { padding: 1px 3px; border-radius: 4px; background: color-mix(in oklch, var(--dsw-alias-state-warn-primary) 28%, var(--dsw-alias-bg-layer-1)); color: inherit; }
+
+    .zy-preview-table-wrap { overflow: auto; padding: 20px 0 26px; }
+    .zy-preview-table-wrap[hidden], .zy-preview-document[hidden] { display: none; }
+    .zy-preview-table-note { margin: 0 0 10px; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 1.5; }
+    .zy-preview-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid var(--dsw-alias-border-l2); border-radius: 9px; color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: nowrap; }
+    .zy-preview-table th, .zy-preview-table td { padding: 8px 9px; border-right: 1px solid var(--dsw-alias-border-l1); border-bottom: 1px solid var(--dsw-alias-border-l1); text-align: left; }
+    .zy-preview-table th:last-child, .zy-preview-table td:last-child { border-right: 0; }
+    .zy-preview-table tr:last-child td { border-bottom: 0; }
+    .zy-preview-table th { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font-weight: 650; }
+    .zy-preview-table .zy-preview-row-number { color: var(--dsw-alias-label-tertiary); font-family: var(--dsw-font-code); }
+    .zy-preview-table tr.is-focused td { background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-label-primary); }
+    .zy-preview-table tr.is-focused .zy-preview-row-number { color: var(--dsw-alias-state-warn-primary); font-weight: 700; }
+
+    .zy-preview-foot { display: flex; align-items: flex-start; gap: 7px; padding: 11px 16px 13px; border-top: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 1.5; }
+    .zy-preview-foot strong { color: var(--dsw-alias-label-secondary); font-weight: 650; }
+
+    .zy-narrow-note { display: none; }
+    .prototype-page.is-narrow .prototype-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); }
+    .prototype-page.is-narrow .zy-preview-locked[data-right-view="narrow"] { display: block; }
+    .prototype-page.is-narrow .zy-narrow-note { display: block; margin-top: 9px; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
+
+    .zy-modal-backdrop { position: fixed; z-index: 5; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: oklch(25% 0.014 250 / 0.28); }
+    .zy-modal-backdrop[hidden] { display: none; }
+    .zy-preview-modal { display: flex; width: min(560px, 100%); max-height: min(720px, calc(100vh - 40px)); flex-direction: column; overflow: hidden; border: 1px solid var(--dsw-alias-border-l2); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); box-shadow: var(--dsw-shadow-lv2); }
+    .zy-preview-modal .zy-preview-head { flex: none; }
+    .zy-preview-modal .zy-preview-body { min-height: 260px; }
+
+    .prototype-footnote { margin: 22px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 1.65; text-align: center; }
+
+    @media (max-width: 900px) {
+      .prototype-header { align-items: flex-start; flex-direction: column; }
+      .prototype-controls { justify-content: flex-start; }
+      .prototype-layout { grid-template-columns: minmax(0, 1fr); }
+      .prototype-panel { position: static; }
+      .zy-preview-panel { min-height: 560px; }
+    }
+
+    @media (max-width: 560px) {
+      .prototype-page { width: min(100% - 24px, 760px); padding-top: 22px; }
+      .conversation-thread { padding: 20px 12px 24px; }
+      .zy-card-head, .zy-query-bar, .zy-file-row, .zy-pagination, .zy-card-note, .zy-detail-toolbar, .zy-path-banner, .zy-hit-list, .zy-detail-footer { padding-left: 13px; padding-right: 13px; }
+      .zy-file-row { grid-template-columns: 30px minmax(0, 1fr); }
+      .zy-file-action { grid-column: 2; justify-self: start; }
+      .zy-hit { grid-template-columns: 28px minmax(0, 1fr); }
+      .zy-hit-action { display: none; }
+      .zy-preview-meta { grid-template-columns: 1fr; }
+      .prototype-segment { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype-page" data-prototype-page>
+    <header class="prototype-header">
+      <div>
+        <p class="prototype-kicker">知源 · kb_search</p>
+        <h1 class="prototype-title">两层检索结果与预览原型</h1>
+        <p class="prototype-subtitle">概览只回答“哪些文件命中了多少条”；文件详情才返回命中内容。右侧预览只由文件详情中的命中触发，Client 不读取磁盘，也不把概览结果假装成文件正文。</p>
+      </div>
+      <div class="prototype-controls" aria-label="原型状态控制">
+        <div class="prototype-segment" role="group" aria-label="检索和预览状态">
+          <button class="prototype-button" type="button" data-mode-button="overview" aria-pressed="true">概览</button>
+          <button class="prototype-button" type="button" data-mode-button="detail" aria-pressed="false">文件详情</button>
+          <button class="prototype-button" type="button" data-mode-button="preview" aria-pressed="false">右侧预览</button>
+          <button class="prototype-button" type="button" data-mode-button="narrow" aria-pressed="false">窄窗口回退</button>
+        </div>
+        <div class="prototype-segment" role="group" aria-label="异常状态">
+          <button class="prototype-button" type="button" data-mode-button="detail-loading" aria-pressed="false">加载态</button>
+          <button class="prototype-button" type="button" data-mode-button="detail-error" aria-pressed="false">错误/断连</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="prototype-layout">
+      <section class="prototype-conversation" aria-label="会话中的知源检索结果">
+        <div class="conversation-head">
+          <span><strong>当前会话</strong> · 供应商合同检索</span>
+          <span class="conversation-head-status">Host action 已连接</span>
+        </div>
+        <div class="conversation-thread">
+          <p class="model-text" data-narration>先返回知识库的文件概览。点击某个文件后，知源会通过 Host action 发起带 <code>path</code> 的第二层查询。</p>
+
+          <div class="state-view" data-state-view="overview">
+            <article class="zy-search-card" aria-label="文件概览结果卡">
+              <header class="zy-card-head">
+                <div class="zy-card-head-copy">
+                  <div class="zy-eyebrow"><span class="zy-eyebrow-mark" aria-hidden="true">⌕</span>知源检索 · overview</div>
+                  <h2 class="zy-card-title">文件概览</h2>
+                  <p class="zy-card-subtitle">3 个文件 · 至少 12 条命中 · 扫描已完成</p>
+                </div>
+                <span class="zy-card-page" data-overview-page-label>文件 1/2</span>
+              </header>
+              <div class="zy-query-bar">
+                <span><strong>知识库</strong> kb-demo</span>
+                <span><strong>类目</strong> 全库</span>
+                <span><strong>正则</strong> <code>供应商|履约</code></span>
+              </div>
+
+              <div data-overview-page="1">
+                <div class="zy-file-list">
+                  <div class="zy-file-row">
+                    <span class="zy-file-icon" aria-hidden="true">文</span>
+                    <div class="zy-file-copy">
+                      <code class="zy-file-path">合同/2024/供应商合同.md</code>
+                      <div class="zy-file-meta"><span>Markdown</span><span>·</span><span>知识库相对 path</span></div>
+                    </div>
+                    <span class="zy-file-count">3 条命中</span>
+                    <button class="zy-file-action" type="button" data-open-file="合同/2024/供应商合同.md">查看文件详情</button>
+                  </div>
+                  <div class="zy-file-row">
+                    <span class="zy-file-icon" aria-hidden="true">表</span>
+                    <div class="zy-file-copy">
+                      <code class="zy-file-path">供应商台账.csv</code>
+                      <div class="zy-file-meta"><span>CSV</span><span>·</span><span>知识库相对 path</span></div>
+                    </div>
+                    <span class="zy-file-count">5 条命中</span>
+                    <button class="zy-file-action" type="button" data-open-file="供应商台账.csv">查看文件详情</button>
+                  </div>
+                  <div class="zy-file-row">
+                    <span class="zy-file-icon" aria-hidden="true">文</span>
+                    <div class="zy-file-copy">
+                      <code class="zy-file-path">会议/纪要.md</code>
+                      <div class="zy-file-meta"><span>Markdown</span><span>·</span><span>知识库相对 path</span></div>
+                    </div>
+                    <span class="zy-file-count">4 条命中</span>
+                    <button class="zy-file-action" type="button" data-open-file="会议/纪要.md">查看文件详情</button>
+                  </div>
+                </div>
+              </div>
+
+              <div data-overview-page="2" hidden>
+                <div class="zy-file-list">
+                  <div class="zy-file-row">
+                    <span class="zy-file-icon" aria-hidden="true">文</span>
+                    <div class="zy-file-copy">
+                      <code class="zy-file-path">项目交接说明.md</code>
+                      <div class="zy-file-meta"><span>Markdown</span><span>·</span><span>知识库相对 path</span></div>
+                    </div>
+                    <span class="zy-file-count">2 条命中</span>
+                    <button class="zy-file-action" type="button" data-open-file="项目交接说明.md">查看文件详情</button>
+                  </div>
+                  <div class="zy-file-row">
+                    <span class="zy-file-icon" aria-hidden="true">表</span>
+                    <div class="zy-file-copy">
+                      <code class="zy-file-path">供应商目录.csv</code>
+                      <div class="zy-file-meta"><span>CSV</span><span>·</span><span>知识库相对 path</span></div>
+                    </div>
+                    <span class="zy-file-count">1 条命中</span>
+                    <button class="zy-file-action" type="button" data-open-file="供应商目录.csv">查看文件详情</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="zy-card-note"><span class="zy-note-mark" aria-hidden="true">i</span><span>概览响应只包含文件摘要，不包含 <code class="zy-code">hits</code>、excerpt 或正文；点击文件后才请求 file-detail。</span></div>
+              <footer class="zy-pagination">
+                <span>文件列表分页 · cursor scope: <code class="zy-code">files</code></span>
+                <span class="zy-pagination-actions"><button class="zy-button" type="button" data-overview-prev disabled>上一页</button><button class="zy-button is-secondary" type="button" data-overview-next>下一页文件</button></span>
+              </footer>
+            </article>
+          </div>
+
+          <div class="state-view" data-state-view="detail-loading" hidden>
+            <p class="model-text">正在通过 Host action 请求文件详情。请求确认前，不显示文件命中，也不打开右侧预览。</p>
+            <div class="zy-loading-card" aria-label="文件详情加载中" aria-busy="true">
+              <div class="zy-loading-line is-short"></div>
+              <div class="zy-loading-line is-medium"></div>
+              <div class="zy-loading-line"></div>
+              <div class="zy-loading-line"></div>
+              <p class="zy-loading-copy">正在加载 file-detail…</p>
+              <p class="zy-loading-note">Client 只等待 Host 返回，不读取本机路径。</p>
+            </div>
+          </div>
+
+          <div class="state-view" data-state-view="detail-error" hidden>
+            <div class="zy-state-card" role="alert">
+              <span class="zy-state-icon" aria-hidden="true">!</span>
+              <h2>文件详情暂时不可用</h2>
+              <p>Host action 没有返回可用的 file-detail。可能是连接断开、文件已移动，或知识库相对 path 校验失败。当前不能打开预览。</p>
+              <button class="zy-button is-secondary" type="button" data-retry-detail>重试请求</button>
+            </div>
+          </div>
+
+          <div class="state-view" data-state-view="detail" hidden>
+            <p class="model-text" data-narration>Host 已确认文件存在，下面是单文件命中分页。点击命中后，右侧 DSH details 才会打开。</p>
+            <article class="zy-search-card" aria-label="单文件详情结果卡">
+              <header class="zy-card-head">
+                <div class="zy-card-head-copy">
+                  <div class="zy-eyebrow"><span class="zy-eyebrow-mark" aria-hidden="true">↳</span>知源检索 · file-detail</div>
+                  <h2 class="zy-card-title" data-detail-title>供应商台账.csv</h2>
+                  <p class="zy-card-subtitle" data-detail-subtitle>5 条命中 · 当前页 3 条 · CSV 逻辑记录按物理行定位</p>
+                </div>
+                <span class="zy-status-badge is-success">scan complete</span>
+              </header>
+              <div class="zy-detail-toolbar">
+                <div class="zy-breadcrumb" aria-label="文件详情路径">
+                  <button type="button" data-back-overview>文件概览</button><span aria-hidden="true">›</span><span class="zy-breadcrumb-current" data-detail-breadcrumb>供应商台账.csv</span>
+                </div>
+                <span class="zy-scope-badge">scope: hits</span>
+              </div>
+              <div class="zy-query-bar">
+                <span><strong>baseId</strong> kb-demo</span>
+                <span><strong>类目</strong> 全库</span>
+                <span><strong>正则</strong> <code>供应商|履约</code></span>
+              </div>
+              <div class="zy-path-banner">
+                <span class="zy-path-banner-label">path · 知识库根目录下的相对路径</span>
+                <code data-detail-path>供应商台账.csv</code>
+                <p>示例契约：<code class="zy-code">aa/bb/cc.md</code>。不传绝对路径；即使指定类目，path 仍按知识库根目录相对路径校验。</p>
+              </div>
+
+              <div data-detail-page="1">
+                <div class="zy-hit-list" aria-label="当前文件命中列表">
+                  <button class="zy-hit" type="button" data-preview-id="csv-1" data-preview-title="供应商台账.csv" data-preview-path="供应商台账.csv" data-preview-format="csv" data-preview-start-line="5" data-preview-end-line="5" data-preview-match-line="5" data-preview-fingerprint="sha256:csv-demo-5">
+                    <span class="zy-hit-index">1</span>
+                    <span class="zy-hit-copy"><span class="zy-hit-source">L5 · CSV 记录第 4 条</span><span class="zy-hit-excerpt">合同编号：HT-2026-000004 · 供应商：成都锦官物流 · 状态：已验收</span></span>
+                    <span class="zy-hit-action">打开预览</span>
+                  </button>
+                  <button class="zy-hit" type="button" data-preview-id="csv-2" data-preview-title="供应商台账.csv" data-preview-path="供应商台账.csv" data-preview-format="csv" data-preview-start-line="12" data-preview-end-line="12" data-preview-match-line="12" data-preview-fingerprint="sha256:csv-demo-12">
+                    <span class="zy-hit-index">2</span>
+                    <span class="zy-hit-copy"><span class="zy-hit-source">L12 · CSV 记录第 11 条</span><span class="zy-hit-excerpt">合同编号：HT-2026-000011 · 供应商：华南设备服务 · 状态：待复核</span></span>
+                    <span class="zy-hit-action">打开预览</span>
+                  </button>
+                  <button class="zy-hit" type="button" data-preview-id="csv-3" data-preview-title="供应商台账.csv" data-preview-path="供应商台账.csv" data-preview-format="csv" data-preview-start-line="18" data-preview-end-line="18" data-preview-match-line="18" data-preview-fingerprint="sha256:csv-demo-18">
+                    <span class="zy-hit-index">3</span>
+                    <span class="zy-hit-copy"><span class="zy-hit-source">L18 · CSV 记录第 17 条</span><span class="zy-hit-excerpt">合同编号：HT-2026-000017 · 供应商：北方仓储 · 状态：正常</span></span>
+                    <span class="zy-hit-action">打开预览</span>
+                  </button>
+                </div>
+              </div>
+
+              <div data-detail-page="2" hidden>
+                <div class="zy-hit-list" aria-label="当前文件第二页命中列表">
+                  <button class="zy-hit" type="button" data-preview-id="csv-4" data-preview-title="供应商台账.csv" data-preview-path="供应商台账.csv" data-preview-format="csv" data-preview-start-line="24" data-preview-end-line="24" data-preview-match-line="24" data-preview-fingerprint="sha256:csv-demo-24">
+                    <span class="zy-hit-index">4</span>
+                    <span class="zy-hit-copy"><span class="zy-hit-source">L24 · CSV 记录第 23 条</span><span class="zy-hit-excerpt">合同编号：HT-2026-000023 · 供应商：东部运输 · 状态：已归档</span></span>
+                    <span class="zy-hit-action">打开预览</span>
+                  </button>
+                  <button class="zy-hit" type="button" data-preview-id="csv-5" data-preview-title="供应商台账.csv" data-preview-path="供应商台账.csv" data-preview-format="csv" data-preview-start-line="31" data-preview-end-line="31" data-preview-match-line="31" data-preview-fingerprint="sha256:csv-demo-31">
+                    <span class="zy-hit-index">5</span>
+                    <span class="zy-hit-copy"><span class="zy-hit-source">L31 · CSV 记录第 30 条</span><span class="zy-hit-excerpt">合同编号：HT-2026-000030 · 供应商：西部工程 · 状态：正常</span></span>
+                    <span class="zy-hit-action">打开预览</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="zy-detail-footer"><span class="zy-note-mark" aria-hidden="true">i</span><span>右侧预览消费当前详情结果中的选中命中；关闭预览后仍停留在本文件详情，不返回概览。</span></div>
+              <footer class="zy-pagination">
+                <span>命中分页 · cursor scope: <code class="zy-code">hits</code></span>
+                <span class="zy-pagination-actions"><button class="zy-button" type="button" data-detail-prev disabled>上一页</button><button class="zy-button is-secondary" type="button" data-detail-next>下一页命中</button></span>
+              </footer>
+            </article>
+          </div>
+
+          <p class="model-text" data-narration>概览和详情是两个不同的 <strong>kb_search</strong> 结果；右侧预览是详情命中后的展示态，不会新增一条会话消息。</p>
+        </div>
+      </section>
+
+      <aside class="prototype-panel" aria-label="DSH details 右侧预览">
+        <section class="prototype-card">
+          <h2 class="prototype-card-title">当前状态如何分层</h2>
+          <p class="prototype-card-copy">右栏使用 DSH 原生 details 座椅。概览没有命中正文，所以只能提示下一步；只有 file-detail 返回并选中 hit 后才显示预览。</p>
+          <ul class="layer-list">
+            <li class="layer-item"><span><strong>overview</strong>文件摘要、命中数、文件分页</span></li>
+            <li class="layer-item"><span><strong>file-detail</strong>单文件相对 path、命中、命中分页</span></li>
+            <li class="layer-item"><span><strong>details / fallback</strong>选中命中的只读 Markdown 或 CSV</span></li>
+          </ul>
+        </section>
+
+        <section class="zy-preview-locked" data-right-view="overview" aria-label="概览时的预览状态">
+          <div class="zy-preview-locked-content">
+            <span class="zy-preview-lock-icon" aria-hidden="true">↳</span>
+            <h2>先选择一个文件</h2>
+            <p>当前是 <strong>overview</strong>。这里只知道文件摘要，没有 <code>hits</code> 或正文，因此不能从概览直接打开右侧预览。</p>
+            <button class="zy-button is-secondary" type="button" data-open-file="供应商台账.csv">查看供应商台账详情</button>
+          </div>
+        </section>
+
+        <section class="zy-preview-locked" data-right-view="detail" hidden aria-label="文件详情但尚未选择命中的预览状态">
+          <div class="zy-preview-locked-content">
+            <span class="zy-preview-lock-icon" aria-hidden="true">⌕</span>
+            <h2>选择一条命中打开预览</h2>
+            <p>file-detail 已返回 <code data-detail-locked-path>供应商台账.csv</code> 的命中。右栏会跟随当前选中的命中切换，不会在 Client 内部重新读取文件。</p>
+          </div>
+        </section>
+
+        <section class="zy-preview-locked" data-right-view="loading" hidden aria-label="预览加载状态">
+          <div class="zy-preview-locked-content">
+            <span class="zy-preview-lock-icon" aria-hidden="true">…</span>
+            <h2>正在等待 Host</h2>
+            <p>文件详情尚未确认，右侧 details 保持空态。pending 不代表文件已经落盘或预览已经可用。</p>
+          </div>
+        </section>
+
+        <section class="zy-preview-locked" data-right-view="error" hidden aria-label="预览错误状态">
+          <div class="zy-preview-locked-content">
+            <span class="zy-preview-lock-icon" aria-hidden="true">!</span>
+            <h2>预览未打开</h2>
+            <p>Host action 失败或连接中断。保持当前错误态，可重试详情请求；不使用 Client 本地 path 作为回退读取。</p>
+            <button class="zy-button is-secondary" type="button" data-retry-detail>重新请求详情</button>
+          </div>
+        </section>
+
+        <section class="zy-preview-locked" data-right-view="narrow" hidden aria-label="窄窗口预览回退状态">
+          <div class="zy-preview-locked-content">
+            <span class="zy-preview-lock-icon" aria-hidden="true">□</span>
+            <h2>DSH details 已收缩</h2>
+            <p>窗口不足以保留右栏时，使用只读 Modal 回退。它仍消费同一份 Host 返回的预览 payload，不改变 path 或数据所有权。</p>
+            <p class="zy-narrow-note">此按钮仅模拟窄窗口，不会修改浏览器实际 viewport。</p>
+          </div>
+        </section>
+
+        <section class="zy-preview-panel" data-right-view="preview" hidden aria-label="当前命中预览">
+          <div class="zy-preview-head">
+            <div class="zy-preview-head-copy">
+              <div class="zy-preview-title"><span class="zy-preview-filename" data-preview-title>供应商台账.csv</span><span class="zy-preview-citation" data-preview-citation>1</span></div>
+              <div class="zy-preview-path" data-preview-path>知识库相对 path · 供应商台账.csv</div>
+              <div class="zy-preview-location" data-preview-location>第 5 行 · 命中第 5 行</div>
+            </div>
+            <button class="zy-preview-close" type="button" data-preview-close aria-label="关闭右侧预览">×</button>
+          </div>
+          <div class="zy-preview-meta">
+            <div class="zy-preview-meta-item"><span class="zy-preview-meta-label">baseId / category</span><span class="zy-preview-meta-value">kb-demo / 全库</span></div>
+            <div class="zy-preview-meta-item"><span class="zy-preview-meta-label">format</span><span class="zy-preview-meta-value" data-preview-format>csv</span></div>
+            <div class="zy-preview-meta-item"><span class="zy-preview-meta-label">previewStatus</span><span class="zy-preview-meta-value">ready</span></div>
+            <div class="zy-preview-meta-item"><span class="zy-preview-meta-label">truncation</span><span class="zy-preview-meta-value">none</span></div>
+          </div>
+          <div class="zy-preview-body">
+            <article class="zy-preview-document" data-preview-markdown hidden>
+              <h2>供应商合同</h2>
+              <p>本合同用于约定供应商交付、验收和违约责任。双方应按照合同约定完成履行。</p>
+              <h3>违约责任</h3>
+              <p>若乙方违约，<mark data-preview-mark>甲方可解除合同并收取违约金</mark>。违约金的计算方式和支付期限以本合同约定为准。</p>
+              <h3>履行要求</h3>
+              <ul><li>供应商应按期提交交付物和验收材料。</li><li>采购方完成验收后，双方确认本次交付结果。</li></ul>
+              <p>正文只读，滚动由 DSH details 内容区承载。</p>
+            </article>
+            <div class="zy-preview-table-wrap" data-preview-table>
+              <p class="zy-preview-table-note">命中附近记录 · 当前窗口第 3–7 行 · 聚焦物理行 <span data-preview-table-line>5</span></p>
+              <table class="zy-preview-table">
+                <thead><tr><th>行</th><th>合同编号</th><th>供应商</th><th>状态</th></tr></thead>
+                <tbody>
+                  <tr><td class="zy-preview-row-number">3</td><td>HT-2026-000002</td><td>华东材料</td><td>正常</td></tr>
+                  <tr><td class="zy-preview-row-number">4</td><td>HT-2026-000003</td><td>锦城设备</td><td>待复核</td></tr>
+                  <tr class="is-focused"><td class="zy-preview-row-number">5</td><td>HT-2026-000004</td><td>成都锦官物流</td><td>已验收</td></tr>
+                  <tr><td class="zy-preview-row-number">6</td><td>HT-2026-000005</td><td>南方仓储</td><td>正常</td></tr>
+                  <tr><td class="zy-preview-row-number">7</td><td>HT-2026-000006</td><td>北方运输</td><td>已归档</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <footer class="zy-preview-foot"><span aria-hidden="true">●</span><span><strong>sourceFingerprint</strong> <code data-preview-fingerprint>sha256:csv-demo-5</code> · Host 返回内容与当前来源一致；不暴露知识库绝对路径。</span></footer>
+        </section>
+      </aside>
+    </div>
+
+    <p class="prototype-footnote">这是独立视觉原型，不会修改 src/ 或 DSH 壳。顶部按钮用于观察状态；“查看文件详情”和命中按钮模拟 Host action / details controller 的边界。当前原型展示的是目标两层契约，不代表运行时已经迁移。</p>
+  </main>
+
+  <div class="zy-modal-backdrop" data-preview-modal hidden role="presentation">
+    <section class="zy-preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title">
+      <div class="zy-preview-head">
+        <div class="zy-preview-head-copy">
+          <div class="zy-preview-title"><span class="zy-preview-filename" data-modal-title>供应商台账.csv</span><span class="zy-preview-citation" data-modal-citation>1</span></div>
+          <div class="zy-preview-path" data-modal-path>知识库相对 path · 供应商台账.csv</div>
+          <div class="zy-preview-location" data-modal-location>第 5 行 · 命中第 5 行</div>
+        </div>
+        <button class="zy-preview-close" type="button" data-modal-close aria-label="关闭窄窗口预览">×</button>
+      </div>
+      <div class="zy-preview-body">
+        <h2 id="preview-modal-title" class="zy-card-title">只读预览回退</h2>
+        <p class="prototype-card-copy">窄窗口只改变承载方式，不改变 Host 返回的数据、相对 path 或来源指纹。</p>
+        <div class="zy-preview-table-wrap"><table class="zy-preview-table"><tbody><tr><th>行</th><th>内容</th></tr><tr class="is-focused"><td class="zy-preview-row-number" data-modal-line>5</td><td data-modal-text>供应商：成都锦官物流 · 状态：已验收</td></tr></tbody></table></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const page = document.querySelector('[data-prototype-page]');
+    const modeButtons = Array.from(document.querySelectorAll('[data-mode-button]'));
+    const stateViews = Array.from(document.querySelectorAll('[data-state-view]'));
+    const rightViews = Array.from(document.querySelectorAll('[data-right-view]'));
+    const overviewPages = Array.from(document.querySelectorAll('[data-overview-page]'));
+    const detailPages = Array.from(document.querySelectorAll('[data-detail-page]'));
+    const hitButtons = Array.from(document.querySelectorAll('.zy-hit'));
+    const previewPanel = document.querySelector('[data-right-view="preview"]');
+    const previewTitle = previewPanel.querySelector('[data-preview-title]');
+    const previewCitation = previewPanel.querySelector('[data-preview-citation]');
+    const previewPath = previewPanel.querySelector('[data-preview-path]');
+    const previewLocation = previewPanel.querySelector('[data-preview-location]');
+    const previewFormat = previewPanel.querySelector('[data-preview-format]');
+    const previewFingerprint = previewPanel.querySelector('[data-preview-fingerprint]');
+    const previewMarkdown = previewPanel.querySelector('[data-preview-markdown]');
+    const previewTable = previewPanel.querySelector('[data-preview-table]');
+    const previewTableLine = previewPanel.querySelector('[data-preview-table-line]');
+    const previewModal = document.querySelector('[data-preview-modal]');
+    const overviewPageLabel = document.querySelector('[data-overview-page-label]');
+    const detailNext = document.querySelector('[data-detail-next]');
+    const detailPrev = document.querySelector('[data-detail-prev]');
+    let currentMode = 'overview';
+    let overviewPage = 1;
+    let detailPage = 1;
+    let selectedHit = hitButtons[0];
+    let pendingPath = '供应商台账.csv';
+    let activeDetailFile = null;
+    const detailTitle = document.querySelector('[data-detail-title]');
+    const detailSubtitle = document.querySelector('[data-detail-subtitle]');
+    const detailBreadcrumb = document.querySelector('[data-detail-breadcrumb]');
+    const detailPath = document.querySelector('[data-detail-path]');
+    const lockedPath = document.querySelector('[data-detail-locked-path]');
+    const detailFiles = {
+      csv: {
+        path: '供应商台账.csv',
+        title: '供应商台账.csv',
+        format: 'CSV',
+        totalHits: 5,
+        subtitle: '5 条命中 · 当前页 3 条 · CSV 逻辑记录按物理行定位',
+        hits: [
+          { line: 5, excerpt: '合同编号：HT-2026-000004 · 供应商：成都锦官物流 · 状态：已验收', fingerprint: 'sha256:csv-demo-5' },
+          { line: 12, excerpt: '合同编号：HT-2026-000011 · 供应商：华南设备服务 · 状态：待复核', fingerprint: 'sha256:csv-demo-12' },
+          { line: 18, excerpt: '合同编号：HT-2026-000017 · 供应商：北方仓储 · 状态：正常', fingerprint: 'sha256:csv-demo-18' },
+          { line: 24, excerpt: '合同编号：HT-2026-000023 · 供应商：东部运输 · 状态：已归档', fingerprint: 'sha256:csv-demo-24' },
+          { line: 31, excerpt: '合同编号：HT-2026-000030 · 供应商：西部工程 · 状态：正常', fingerprint: 'sha256:csv-demo-31' },
+        ],
+      },
+      markdown: {
+        path: '合同/2024/供应商合同.md',
+        title: '供应商合同.md',
+        format: 'Markdown',
+        totalHits: 3,
+        subtitle: '3 条命中 · 当前页 3 条 · Markdown 按物理行定位',
+        hits: [
+          { line: 15, endLine: 17, matchLine: 16, excerpt: '若乙方违约，甲方可解除合同并收取违约金。', fingerprint: 'sha256:md-demo-15' },
+          { line: 28, endLine: 30, matchLine: 29, excerpt: '合同履行期间，双方应按约定完成交付与验收。', fingerprint: 'sha256:md-demo-28' },
+          { line: 44, endLine: 46, matchLine: 45, excerpt: '因不可抗力导致合同无法履行时，双方应及时协商处理。', fingerprint: 'sha256:md-demo-44' },
+        ],
+      },
+    };
+
+    function getDetailFile(path) {
+      return path.toLowerCase().endsWith('.md') ? detailFiles.markdown : detailFiles.csv;
+    }
+
+    function renderDetailFile(path) {
+      const detailFile = getDetailFile(path);
+      activeDetailFile = detailFile;
+      pendingPath = detailFile.path;
+      detailTitle.textContent = detailFile.title;
+      detailSubtitle.textContent = detailFile.subtitle;
+      detailBreadcrumb.textContent = detailFile.path;
+      detailPath.textContent = detailFile.path;
+      lockedPath.textContent = detailFile.path;
+      hitButtons.forEach((button, index) => {
+        const hit = detailFile.hits[index];
+        button.hidden = !hit;
+        button.disabled = !hit;
+        if (!hit) return;
+        const endLine = hit.endLine || hit.line;
+        const matchLine = hit.matchLine || hit.line;
+        const format = detailFile.format.toLowerCase();
+        button.dataset.previewId = `${format}-${index + 1}`;
+        button.dataset.previewTitle = detailFile.title;
+        button.dataset.previewPath = detailFile.path;
+        button.dataset.previewFormat = format;
+        button.dataset.previewStartLine = String(hit.line);
+        button.dataset.previewEndLine = String(endLine);
+        button.dataset.previewMatchLine = String(matchLine);
+        button.dataset.previewFingerprint = hit.fingerprint;
+        button.querySelector('.zy-hit-index').textContent = String(index + 1);
+        button.querySelector('.zy-hit-source').textContent = format === 'csv'
+          ? `L${hit.line} · CSV 记录第 ${hit.line - 1} 条`
+          : `L${hit.line}–${endLine} · Markdown 命中第 ${matchLine} 行`;
+        button.querySelector('.zy-hit-excerpt').textContent = hit.excerpt;
+      });
+      setDetailPage(1);
+      syncPreview(hitButtons.find((button) => !button.hidden));
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      modeButtons.forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.modeButton === mode));
+      });
+      page.classList.toggle('is-narrow', mode === 'narrow');
+      const leftState = mode === 'preview' || mode === 'narrow' ? 'detail' : mode;
+      stateViews.forEach((view) => {
+        view.hidden = view.dataset.stateView !== leftState;
+      });
+      rightViews.forEach((view) => {
+        let rightState = mode;
+        if (mode === 'detail-loading') rightState = 'loading';
+        if (mode === 'detail-error') rightState = 'error';
+        view.hidden = view.dataset.rightView !== rightState;
+      });
+      previewModal.hidden = mode !== 'narrow';
+    }
+
+    function setOverviewPage(nextPage) {
+      overviewPage = nextPage;
+      overviewPages.forEach((view) => {
+        view.hidden = Number(view.dataset.overviewPage) !== overviewPage;
+      });
+      overviewPageLabel.textContent = `文件 ${overviewPage}/2`;
+      document.querySelector('[data-overview-prev]').disabled = overviewPage === 1;
+      document.querySelector('[data-overview-next]').disabled = overviewPage === 2;
+    }
+
+    function setDetailPage(nextPage) {
+      const maxPage = activeDetailFile && activeDetailFile.hits.length > 3 ? 2 : 1;
+      detailPage = Math.min(nextPage, maxPage);
+      detailPages.forEach((view) => {
+        view.hidden = Number(view.dataset.detailPage) !== detailPage;
+      });
+      detailPrev.disabled = detailPage === 1;
+      detailNext.disabled = detailPage === maxPage;
+      detailNext.hidden = maxPage === 1;
+    }
+
+    function formatLocation(button) {
+      const startLine = button.dataset.previewStartLine || '';
+      const endLine = button.dataset.previewEndLine || startLine;
+      const matchLine = button.dataset.previewMatchLine || startLine;
+      return `第 ${startLine}${endLine !== startLine ? `–${endLine}` : ''} 行 · 命中第 ${matchLine} 行`;
+    }
+
+    function syncPreview(button) {
+      selectedHit = button;
+      hitButtons.forEach((item) => item.classList.toggle('is-selected', item === button));
+      const isCsv = button.dataset.previewFormat === 'csv';
+      const title = button.dataset.previewTitle || '命中预览';
+      const citation = button.querySelector('.zy-hit-index')?.textContent?.trim() || '';
+      const path = button.dataset.previewPath || '';
+      const line = button.dataset.previewMatchLine || '';
+      previewTitle.textContent = title;
+      previewCitation.textContent = citation;
+      previewPath.textContent = `知识库相对 path · ${path}`;
+      previewLocation.textContent = formatLocation(button);
+      previewFormat.textContent = button.dataset.previewFormat || '';
+      previewFingerprint.textContent = button.dataset.previewFingerprint || '';
+      previewMarkdown.hidden = isCsv;
+      previewTable.hidden = !isCsv;
+      previewTableLine.textContent = line;
+      document.querySelector('[data-modal-title]').textContent = title;
+      document.querySelector('[data-modal-citation]').textContent = citation;
+      document.querySelector('[data-modal-path]').textContent = `知识库相对 path · ${path}`;
+      document.querySelector('[data-modal-location]').textContent = formatLocation(button);
+      document.querySelector('[data-modal-line]').textContent = line;
+      document.querySelector('[data-modal-text]').textContent = button.querySelector('.zy-hit-excerpt')?.textContent || '';
+    }
+
+    function openFile(event) {
+      if (event?.currentTarget?.dataset.openFile) pendingPath = event.currentTarget.dataset.openFile;
+      setMode('detail-loading');
+      window.setTimeout(() => {
+        renderDetailFile(pendingPath);
+        setMode('detail');
+      }, 420);
+    }
+
+    modeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.modeButton;
+        if (mode === 'preview' || mode === 'narrow') syncPreview(selectedHit);
+        setMode(mode);
+      });
+    });
+
+    document.querySelectorAll('[data-open-file]').forEach((button) => {
+      button.addEventListener('click', openFile);
+    });
+
+    document.querySelectorAll('[data-back-overview]').forEach((button) => {
+      button.addEventListener('click', () => setMode('overview'));
+    });
+
+    document.querySelectorAll('[data-retry-detail]').forEach((button) => {
+      button.addEventListener('click', openFile);
+    });
+
+    hitButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        syncPreview(button);
+        setMode('preview');
+      });
+    });
+
+    document.querySelector('[data-preview-close]').addEventListener('click', () => setMode('detail'));
+    document.querySelector('[data-modal-close]').addEventListener('click', () => setMode('detail'));
+    document.querySelector('[data-overview-next]').addEventListener('click', () => setOverviewPage(2));
+    document.querySelector('[data-overview-prev]').addEventListener('click', () => setOverviewPage(1));
+    detailNext.addEventListener('click', () => setDetailPage(2));
+    detailPrev.addEventListener('click', () => setDetailPage(1));
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && (currentMode === 'preview' || currentMode === 'narrow')) setMode('detail');
+    });
+
+    renderDetailFile(pendingPath);
+    setOverviewPage(1);
+    setMode('overview');
+  </script>
+</body>
+</html>

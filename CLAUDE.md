@@ -27,7 +27,7 @@
 
 ### 座椅与数据所有权
 
-- UI 只能通过 `ctx.slots.inject` 使用已有座椅（`overlay`、`settings.section`、`toolview`）。座椅是类型化契约，不是 DOM 选择器；目标 DSH 版本为 `0.1.1-rc.2`。
+- UI 只能通过 `ctx.slots.inject` 使用已有座椅（`overlay`、`settings.section`、`toolview`）。座椅是类型化契约，不是 DOM 选择器；目标 DSH 版本为 `0.1.2-rc.1`。
 - 禁止猜测 slot 名称，禁止修改 DSH 壳的私有 DOM。
 - 工作台使用 `settings.section`，`id: knowledge`，`label: 知源`；不要再制作一份插件窄卡工作台。
 - 持久状态由 Host 负责（catalog、文件夹、commands、tools）。Client 只保存短暂展示态，通过 `remote.commands` 或 `settingsScope` 回调 Host。
@@ -41,7 +41,7 @@
 - Client 输出为 lazy-CJS，必须包含：
 
   ```js
-  window.__ModuleLoader__.load({ id: 'dsh-zhiyuan', factory })
+  window.__ModuleLoader__.load({ id: "dsh-zhiyuan", factory });
   ```
 
 - Client 不打包 React。展示层使用 JSX，构建配置使用 `jsx: 'automatic'`，运行时依赖 `require('react')` 或 `require('react/jsx-runtime')`。

@@ -1,4 +1,4 @@
-import type { EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation, TableWindowData } from './content/api.ts'
+import type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from './content/api.ts'
 
 export type CatalogPrefs = {
   defaultBaseId: string
@@ -59,79 +59,6 @@ export type ReadEntryResult = EntryPreviewMeta & (
 
 export type TextEntryPreview = Extract<ReadEntryResult, { kind: 'text' }>
 export type TableEntryPreview = Extract<ReadEntryResult, { kind: 'table' }>
-
-export type SearchHit = {
-  n: number
-  path: string
-  startLine: number
-  endLine: number
-  matchLine: number
-  excerpt: string
-  /** 命中行展示文本；缺省时按物理行窗口从 excerpt 切片 */
-  matchedExcerpt?: string
-  matchColumnByte?: number
-  sourceFingerprint?: string
-}
-
-/** 一个命中文件组：hits 是合并后的展示命中，totalHits 是 rg 原始命中数。 */
-export type SearchFileGroup = {
-  path: string
-  format: EntryFormat
-  totalHits: number
-  /** CSV 组头（表头行），列表与明细档都只在组头渲染一次 */
-  groupHeader?: string
-  hits: SearchHit[]
-}
-
-export type RestFileCount = {
-  path: string
-  count: number
-}
-
-export type SearchResult = {
-  files: SearchFileGroup[]
-  totalFiles: number
-  /** 命中总数（rg 原始计数；scanComplete=false 时为下限） */
-  totalHits: number
-  /** 本页未展示的文件与命中数（前 SEARCH_REST_FILES_LIMIT 个） */
-  restFiles?: RestFileCount[]
-  warnings: string[]
-  /** true 表示本次搜索已经扫描完可搜索范围；false 时不能宣称全量。 */
-  scanComplete: boolean
-  /** 当前页之后是否已经发现下一页命中。 */
-  hasMore: boolean
-  nextCursor?: string
-}
-
-/** 分页断点：已消费的文件组下标 + 组内已消费的原始命中数。 */
-export type SearchPagePosition = {
-  fileIndex: number
-  hitIndex: number
-}
-
-export type SearchInput = {
-  baseId: string
-  rootDir: string
-  terms: string[]
-  /** 明细档：只返回该文件（rootDir 相对路径）的命中 */
-  path?: string
-  fileIndex: number
-  hitIndex: number
-}
-
-export type SearchPage = {
-  files: SearchFileGroup[]
-  totalFiles: number
-  totalHits: number
-  restFiles: RestFileCount[]
-  hasMore: boolean
-  endPosition: SearchPagePosition
-  scanComplete: boolean
-}
-
-export interface SearchEngine {
-  search(input: SearchInput): Promise<SearchPage>
-}
 
 export type IngestInput = {
   baseId: string
@@ -215,3 +142,17 @@ export class KbError extends Error {
   }
 }
 export type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from './content/api.ts'
+
+export type {
+  SearchFileDetailPage,
+  SearchFileDetailResult,
+  SearchFileSummary,
+  SearchHit,
+  SearchOverviewPage,
+  SearchOverviewResult,
+  SearchPageInfo,
+  SearchQuery,
+  SearchResult,
+  SearchScanInfo,
+  SearchScanStopReason,
+} from './search/result/index.ts'

@@ -154,11 +154,18 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
       await writeFile(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md'), '若乙方违约则解约。\n')
       await writeFile(join(root, 'bases', base.id, '会议', '纪要.md'), '周会无合同。\n')
       const result = json(await run(`search 违约 --base ${base.id} --aliases 解约，termination --to 合同/2024`)) as {
-        files: Array<{ path: string; hits: unknown[] }>
+        kind: 'overview'
+        files: Array<{ path: string; totalHits: number }>
+        totalFiles: number
+        totalHits: number
+        page: { hasMore: boolean }
       }
+      assert.equal(result.kind, 'overview')
       assert.ok(result.files.length >= 1)
       assert.ok(result.files.every((group) => group.path.includes('供应商合同')))
-      assert.ok(result.files[0].hits.length >= 1)
+      assert.equal(result.totalFiles, 1)
+      assert.equal(result.totalHits, 1)
+      assert.equal(result.files[0]?.totalHits, 1)
     })
   })
 
@@ -304,9 +311,32 @@ describe('kb call', { concurrency: false }, () => {
         query: '违约',
         aliases: ['条款'],
         category: '合同/2024',
-      }))) as { files: Array<{ hits: Array<{ excerpt: string }> }> }
-      assert.ok(found.files.length >= 1)
-      assert.ok(found.files[0].hits[0].excerpt.includes('违约'))
+      }))) as {
+        kind: 'overview'
+        files: Array<{ path: string; totalHits: number }>
+        totalHits: number
+      }
+      assert.equal(found.kind, 'overview')
+      assert.equal(found.files.length, 1)
+      assert.equal(found.files[0]?.path, '合同/2024/a.md')
+      assert.equal(found.files[0]?.totalHits, 1)
+      assert.equal(found.totalHits, 1)
+
+      const detail = json(await run(callLine({
+        op: 'search',
+        baseId: base.id,
+        query: '违约',
+        aliases: ['条款'],
+        category: '合同/2024',
+        path: '合同/2024/a.md',
+      }))) as {
+        kind: 'file-detail'
+        path: string
+        hits: Array<{ excerpt: string }>
+      }
+      assert.equal(detail.kind, 'file-detail')
+      assert.equal(detail.path, '合同/2024/a.md')
+      assert.ok(detail.hits[0]?.excerpt.includes('违约'))
     }, jobs)
   })
 

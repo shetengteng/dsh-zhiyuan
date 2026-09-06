@@ -88,45 +88,58 @@ test('表格编辑分页要求安全的版本标识和字符串单元格', () =>
   assert.throws(() => parseTableEditorPage({ ...page, revision: 'stale' }), /分页数据无效/)
 })
 
-test('搜索结果协议保留分页和扫描完整性', () => {
+test('搜索 overview payload 严格保留分页、扫描和展示协议', () => {
   const payload = {
-    files: [{
-      path: 'a.md',
-      format: 'markdown',
-      totalHits: 1,
-      hits: [{ n: 1, path: 'a.md', startLine: 1, endLine: 1, matchLine: 1, excerpt: '正文' }],
-    }],
+    kind: 'overview' as const,
+    scope: 'files' as const,
+    baseId: 'work',
+    query: { terms: ['违约', '解约'], aliases: ['解约'] },
+    files: [{ path: 'a.md', format: 'markdown' as const, totalHits: 1 }],
     totalFiles: 1,
     totalHits: 1,
-    restFiles: [{ path: 'b.md', count: 3 }],
-    warnings: ['结果可能不完整'],
-    scanComplete: false,
-    hasMore: true,
-    nextCursor: 'cursor',
+    page: { scope: 'files' as const, returnedFiles: 1, hasMore: true, nextCursor: 'cursor' },
+    scan: { complete: false, warnings: ['结果可能不完整'], stopReason: 'stdout-limit' as const },
+    presentation: { template: 'search-overview-card' as const, version: 1 as const },
   }
   assert.deepEqual(parseSearchResult(payload), payload)
 })
 
-test('搜索结果缺少扫描字段时按完整且无下一页兼容', () => {
-  const payload = { files: [], totalFiles: 0, totalHits: 0, warnings: [] }
-  assert.deepEqual(parseSearchResult(payload), {
-    files: [],
-    totalFiles: 0,
-    totalHits: 0,
-    warnings: [],
-    scanComplete: true,
-    hasMore: false,
-  })
+test('搜索 file-detail payload 接受单文件命中结果', () => {
+  const payload = {
+    kind: 'file-detail' as const,
+    scope: 'hits' as const,
+    baseId: 'work',
+    category: '合同/2024',
+    query: { terms: ['违约'], aliases: [] },
+    path: '合同/2024/a.md',
+    format: 'markdown' as const,
+    totalHits: 1,
+    hits: [{ n: 1, path: '合同/2024/a.md', startLine: 1, endLine: 1, matchLine: 1, excerpt: '正文' }],
+    page: { scope: 'hits' as const, returnedHits: 1, hasMore: false },
+    scan: { complete: true, warnings: [] },
+    presentation: { template: 'search-file-detail-card' as const, version: 1 as const },
+  }
+  assert.deepEqual(parseSearchResult(payload), payload)
 })
 
-test('搜索结果分页字段类型错误时拒绝', () => {
+test('旧 flat 搜索 payload 和缺少新字段的 payload 都拒绝', () => {
   assert.throws(() => parseSearchResult({
     files: [],
     totalFiles: 0,
     totalHits: 0,
     warnings: [],
-    scanComplete: 'true',
-    hasMore: false,
+  }), /搜索结果无效/)
+  assert.throws(() => parseSearchResult({
+    kind: 'overview',
+    scope: 'files',
+    baseId: 'work',
+    query: { terms: ['违约'], aliases: [] },
+    files: [],
+    totalFiles: 0,
+    totalHits: 0,
+    page: { scope: 'files', returnedFiles: 0, hasMore: false },
+    scan: { complete: 'true', warnings: [] },
+    presentation: { template: 'search-overview-card', version: 1 },
   }), /搜索结果无效/)
 })
 

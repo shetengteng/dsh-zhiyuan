@@ -10,12 +10,28 @@ import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
 import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 import { createCsvSearchDocument } from '../src/content/csv/server/search-excerpt.ts'
 import { ingest } from '../src/ingest.ts'
-import { searchBase } from '../src/search.ts'
-import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
+import { searchBase } from '../src/search/index.ts'
+import type { SearchFileDetailResult, SearchOverviewResult } from '../src/types.ts'
 import { KbError } from '../src/types.ts'
-
+import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
 async function sandbox(prefix = 'zy-csv-'): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
+}
+
+async function searchFirstFile(root: string, baseId: string, query: string): Promise<SearchFileDetailResult> {
+  const overview = await searchBase(root, { baseId, query })
+  if (overview.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
+  const path = overview.files[0]?.path
+  if (!path) throw new Error('搜索没有返回文件')
+  const detail = await searchBase(root, { baseId, query, path })
+  if (detail.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
+  return detail
+}
+
+async function searchFirstOverview(root: string, baseId: string, query: string): Promise<SearchOverviewResult> {
+  const result = await searchBase(root, { baseId, query })
+  if (result.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
+  return result
 }
 
 test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', async () => {
@@ -32,11 +48,15 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
     assert.equal(result.files[0]?.writtenBytes, raw.length)
     assert.deepEqual(await readFile(join(root, 'bases', base.id, 'table.CSV')), raw)
 
-    const search = await searchBase(root, { baseId: base.id, query: '公司' })
-    const group = search.files[0]
-    const hit = group?.hits[0]
-    assert.equal(group?.path, 'table.CSV')
-    assert.equal(group?.groupHeader, '列: 名称 | 金额')
+    const overview = await searchBase(root, { baseId: base.id, query: '公司' })
+    if (overview.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
+    const group = overview.files[0]
+    if (!group) throw new Error('未找到 CSV 文件概览')
+    const search = await searchBase(root, { baseId: base.id, query: '公司', path: group.path })
+    if (search.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
+    const hit = search.hits[0]
+    assert.equal(group.path, 'table.CSV')
+    assert.equal(search.groupHeader, '列: 名称 | 金额')
     assert.equal(hit?.path, 'table.CSV')
     assert.equal(hit?.matchLine, 2)
     assert.equal(hit?.startLine, 2)
@@ -188,17 +208,15 @@ test('CSV 同值多行各自成条，搜后面的值不会落到第一条', asyn
     await writeFile(source, '名称,金额\n甲公司,120\n乙公司,120\n丙公司,80\n')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
 
-    const sameValue = await searchBase(root, { baseId: base.id, query: '120' })
-    assert.equal(sameValue.files.length, 1)
-    assert.equal(sameValue.files[0]?.hits.length, 2)
-    assert.equal(sameValue.files[0]?.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
-    assert.equal(sameValue.files[0]?.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
+    const sameValue = await searchFirstFile(root, base.id, '120')
+    assert.equal(sameValue.hits.length, 2)
+    assert.equal(sameValue.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
+    assert.equal(sameValue.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
 
-    const later = await searchBase(root, { baseId: base.id, query: '丙公司' })
-    assert.equal(later.files.length, 1)
-    assert.equal(later.files[0]?.hits.length, 1)
-    assert.equal(later.files[0]?.hits[0]?.matchLine, 4)
-    assert.equal(later.files[0]?.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
+    const later = await searchFirstFile(root, base.id, '丙公司')
+    assert.equal(later.hits.length, 1)
+    assert.equal(later.hits[0]?.matchLine, 4)
+    assert.equal(later.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -212,8 +230,8 @@ test('CSV 末段命中返回围绕命中的窗口，不退化为文件头', asyn
     const body = Array.from({ length: 40 }, (_, index) => index === 39 ? '末段关键字,1' : `第${index + 1}行,0`).join('\n')
     await writeFile(source, body)
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchBase(root, { baseId: base.id, query: '末段关键字' })
-    const hit = search.files[0]?.hits[0]
+    const search = await searchFirstFile(root, base.id, '末段关键字')
+    const hit = search.hits[0]
     if (!hit) throw new Error('未找到末段命中')
     const preview = await readEntry(root, base.id, hit.path, {
       view: 'search-hit',
@@ -236,11 +254,11 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
     const source = join(root, 'quoted.csv')
     await writeFile(source, '供应商;备注;金额\n甲公司;"第一行\n第二行, 含逗号";120\n乙公司;正常;80\n')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchBase(root, { baseId: base.id, query: '第二行' })
-    const hit = search.files[0]?.hits[0]
+    const search = await searchFirstFile(root, base.id, '第二行')
+    const hit = search.hits[0]
     if (!hit) throw new Error('未找到引号内换行的命中')
     assert.equal(hit.matchLine, 3)
-    assert.equal(search.files[0]?.groupHeader, '列: 供应商 | 备注 | 金额')
+    assert.equal(search.groupHeader, '列: 供应商 | 备注 | 金额')
     assert.doesNotMatch(hit.excerpt, /^列: /)
     assert.match(hit.excerpt, /备注: 第一行↩第二行, 含逗号/)
     assert.equal(hit.matchedExcerpt, '供应商: 甲公司 | 备注: 第一行↩第二行, 含逗号 | 金额: 120')
@@ -350,11 +368,10 @@ test('UTF-16 CSV 导入后写成 UTF-8 BOM 且可按列名检索', async () => {
     assert.ok(result.copied.includes('be.csv'))
     assert.deepEqual(await readFile(join(root, 'bases', base.id, 'le.csv')), NORMALIZED_TABLE)
 
-    const search = await searchBase(root, { baseId: base.id, query: '乙公司' })
-    const group = search.files[0]
-    assert.equal(group?.path, 'be.csv')
-    assert.equal(group?.groupHeader, '列: 名称 | 金额')
-    assert.equal(group?.hits[0]?.excerpt, '名称: 乙公司 | 金额: 80')
+    const search = await searchFirstFile(root, base.id, '乙公司')
+    assert.equal(search.path, 'be.csv')
+    assert.equal(search.groupHeader, '列: 名称 | 金额')
+    assert.equal(search.hits[0]?.excerpt, '名称: 乙公司 | 金额: 80')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -392,8 +409,8 @@ test('表头命中只返回列名行，不把表头扩成列名: 列名', async 
     const source = join(root, 'header.csv')
     await writeFile(source, '供应商,金额\n甲公司,120\n')
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchBase(root, { baseId: base.id, query: '供应商' })
-    const hit = search.files[0]?.hits.find((item) => item.matchLine === 1)
+    const search = await searchFirstFile(root, base.id, '供应商')
+    const hit = search.hits.find((item) => item.matchLine === 1)
     assert.equal(hit?.excerpt, '列: 供应商 | 金额')
     assert.equal(hit?.matchedExcerpt, '列: 供应商 | 金额')
   } finally {
@@ -428,12 +445,16 @@ test('大量中文命中时嵌套类目下的中文文件名仍能打开', async
     const rows = Array.from({ length: 220 }, (_, index) => `HT-${index},深圳启明供应链,${'备注'.repeat(20)}`)
     await writeFile(source, `合同编号,供应商,备注\n${rows.join('\n')}\n`)
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '合同/2026' })
-    const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链' })
-    assert.equal(search.files[0]?.path, '合同/2026/供应商台账.csv')
-    assert.match(search.files[0]?.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
-    assert.equal(search.scanComplete, false)
-    assert.equal(search.hasMore, true)
-    assert.match(search.warnings.join(' '), /扫描上限/)
+    const overview = await searchFirstOverview(root, base.id, '深圳启明供应链')
+    const summary = overview.files[0]
+    assert.equal(summary?.path, '合同/2026/供应商台账.csv')
+    if (!summary) throw new Error('未找到 CSV 文件概览')
+    const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链', path: summary.path })
+    if (search.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
+    assert.match(search.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
+    assert.equal(search.scan.complete, false)
+    assert.equal(search.page.hasMore, false)
+    assert.match(search.scan.warnings.join(' '), /扫描上限/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

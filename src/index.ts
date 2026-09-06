@@ -3,7 +3,7 @@ import { PACKAGE_NAME } from './identity.ts'
 import { setCatalogWarningSink } from './catalog.ts'
 import { registerKbCommands } from './commands.ts'
 import { registerKbTools } from './tools.ts'
-import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skill.ts'
+import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skills/skill.ts'
 import { clearDataRootCache, resolveDataRoot } from './paths.ts'
 import { registerKnowledgePrivateRpc } from './private-rpc.ts'
 

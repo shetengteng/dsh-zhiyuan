@@ -1,4 +1,5 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { VERSION_LABEL } from '../../identity.ts'
 import type { BaseSummary, JobStatus, TreeNode } from '../models.ts'
 import { SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
 
@@ -37,7 +38,8 @@ export function BasePage(props: {
         {props.bases.map((base) => (
           <div key={base.id} className={`zy-base-row${props.currentBase?.id === base.id ? ' is-on' : ''}`}>
             <button className="zy-base-select" type="button" onClick={() => props.onSelectBase(base.id)}>
-              {base.title || base.id}
+              <span className="zy-base-name">{base.title || base.id}</span>
+              <span className="zy-base-version">{VERSION_LABEL}</span>
             </button>
             <button className="zy-del" type="button" aria-label={`删除 ${base.title}`} onClick={() => props.onDeleteBase(base)}>
               <TrashIcon />

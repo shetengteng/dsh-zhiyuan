@@ -37,7 +37,7 @@ export function apply(ctx: {
     return parseReadEntry(value, { view: 'search-hit', matchLine: selection.hit.matchLine })
   }
   const preview = createPreviewController(ctx.layout, loadPreview)
-  const KbSearchView = createKbSearchView(preview)
+  const KbSearchView = createKbSearchView(preview, ctx.connection)
   const KbPreviewPanel = createKbPreviewPanel(preview)
 
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({

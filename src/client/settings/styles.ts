@@ -41,7 +41,9 @@ const CSS = `
 .zy-base-row{position:relative;margin:2px 0;border-radius:12px}
 .zy-base-row:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}
 .zy-base-row.is-on,.zy-base-row.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
-.zy-base-select{display:block;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-weight:500}
+.zy-base-select{display:flex;align-items:baseline;gap:4px;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-weight:500;overflow:hidden}
+.zy-base-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zy-base-version{flex:none;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:18px;font-variant-numeric:tabular-nums}
 .zy-del{width:22px;height:22px;border:none;background:transparent;border-radius:6px;padding:0;color:var(--dsw-alias-label-tertiary);display:inline-flex;align-items:center;justify-content:center;opacity:0;flex:none;cursor:pointer}
 .zy-base-row .zy-del{position:absolute;right:6px;top:8px}
 .zy-base-row:hover .zy-del,.zy-file:hover .zy-del,.zy-tree summary:hover .zy-del,.zy-del:focus{opacity:1}
@@ -140,6 +142,18 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-search-hits{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 8px}
 .zy-search-hits .zy-hit{margin:0}
 .zy-search-more{align-self:flex-start;flex:none;margin-top:4px}
+.zy-search-card{min-height:0;display:flex;flex-direction:column;gap:6px}
+.zy-search-files{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px}
+.zy-search-file-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.zy-search-file-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.zy-search-file-copy,.zy-search-detail-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.zy-search-file-path{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--ds-font-family-code);font-size:13px;color:var(--dsw-alias-label-primary)}
+.zy-search-file-meta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
+.zy-search-file-open{flex:none}
+.zy-search-detail-head{display:flex;align-items:center;gap:10px;padding-bottom:4px}
+.zy-search-back{flex:none}
+.zy-search-file-header{padding:7px 10px;border-radius:8px;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);font-size:12px;line-height:18px;white-space:pre-wrap}
+.zy-search-error{padding:8px 10px;border-radius:8px;background:var(--dsw-alias-state-error-tertiary);color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px}
 .zy-search-hits mark,.zy-pre mark.zy-hl{background:var(--dsw-specific-bubble-highlight);color:inherit}
 .zy-hit{width:100%;text-align:left;cursor:pointer;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:8px 12px;background:var(--dsw-alias-bg-layer-1);margin:0 0 4px;color:inherit;font:inherit}
 .zy-hit:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
@@ -165,7 +179,7 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
 .zy-preview-panel{box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
 .zy-preview-head{display:flex;align-items:flex-start;gap:12px;height:45px;min-height:45px;box-sizing:border-box;padding:12px 16px 0;border-bottom:1px solid transparent;position:relative;flex:none;overflow:hidden}
-.zy-preview-head:after{content:"";z-index:0;background:var(--dsw-alias-border-l2);pointer-events:none;height:1px;position:absolute;bottom:1px;left:0;right:0}
+.zy-preview-head:after{content:"";z-index:0;background:var(--dsw-alias-border-l2);pointer-events:none;height:.5px;position:absolute;bottom:1px;left:0;right:0}
 .zy-preview-head-copy{min-width:0;flex:1}
 .zy-preview-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0;font-size:14px;font-weight:600;line-height:16px}
 .zy-preview-filename{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

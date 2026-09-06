@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, unlink, copyFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as esbuild from 'esbuild'
@@ -21,6 +21,11 @@ const external = [
 ]
 
 await mkdir(lib, { recursive: true })
+
+const skillSource = join(root, 'src/skills/zhiyuan-kb/SKILL.md')
+const skillOutput = join(lib, 'skills/zhiyuan-kb/SKILL.md')
+await mkdir(dirname(skillOutput), { recursive: true })
+await copyFile(skillSource, skillOutput)
 
 await esbuild.build({
   absWorkingDir: root,
@@ -61,5 +66,6 @@ ${inner}
 `
 await writeFile(join(lib, 'client.js'), wrapped)
 await unlink(innerPath).catch(() => undefined)
+await esbuild.stop()
 
 console.log('built lib/index.js and lib/client.js')

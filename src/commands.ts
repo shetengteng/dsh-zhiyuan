@@ -3,7 +3,7 @@ import { lastDestCategory } from './catalog.ts'
 import { ingest, buildIngestInput } from './ingest.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
-import { searchBase } from './search.ts'
+import { searchBase, type SearchRequest } from './search/index.ts'
 import { flagBool, flagString, parseFlags, splitAliases, tokenize } from './command-parse.ts'
 import { KbError } from './types.ts'
 import { executeKnowledgeOperation } from './ui-operations.ts'
@@ -35,6 +35,28 @@ export async function resolveIngestTo(
     throw new KbError('missing_field', '请指定 --to <类目>，或 --root 导入到库根')
   }
   return lastDestinationCategory
+}
+
+function searchLimit(flags: ReturnType<typeof parseFlags>['flags']): number | undefined {
+  const value = flagString(flags, 'limit')
+  if (value === undefined) return undefined
+  const limit = Number(value)
+  if (!Number.isSafeInteger(limit)) throw new KbError('invalid_field', 'limit 必须是整数')
+  return limit
+}
+
+function buildSearchRequest(rest: string[], flags: ReturnType<typeof parseFlags>['flags']): SearchRequest {
+  const limit = searchLimit(flags)
+  const cursor = flagString(flags, 'cursor')
+  if (cursor) return { cursor, ...(limit === undefined ? {} : { limit }) }
+  return {
+    baseId: flagString(flags, 'base') ?? '',
+    query: rest.join(' ') || flagString(flags, 'query') || '',
+    aliases: splitAliases(flagString(flags, 'aliases')),
+    category: flagString(flags, 'to') ?? flagString(flags, 'category'),
+    path: flagString(flags, 'path'),
+    ...(limit === undefined ? {} : { limit }),
+  }
 }
 
 async function handleIngest(rest: string[], flags: ReturnType<typeof parseFlags>['flags'], jobs: JobRunner) {
@@ -71,14 +93,7 @@ export function registerKbCommands(
         if (parsed.sub === 'call') return ok(await handleCall(parsed.rest.join(' '), jobs))
         if (parsed.sub === 'search') {
           const dataRoot = await resolveDataRoot()
-          return ok(await searchBase(dataRoot, {
-            baseId: flagString(parsed.flags, 'base') ?? '',
-            query: parsed.rest.join(' ') || flagString(parsed.flags, 'query') || '',
-            aliases: splitAliases(flagString(parsed.flags, 'aliases')),
-            category: flagString(parsed.flags, 'to') ?? flagString(parsed.flags, 'category'),
-            path: flagString(parsed.flags, 'path'),
-            cursor: flagString(parsed.flags, 'cursor'),
-          }))
+          return ok(await searchBase(dataRoot, buildSearchRequest(parsed.rest, parsed.flags)))
         }
         return { kind: 'error', text: '用法：/kb ingest <path> --base <id> --to <类目> 或 /kb status' }
       } catch (error) {

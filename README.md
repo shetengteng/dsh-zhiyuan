@@ -4,13 +4,13 @@
 
 Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize Markdown and plain-text documents into explicit knowledge bases and provides source-grounded search results for AI conversations.
 
-| 场景 | 名称 |
-|------|------|
-| 品牌 | 知源 |
-| 设置入口 | 知源 |
-| 包名 | `dsh-zhiyuan` |
+| 场景     | 名称          |
+| -------- | ------------- |
+| 品牌     | 知源          |
+| 设置入口 | 知源          |
+| 包名     | `dsh-zhiyuan` |
 
-同一 npm 包、一次安装：Host（建库 / 导入 / 检索）+ Web 工作台。目标运行时 **DSH `0.1.1-rc.2`**。
+同一 npm 包、一次安装：Host（建库 / 导入 / 检索）+ Web 工作台。目标运行时 **DSH `0.1.2-rc.1`**。
 
 [English](./README.en.md)
 
@@ -27,25 +27,25 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 
 ## 明确不做（本 MVP）
 
-| 不做 | 说明 |
-|------|------|
-| SQLite FTS / 切段建目录 | 个人量级当场 grep；约 2000 篇或需要排序时再开 |
-| 导入时自动选库 / 建库 / 归类 | 放错库 = 漏斗永远扫不到 |
-| PDF / DOCX / XLSX / 监视源目录 | 当前版本只承诺 md/txt/UTF-8 CSV；转码与 XLSX 属于后续阶段 |
-| 网上嵌入 / 假向量 / `kb_ask` | 破坏离线，也不在本阶段 |
-| 主左侧一级「知识库」、对话顶栏芯片 | 没有官方座位或会再长一套管理 UI |
-| 把当前项目 grep 冒充知识库 | 项目检索 ≠ 已导入资料 |
+| 不做                               | 说明                                                      |
+| ---------------------------------- | --------------------------------------------------------- |
+| SQLite FTS / 切段建目录            | 个人量级当场 grep；约 2000 篇或需要排序时再开             |
+| 导入时自动选库 / 建库 / 归类       | 放错库 = 漏斗永远扫不到                                   |
+| PDF / DOCX / XLSX / 监视源目录     | 当前版本只承诺 md/txt/UTF-8 CSV；转码与 XLSX 属于后续阶段 |
+| 网上嵌入 / 假向量 / `kb_ask`       | 破坏离线，也不在本阶段                                    |
+| 主左侧一级「知识库」、对话顶栏芯片 | 没有官方座位或会再长一套管理 UI                           |
+| 把当前项目 grep 冒充知识库         | 项目检索 ≠ 已导入资料                                     |
 
 换引擎（以后 FTS）不改工具名、不改「先选库再搜」、不改「命中必须带出处」。
 
 ## 兼容性
 
-| 项 | 值 |
-|----|-----|
-| 交付形态 | Host + Web UI 双面插件 |
-| 目标 DSH | `0.1.1-rc.2` |
-| 客户端 | `dsh.client.platform: "web"`，随 Web profile 自动加载 |
-| 许可证 | MIT |
+| 项       | 值                                                         |
+| -------- | ---------------------------------------------------------- |
+| 交付形态 | Host + Web UI 双面插件                                     |
+| 目标 DSH | `0.1.2-rc.1`                                               |
+| 客户端   | `dsh.client.platform: "web"`，随 Web profile 自动加载      |
+| 许可证   | MIT                                                        |
 | 运行身份 | Cordis 行 `id: zhiyuan`，`name` 必须等于包名 `dsh-zhiyuan` |
 
 headless profile 没有 UI，不代表 Client 已加载。
@@ -100,11 +100,11 @@ dsh web
 
 ## 给 AI 的工具
 
-| 工具 | 作用 |
-|------|------|
+| 工具            | 作用                                                                    |
+| --------------- | ----------------------------------------------------------------------- |
 | `kb_list_bases` | 列库：id / 标题 / 描述 / 别名 / 类目名 / 约多少篇。不含文件名、不含正文 |
-| `kb_ingest` | 拷进已有库。`baseId`、`sourcePath` 必填；`destCategory` 语义必填 |
-| `kb_search` | 只扫指定库。不带 `baseId` 则校验失败。`aliases` 建议 3～8 个，一次 OR |
+| `kb_ingest`     | 拷进已有库。`baseId`、`sourcePath` 必填；`destCategory` 语义必填        |
+| `kb_search`     | 只扫指定库。不带 `baseId` 则校验失败。`aliases` 建议 3～8 个，一次 OR   |
 
 Skill 硬规则：没点名库先列库，两个都像就问人；换词只做一次；当前项目里的 `grep` / `glob` 不算知识库检索；禁止猜一个新库再导入。
 

@@ -19,7 +19,7 @@ alwaysApply: true
 
 ## 座椅与数据
 
-- UI 只能 `ctx.slots.inject` 已有座椅（overlay / settings.section / toolview）。座椅是类型化契约，不是 DOM 选择器。目标 DSH：`0.1.1-rc.2`。禁止猜测 slot 名，禁止改壳的私有 DOM。
+- UI 只能 `ctx.slots.inject` 已有座椅（overlay / settings.section / toolview）。座椅是类型化契约，不是 DOM 选择器。目标 DSH：`0.1.2-rc.1`。禁止猜测 slot 名，禁止改壳的私有 DOM。
 - 工作台挂 `settings.section`，`id: knowledge`，`label: 知源`。插件配置窄卡不再做一份工作台。
 - 持久状态的主人在 Host（catalog / 文件夹 / commands / tools）。Client 只持短暂展示态；经 `remote.commands` / `settingsScope` 回头调 Host。
 - 浏览器没有 `ctx.agents` / `ctx.tools.execute`。建库、导入、检索只能走 Host。禁止模型编造库 id。

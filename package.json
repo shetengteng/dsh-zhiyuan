@@ -1,6 +1,6 @@
 {
   "name": "dsh-zhiyuan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A local-first, source-grounded knowledge base plugin for DSH.",
   "type": "module",
   "main": "./lib/index.js",
@@ -17,6 +17,7 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/skills/zhiyuan-kb/SKILL.md",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -35,7 +36,7 @@
   ],
   "license": "MIT",
   "dsh": {
-    "targetVersion": "0.1.1-rc.2",
+    "targetVersion": "0.1.2-rc.1",
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
@@ -69,10 +70,10 @@
     "@types/react": "^18.3.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-home-paths": "0.1.1-rc.2",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.7 || ^0.1.1-rc.2",
-    "@deepseek-ai/schemastery": "3.18.1"
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-home-paths": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-settings": "^0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "^3.18.2"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-home-paths": {

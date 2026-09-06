@@ -1,11 +1,14 @@
-import type { RestFileCount, SearchFileGroup, SearchHit } from '../models.ts'
-import { matchedExcerptLine } from '../search-utils.ts'
+import { useEffect, useRef, useState } from 'react'
+import type { SearchOverviewResult, SearchResult } from '../models.ts'
+import { callKnowledgeHost, type KnowledgePrivateConnection } from '../bridge.ts'
+import { parseSearchResult } from '../host-payload.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
-import { CitationTag } from '../CitationTag.tsx'
+import { SearchFileDetailCard } from '../search/SearchFileDetailCard.tsx'
+import { SearchOverviewCard } from '../search/SearchOverviewCard.tsx'
+import { appendSearchPage } from '../search/search-pages.ts'
 import type { PreviewController } from './preview/preview-state.ts'
-import { isSamePreviewHit, usePreviewSelection } from './preview/preview-state.ts'
 
-type ToolResultBlock = {
+export type ToolResultBlock = {
   kind?: string
   isError?: boolean
   content?: Array<{ type?: string; text?: string }>
@@ -14,143 +17,130 @@ type ToolResultBlock = {
 
 function firstTextContent(content: ToolResultBlock['content']): string {
   if (!Array.isArray(content)) return ''
-  for (const block of content) {
-    if (block?.type === 'text' && typeof block.text === 'string') return block.text
-  }
+  for (const block of content) if (block?.type === 'text' && typeof block.text === 'string') return block.text
   return ''
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
-}
-
-function isSearchHit(value: unknown): value is SearchHit {
-  if (!value || typeof value !== 'object') return false
-  const hit = value as Partial<SearchHit>
-  return typeof hit.n === 'number' && Number.isInteger(hit.n) && hit.n >= 1
-    && typeof hit.path === 'string'
-    && typeof hit.startLine === 'number' && Number.isInteger(hit.startLine) && hit.startLine >= 1
-    && typeof hit.endLine === 'number' && Number.isInteger(hit.endLine) && hit.endLine >= hit.startLine
-    && typeof hit.matchLine === 'number' && Number.isInteger(hit.matchLine)
-    && hit.matchLine >= hit.startLine && hit.matchLine <= hit.endLine
-    && typeof hit.excerpt === 'string'
-    && (hit.matchedExcerpt === undefined || typeof hit.matchedExcerpt === 'string')
-    && (hit.matchColumnByte === undefined || (typeof hit.matchColumnByte === 'number' && Number.isInteger(hit.matchColumnByte) && hit.matchColumnByte >= 1))
-    && (hit.sourceFingerprint === undefined || typeof hit.sourceFingerprint === 'string')
-}
-
-function isSearchFileGroup(value: unknown): value is SearchFileGroup {
-  if (!value || typeof value !== 'object') return false
-  const group = value as Partial<SearchFileGroup>
-  return typeof group.path === 'string'
-    && (group.format === 'markdown' || group.format === 'csv')
-    && typeof group.totalHits === 'number' && Number.isInteger(group.totalHits) && group.totalHits >= 0
-    && Array.isArray(group.hits)
-    && group.hits.every((hit) => isSearchHit(hit))
-    && (group.groupHeader === undefined || typeof group.groupHeader === 'string')
-}
-
-function extractFileGroups(block?: ToolResultBlock): SearchFileGroup[] {
-  const meta = asRecord(block?.meta)
-  if (Array.isArray(meta?.files)) return meta.files.filter(isSearchFileGroup)
-  return []
-}
-
-function extractBaseId(block?: ToolResultBlock): string {
-  const baseId = asRecord(block?.meta)?.baseId
-  return typeof baseId === 'string' ? baseId : ''
-}
-
-type SearchCoverage = {
-  totalFiles: number
-  totalHits: number
-  restFiles: RestFileCount[]
-  scanComplete: boolean
-  hasMore: boolean
-}
-
-function extractSearchCoverage(block?: ToolResultBlock): SearchCoverage {
-  const meta = asRecord(block?.meta)
-  const restFiles = Array.isArray(meta?.restFiles)
-    ? meta.restFiles.filter((item): item is RestFileCount => {
-      const rest = asRecord(item)
-      return rest ? typeof rest.path === 'string' && typeof rest.count === 'number' : false
-    })
-    : []
-  return {
-    totalFiles: typeof meta?.totalFiles === 'number' ? meta.totalFiles : 0,
-    totalHits: typeof meta?.totalHits === 'number' ? meta.totalHits : 0,
-    restFiles,
-    scanComplete: meta?.scanComplete !== false,
-    hasMore: meta?.hasMore === true,
-  }
-}
-
-export function createKbSearchView(preview: PreviewController) {
-  /** 在会话 toolview 中渲染 kb_search 命中：按文件分组，一页不跨文件。 */
+export function createKbSearchView(preview: PreviewController, connection?: KnowledgePrivateConnection) {
   return function KbSearchView(props: { toolName?: string; block?: ToolResultBlock }) {
     ensureSettingsStyles()
     const block = props.block
     const running = !block || block.kind !== 'tool-result'
     const failed = block?.kind === 'tool-result' && Boolean(block.isError)
-    const fileGroups = extractFileGroups(block)
-    const baseId = extractBaseId(block)
-    const coverage = extractSearchCoverage(block)
-    const selectedHit = usePreviewSelection(preview)
-    const pageHitCount = fileGroups.reduce((sum, group) => sum + group.hits.length, 0)
-
-    if (running) return <div className="zy-help">正在检索知识库…</div>
-    if (failed) return <div className="zy-note">{firstTextContent(block?.content) || '检索失败'}</div>
-    if (!fileGroups.length) {
-      return coverage.scanComplete
-        ? <div className="zy-help">无命中</div>
-        : <div className="zy-note">扫描未完成，当前无命中结果不能代表整个知识库</div>
+    let sourceResult: SearchResult | null = null
+    let parseError = ''
+    if (!running && !failed) {
+      try {
+        sourceResult = parseSearchResult(block?.meta)
+      } catch (error) {
+        parseError = error instanceof Error ? error.message : '检索结果无效'
+      }
     }
 
+    const [activeResult, setActiveResult] = useState<SearchResult | null>(null)
+    const [overviewResult, setOverviewResult] = useState<SearchOverviewResult | null>(() => sourceResult?.kind === 'overview' ? sourceResult : null)
+    const [openingPath, setOpeningPath] = useState('')
+    const [openingError, setOpeningError] = useState('')
+    const [pageBusy, setPageBusy] = useState(false)
+    const actionController = useRef<AbortController | null>(null)
+    const blockRef = useRef<ToolResultBlock | undefined>(block)
+
+    useEffect(() => {
+      if (blockRef.current === block) return
+      blockRef.current = block
+      actionController.current?.abort()
+      actionController.current = null
+      setActiveResult(null)
+      setOverviewResult(sourceResult?.kind === 'overview' ? sourceResult : null)
+      setOpeningPath('')
+      setOpeningError('')
+      setPageBusy(false)
+      preview.clear()
+    }, [block, preview])
+
+    useEffect(() => () => actionController.current?.abort(), [])
+
+    if (running) return <div className="zy-help">正在检索知识库…</div>
+    if (failed) return <div className="zy-note is-error" role="alert">{firstTextContent(block?.content) || '检索失败'}</div>
+    if (parseError || !sourceResult) return <div className="zy-note is-error" role="alert">{parseError || '检索结果无效'}</div>
+
+    const result = activeResult ?? sourceResult
+    const openFile = (entryPath: string) => {
+      if (result.kind !== 'overview') return
+      actionController.current?.abort()
+      const controller = new AbortController()
+      actionController.current = controller
+      setOpeningPath(entryPath)
+      setOpeningError('')
+      void callKnowledgeHost(connection, {
+        op: 'search',
+        baseId: result.baseId,
+        query: result.query.terms[0] ?? '',
+        aliases: result.query.aliases,
+        ...(result.category ? { category: result.category } : {}),
+        path: entryPath,
+        limit: 20,
+      }, controller.signal).then((value) => {
+        if (controller.signal.aborted) return
+        const detail = parseSearchResult(value)
+        if (detail.kind !== 'file-detail') throw new Error('Host 未返回文件详情')
+        setActiveResult(detail)
+        setOpeningPath('')
+        setOpeningError('')
+        preview.clear()
+      }).catch((error: unknown) => {
+        if (!controller.signal.aborted) setOpeningError(error instanceof Error ? error.message : '文件详情加载失败')
+      })
+    }
+
+    const loadMore = (cursor: string) => {
+      if (!cursor || pageBusy) return
+      actionController.current?.abort()
+      const controller = new AbortController()
+      actionController.current = controller
+      setPageBusy(true)
+      void callKnowledgeHost(connection, { op: 'search', cursor }, controller.signal).then((value) => {
+        if (controller.signal.aborted) return
+        const next = parseSearchResult(value)
+        const merged = appendSearchPage(result, next)
+        setActiveResult(merged)
+        if (merged.kind === 'overview') setOverviewResult(merged)
+      }).catch((error: unknown) => {
+        if (!controller.signal.aborted) setOpeningError(error instanceof Error ? error.message : '加载下一页失败')
+      }).finally(() => {
+        if (!controller.signal.aborted) setPageBusy(false)
+      })
+    }
+
+    const goBack = () => {
+      actionController.current?.abort()
+      setActiveResult(overviewResult)
+      setOpeningPath('')
+      setOpeningError('')
+      preview.clear()
+    }
+
+    if (result.kind === 'overview') {
+      return (
+        <SearchOverviewCard
+          result={result}
+          openingPath={openingPath || undefined}
+          openingError={openingError || undefined}
+          onOpenFile={openFile}
+          onLoadMore={loadMore}
+          loadingMore={pageBusy}
+        />
+      )
+    }
     return (
-      <div>
-        <div className="zy-search-overview">
-          {coverage.totalFiles} 个文件 · {coverage.totalHits} 条命中 · 本页 {pageHitCount} 条
-        </div>
-        {fileGroups.map((group) => (
-          <section key={group.path} className="zy-file-group">
-            <div className="zy-file-group-head">
-              <span className="zy-file-group-path" title={group.path}>{group.path}</span>
-              <span className="zy-file-group-count">{group.hits.length}/{group.totalHits} 条</span>
-              {group.groupHeader ? <span className="zy-file-group-header">{group.groupHeader}</span> : null}
-            </div>
-            {group.hits.map((hit) => {
-              const selected = isSamePreviewHit(selectedHit, hit)
-              return (
-                <button
-                  key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`}
-                  className={selected ? 'zy-hit is-selected' : 'zy-hit'}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={(event) => preview.select({ baseId, hit }, event.currentTarget)}
-                >
-                  <div className="zy-src">
-                    <CitationTag n={hit.n} />
-                    <span className="zy-path">{hit.path}:{hit.startLine}–{hit.endLine}</span>
-                  </div>
-                  <div className="zy-quote">{matchedExcerptLine(hit)}</div>
-                </button>
-              )
-            })}
-          </section>
-        ))}
-        {coverage.restFiles.length ? (
-          <div className="zy-search-rest">
-            还有 {coverage.restFiles.map((item) => `${item.path}（${item.count} 条）`).join('、')} 未展示
-          </div>
-        ) : null}
-        {coverage.hasMore || !coverage.scanComplete ? (
-          <div className="zy-search-coverage">
-            {coverage.hasMore ? '当前结果仍有更多命中。' : ''}
-            {!coverage.scanComplete ? '本次扫描未完成，不能把当前结果当成全量。' : ''}
-          </div>
-        ) : null}
-      </div>
+      <SearchFileDetailCard
+        result={result}
+        preview={preview}
+        onBack={overviewResult ? goBack : undefined}
+        onLoadMore={loadMore}
+        loadingMore={pageBusy}
+        error={openingError || undefined}
+      />
     )
   }
 }

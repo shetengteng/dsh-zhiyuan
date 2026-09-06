@@ -4,13 +4,13 @@ Zhiyuan (DSH Knowledge Base): let the AI find answers in the documents you desig
 
 知源是 DSH 的本地优先知识库插件，帮助用户将 Markdown 和纯文本资料导入指定知识库，并通过可追溯的原文检索为 AI 提供可靠上下文。
 
-| Context | Name |
-|---------|------|
-| Brand | Zhiyuan (知源) |
+| Context        | Name           |
+| -------------- | -------------- |
+| Brand          | Zhiyuan (知源) |
 | Settings entry | Zhiyuan (知源) |
-| Package | `dsh-zhiyuan` |
+| Package        | `dsh-zhiyuan`  |
 
-One npm package, one install: Host (create / ingest / search) + Web workbench. Target runtime **DSH `0.1.1-rc.2`**.
+One npm package, one install: Host (create / ingest / search) + Web workbench. Target runtime **DSH `0.1.2-rc.1`**.
 
 [中文](./README.md)
 
@@ -27,25 +27,25 @@ The workbench mounts on the left of Settings as `settings.section` (`id: knowled
 
 ## Out of scope (this MVP)
 
-| Not in this MVP | Why |
-|-----------------|-----|
-| SQLite FTS / chunked index | Personal scale greps in place; reopen around ~2000 docs or when ranking is required |
-| Auto-pick / auto-create / auto-classify on ingest | A wrong base means the funnel never finds the file |
-| PDF / DOCX / watched source folders | First version commits to md/txt only |
-| Remote embeddings / fake vectors / `kb_ask` | Breaks offline; not this phase |
-| Top-level sidebar「知识库」, conversation chips | No official seat, or it would grow a second admin UI |
-| Treating project `grep` as knowledge-base search | Repo search ≠ ingested documents |
+| Not in this MVP                                   | Why                                                                                 |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| SQLite FTS / chunked index                        | Personal scale greps in place; reopen around ~2000 docs or when ranking is required |
+| Auto-pick / auto-create / auto-classify on ingest | A wrong base means the funnel never finds the file                                  |
+| PDF / DOCX / watched source folders               | First version commits to md/txt only                                                |
+| Remote embeddings / fake vectors / `kb_ask`       | Breaks offline; not this phase                                                      |
+| Top-level sidebar「知识库」, conversation chips   | No official seat, or it would grow a second admin UI                                |
+| Treating project `grep` as knowledge-base search  | Repo search ≠ ingested documents                                                    |
 
 A later engine swap (FTS) must not change tool names, the “select a base first” funnel, or the rule that hits must carry citations.
 
 ## Compatibility
 
-| Item | Value |
-|------|-------|
-| Delivery | Dual-face Host + Web UI plugin |
-| Target DSH | `0.1.1-rc.2` |
-| Client | `dsh.client.platform: "web"`, loaded automatically by a Web profile |
-| License | MIT |
+| Item             | Value                                                                      |
+| ---------------- | -------------------------------------------------------------------------- |
+| Delivery         | Dual-face Host + Web UI plugin                                             |
+| Target DSH       | `0.1.2-rc.1`                                                               |
+| Client           | `dsh.client.platform: "web"`, loaded automatically by a Web profile        |
+| License          | MIT                                                                        |
 | Runtime identity | Cordis row `id: zhiyuan`; `name` must equal the package name `dsh-zhiyuan` |
 
 A headless profile having no UI does not prove the Client loaded.
@@ -100,11 +100,11 @@ If `--to` is omitted, reuse that base’s last category; otherwise the command e
 
 ## Tools for the AI
 
-| Tool | Role |
-|------|------|
+| Tool            | Role                                                                                                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
 | `kb_list_bases` | List bases: id / title / description / aliases / category names / approx. doc count. No filenames, no body text |
-| `kb_ingest` | Copy into an existing base. `baseId` and `sourcePath` required; `destCategory` required in meaning |
-| `kb_search` | Scan only the named base. Missing `baseId` fails validation. Prefer 3–8 `aliases`, one OR query |
+| `kb_ingest`     | Copy into an existing base. `baseId` and `sourcePath` required; `destCategory` required in meaning              |
+| `kb_search`     | Scan only the named base. Missing `baseId` fails validation. Prefer 3–8 `aliases`, one OR query                 |
 
 Skill hard rules: if no base is named, list first; if two bases fit, ask the user; expand query terms only once; project `grep` / `glob` is not knowledge-base search; never invent a new base on ingest.
 

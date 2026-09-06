@@ -7,7 +7,7 @@ import { TABLE_EDITOR_PAGE_SIZE } from './identity.ts'
 import type { JobRunner } from './jobs.ts'
 import { resolveDataRoot } from './paths.ts'
 import { pickSource } from './pick-source.ts'
-import { searchBase } from './search.ts'
+import { searchBase } from './search/index.ts'
 import { KbError } from './types.ts'
 
 type JsonRecord = Record<string, unknown>
@@ -171,15 +171,22 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
         createMissing: optionalBoolean(data, 'createMissing', true),
       })))
     }
-    case 'search':
+    case 'search': {
+      if (hasField(data, 'cursor')) {
+        return searchBase(dataRoot, {
+          cursor: requireString(data, 'cursor'),
+          ...(optionalPositiveInteger(data, 'limit') === undefined ? {} : { limit: optionalPositiveInteger(data, 'limit') }),
+        })
+      }
       return searchBase(dataRoot, {
         baseId: requireString(data, 'baseId'),
         query: requireString(data, 'query'),
         aliases: optionalStringArray(data, 'aliases'),
         category: optionalString(data, 'category'),
         path: optionalString(data, 'path'),
-        cursor: optionalString(data, 'cursor'),
+        ...(optionalPositiveInteger(data, 'limit') === undefined ? {} : { limit: optionalPositiveInteger(data, 'limit') }),
       })
+    }
     case 'prefs':
       return (await readCatalog(dataRoot)).prefs
     case 'setPrefs':
