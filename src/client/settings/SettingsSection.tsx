@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL, VERSION_LABEL } from '../../identity.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
-import type { DialogKind, IngestResult, SearchHit, SearchOverviewResult, SearchResult } from '../models.ts'
-import { parseIngestResult, parseSearchResult, parseTableEditorPage } from '../host-payload.ts'
-import { appendSearchPage } from '../search/search-pages.ts'
+import type { DialogKind, IngestResult, SearchOverviewResult, SearchResult } from '../models.ts'
+import { parseIngestResult, parseTableEditorPage } from '../host-payload.ts'
+import { canSearchNextPage, canSearchPreviousPage, type SearchPageHistory } from '../search/search-pages.ts'
 import { useWorkbenchData, splitAliases, type WorkbenchNotice } from './use-workbench-data.ts'
 import { useEntryPreview } from './use-entry-preview.ts'
+import { createSearchActions } from './search-actions.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ConfirmDialog, CreateDialog, EditDialog } from './Dialogs.tsx'
@@ -30,6 +31,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     const [searchBusy, setSearchBusy] = useState(false)
     const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
     const [searchOverviewResult, setSearchOverviewResult] = useState<SearchOverviewResult | null>(null)
+    const [searchDetailHistory, setSearchDetailHistory] = useState<SearchPageHistory | null>(null)
     const [searchOpeningPath, setSearchOpeningPath] = useState('')
     const [searchError, setSearchError] = useState('')
     const searchRequestVersion = useRef(0)
@@ -55,9 +57,28 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
       setSearchBusy(false)
       setSearchResult(null)
       setSearchOverviewResult(null)
+      setSearchDetailHistory(null)
       setSearchOpeningPath('')
       setSearchError('')
     }
+
+    const searchActions = createSearchActions({
+      baseId: currentBaseId,
+      call,
+      searchResult,
+      searchOverviewResult,
+      searchDetailHistory,
+      searchBusy,
+      searchRequestVersion,
+      setQuery,
+      setSearched,
+      setSearchBusy,
+      setSearchResult,
+      setSearchOverviewResult,
+      setSearchDetailHistory,
+      setSearchOpeningPath,
+      setSearchError,
+    })
 
     return (
       <div className="zy">
@@ -149,82 +170,14 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             searched={searched}
             openingPath={searchOpeningPath || undefined}
             onClose={() => { searchRequestVersion.current += 1; setDialog(null) }}
-            onSearch={(nextQuery) => {
-              const version = ++searchRequestVersion.current
-              setQuery(nextQuery)
-              setSearched(false)
-              setSearchResult(null)
-              setSearchOverviewResult(null)
-              setSearchOpeningPath('')
-              setSearchBusy(true)
-              setSearchError('')
-              void call({ op: 'search', baseId: currentBase.id, query: nextQuery, limit: 20 }).then((value) => {
-                if (version !== searchRequestVersion.current) return
-                const result = parseSearchResult(value)
-                setSearchResult(result)
-                if (result.kind === 'overview') setSearchOverviewResult(result)
-                setSearchError(result.scan.warnings.join('；'))
-                setSearched(true)
-              }).catch((err: unknown) => {
-                if (version !== searchRequestVersion.current) return
-                setSearchResult(null)
-                setSearchError(err instanceof Error ? err.message : String(err))
-                setSearched(true)
-              }).finally(() => {
-                if (version === searchRequestVersion.current) setSearchBusy(false)
-              })
-            }}
-            onOpenFile={(entryPath) => {
-              const overview = searchResult?.kind === 'overview' ? searchResult : searchOverviewResult
-              if (!overview) return
-              const version = ++searchRequestVersion.current
-              setSearchOpeningPath(entryPath)
-              setSearchBusy(true)
-              setSearchError('')
-              void call({
-                op: 'search',
-                baseId: overview.baseId,
-                query: overview.query.terms[0] ?? '',
-                aliases: overview.query.aliases,
-                ...(overview.category ? { category: overview.category } : {}),
-                path: entryPath,
-                limit: 20,
-              }).then((value) => {
-                if (version !== searchRequestVersion.current) return
-                const result = parseSearchResult(value)
-                if (result.kind !== 'file-detail') throw new Error('Host 未返回文件详情')
-                setSearchResult(result)
-                setSearchOpeningPath('')
-                setSearchError(result.scan.warnings.join('；'))
-              }).catch((err: unknown) => {
-                if (version === searchRequestVersion.current) setSearchError(err instanceof Error ? err.message : String(err))
-              }).finally(() => {
-                if (version === searchRequestVersion.current) setSearchBusy(false)
-              })
-            }}
-            onBack={() => {
-              setSearchResult(searchOverviewResult)
-              setSearchOpeningPath('')
-              setSearchError(searchOverviewResult?.scan.warnings.join('；') ?? '')
-            }}
-            onLoadMore={(cursor) => {
-              if (!searchResult || searchBusy) return
-              const version = ++searchRequestVersion.current
-              setSearchBusy(true)
-              setSearchError('')
-              void call({ op: 'search', cursor }).then((value) => {
-                if (version !== searchRequestVersion.current || !searchResult) return
-                const next = parseSearchResult(value)
-                const merged = appendSearchPage(searchResult, next)
-                setSearchResult(merged)
-                if (merged.kind === 'overview') setSearchOverviewResult(merged)
-                setSearchError(next.scan.warnings.join('；'))
-              }).catch((err: unknown) => {
-                if (version === searchRequestVersion.current) setSearchError(err instanceof Error ? err.message : String(err))
-              }).finally(() => {
-                if (version === searchRequestVersion.current) setSearchBusy(false)
-              })
-            }}
+            onSearch={searchActions.onSearch}
+            onOpenFile={searchActions.onOpenFile}
+            onBack={searchActions.onBack}
+            onLoadMore={searchActions.onLoadMore}
+            onPreviousPage={searchActions.onPreviousPage}
+            onNextPage={searchActions.onNextPage}
+            canPreviousPage={canSearchPreviousPage(searchDetailHistory)}
+            canNextPage={canSearchNextPage(searchDetailHistory)}
             onOpenHit={(hit) => openSearchHit(currentBase.id, hit)}
           />
         ) : null}

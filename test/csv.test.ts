@@ -10,7 +10,7 @@ import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
 import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 import { createCsvSearchDocument } from '../src/content/csv/server/search-excerpt.ts'
 import { ingest } from '../src/ingest.ts'
-import { searchBase } from '../src/search/index.ts'
+import { searchBase, type SearchRequest } from '../src/search/index.ts'
 import type { SearchFileDetailResult, SearchOverviewResult } from '../src/types.ts'
 import { KbError } from '../src/types.ts'
 import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
@@ -437,24 +437,46 @@ test('截断 UTF-16 与空 CSV 导入失败', async () => {
   }
 })
 
-test('大量中文命中时嵌套类目下的中文文件名仍能打开', async () => {
+test('大量中文命中时文件详情可连续分页读取，不受单文件扫描上限阻断', async () => {
   const root = await sandbox()
   try {
     const base = await createBase(root, { title: '分片', description: 'CSV 测试' })
     const source = join(root, '供应商台账.csv')
-    const rows = Array.from({ length: 220 }, (_, index) => `HT-${index},深圳启明供应链,${'备注'.repeat(20)}`)
+    const rows = Array.from({ length: 220 }, (_, index) => `HT-${index},成都锦官物流,${'备注'.repeat(20)}`)
     await writeFile(source, `合同编号,供应商,备注\n${rows.join('\n')}\n`)
     await ingest(root, { baseId: base.id, sourcePath: source, destCategory: '合同/2026' })
-    const overview = await searchFirstOverview(root, base.id, '深圳启明供应链')
+    const overview = await searchFirstOverview(root, base.id, '成都锦官物流')
     const summary = overview.files[0]
     assert.equal(summary?.path, '合同/2026/供应商台账.csv')
     if (!summary) throw new Error('未找到 CSV 文件概览')
-    const search = await searchBase(root, { baseId: base.id, query: '深圳启明供应链', path: summary.path })
-    if (search.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
-    assert.match(search.hits[0]?.excerpt ?? '', /供应商: 深圳启明供应链/)
-    assert.equal(search.scan.complete, false)
-    assert.equal(search.page.hasMore, false)
-    assert.match(search.scan.warnings.join(' '), /扫描上限/)
+
+    const pages: SearchFileDetailResult[] = []
+    let request: SearchRequest = {
+      baseId: base.id,
+      query: '成都锦官物流',
+      path: summary.path,
+      limit: 10,
+    }
+    for (let pageIndex = 0; pageIndex < 50; pageIndex += 1) {
+      const result = await searchBase(root, request)
+      if (result.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
+      pages.push(result)
+      if (!result.page.nextCursor) break
+      request = { cursor: result.page.nextCursor, limit: 10 }
+    }
+
+    const lastPage = pages.at(-1)
+    if (!lastPage) throw new Error('搜索没有返回文件详情页')
+    assert.ok(pages.length > 1)
+    assert.ok(pages.every((page) => page.scan.complete))
+    assert.ok(pages.every((page) => page.totalHits === 220))
+    assert.ok(pages.slice(0, -1).every((page) => page.page.hasMore && Boolean(page.page.nextCursor)))
+    assert.equal(lastPage.page.hasMore, false)
+    assert.equal(lastPage.page.nextCursor, undefined)
+    const hits = pages.flatMap((page) => page.hits)
+    assert.equal(hits.length, 220)
+    assert.deepEqual(hits.map((hit) => hit.matchLine), Array.from({ length: 220 }, (_, index) => index + 2))
+    assert.match(hits[0]?.excerpt ?? '', /供应商: 成都锦官物流/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

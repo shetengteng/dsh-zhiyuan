@@ -5,7 +5,18 @@ import { parseSearchResult } from '../host-payload.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
 import { SearchFileDetailCard } from '../search/SearchFileDetailCard.tsx'
 import { SearchOverviewCard } from '../search/SearchOverviewCard.tsx'
-import { appendSearchPage } from '../search/search-pages.ts'
+import {
+  appendSearchPage,
+  appendSearchPageHistory,
+  canSearchNextPage,
+  canSearchPreviousPage,
+  createSearchPageHistory,
+  getSearchNextCursor,
+  getSearchPage,
+  SEARCH_PAGE_SIZE,
+  selectSearchPage,
+  type SearchPageHistory,
+} from '../search/search-pages.ts'
 import type { PreviewController } from './preview/preview-state.ts'
 
 export type ToolResultBlock = {
@@ -39,6 +50,7 @@ export function createKbSearchView(preview: PreviewController, connection?: Know
 
     const [activeResult, setActiveResult] = useState<SearchResult | null>(null)
     const [overviewResult, setOverviewResult] = useState<SearchOverviewResult | null>(() => sourceResult?.kind === 'overview' ? sourceResult : null)
+    const [detailHistory, setDetailHistory] = useState<SearchPageHistory | null>(() => sourceResult?.kind === 'file-detail' ? createSearchPageHistory(sourceResult) : null)
     const [openingPath, setOpeningPath] = useState('')
     const [openingError, setOpeningError] = useState('')
     const [pageBusy, setPageBusy] = useState(false)
@@ -52,13 +64,23 @@ export function createKbSearchView(preview: PreviewController, connection?: Know
       actionController.current = null
       setActiveResult(null)
       setOverviewResult(sourceResult?.kind === 'overview' ? sourceResult : null)
+      setDetailHistory(sourceResult?.kind === 'file-detail' ? createSearchPageHistory(sourceResult) : null)
       setOpeningPath('')
       setOpeningError('')
       setPageBusy(false)
       preview.clear()
     }, [block, preview])
 
-    useEffect(() => () => actionController.current?.abort(), [])
+    useEffect(() => () => {
+      actionController.current?.abort()
+      actionController.current = null
+    }, [])
+
+    const cancelAction = () => {
+      actionController.current?.abort()
+      actionController.current = null
+      setPageBusy(false)
+    }
 
     if (running) return <div className="zy-help">正在检索知识库…</div>
     if (failed) return <div className="zy-note is-error" role="alert">{firstTextContent(block?.content) || '检索失败'}</div>
@@ -67,9 +89,11 @@ export function createKbSearchView(preview: PreviewController, connection?: Know
     const result = activeResult ?? sourceResult
     const openFile = (entryPath: string) => {
       if (result.kind !== 'overview') return
-      actionController.current?.abort()
+      cancelAction()
       const controller = new AbortController()
       actionController.current = controller
+      const isCurrent = () => actionController.current === controller && !controller.signal.aborted
+      setDetailHistory(null)
       setOpeningPath(entryPath)
       setOpeningError('')
       void callKnowledgeHost(connection, {
@@ -79,45 +103,106 @@ export function createKbSearchView(preview: PreviewController, connection?: Know
         aliases: result.query.aliases,
         ...(result.category ? { category: result.category } : {}),
         path: entryPath,
-        limit: 20,
+        limit: SEARCH_PAGE_SIZE,
       }, controller.signal).then((value) => {
-        if (controller.signal.aborted) return
+        if (!isCurrent()) return
         const detail = parseSearchResult(value)
         if (detail.kind !== 'file-detail') throw new Error('Host 未返回文件详情')
         setActiveResult(detail)
+        setDetailHistory(createSearchPageHistory(detail))
         setOpeningPath('')
         setOpeningError('')
         preview.clear()
       }).catch((error: unknown) => {
-        if (!controller.signal.aborted) setOpeningError(error instanceof Error ? error.message : '文件详情加载失败')
+        if (isCurrent()) setOpeningError(error instanceof Error ? error.message : '文件详情加载失败')
+      }).finally(() => {
+        if (actionController.current === controller) actionController.current = null
       })
     }
 
     const loadMore = (cursor: string) => {
       if (!cursor || pageBusy) return
-      actionController.current?.abort()
+      cancelAction()
       const controller = new AbortController()
       actionController.current = controller
+      const isCurrent = () => actionController.current === controller && !controller.signal.aborted
       setPageBusy(true)
-      void callKnowledgeHost(connection, { op: 'search', cursor }, controller.signal).then((value) => {
-        if (controller.signal.aborted) return
+      setOpeningError('')
+      void callKnowledgeHost(connection, { op: 'search', cursor, limit: SEARCH_PAGE_SIZE }, controller.signal).then((value) => {
+        if (!isCurrent()) return
         const next = parseSearchResult(value)
         const merged = appendSearchPage(result, next)
         setActiveResult(merged)
         if (merged.kind === 'overview') setOverviewResult(merged)
+        setOpeningError(next.scan.warnings.join('；'))
       }).catch((error: unknown) => {
-        if (!controller.signal.aborted) setOpeningError(error instanceof Error ? error.message : '加载下一页失败')
+        if (isCurrent()) setOpeningError(error instanceof Error ? error.message : '加载下一页失败')
       }).finally(() => {
-        if (!controller.signal.aborted) setPageBusy(false)
+        if (actionController.current !== controller) return
+        actionController.current = null
+        setPageBusy(false)
       })
     }
 
     const goBack = () => {
-      actionController.current?.abort()
+      cancelAction()
       setActiveResult(overviewResult)
+      setDetailHistory(null)
       setOpeningPath('')
       setOpeningError('')
       preview.clear()
+    }
+
+    const goPreviousPage = () => {
+      const history = detailHistory
+      if (pageBusy || !canSearchPreviousPage(history) || !history) return
+      const previousHistory = selectSearchPage(history, history.currentIndex - 1)
+      const previous = getSearchPage(previousHistory)
+      if (!previous || previous.kind !== 'file-detail') return
+      setDetailHistory(previousHistory)
+      setActiveResult(previous)
+      setOpeningError(previous.scan.warnings.join('；'))
+      preview.clear()
+    }
+
+    const goNextPage = () => {
+      const history = detailHistory
+      const currentResult = result
+      if (pageBusy || !history || currentResult.kind !== 'file-detail') return
+      const cachedIndex = history.currentIndex + 1
+      if (cachedIndex < history.pages.length) {
+        const nextHistory = selectSearchPage(history, cachedIndex)
+        const next = getSearchPage(nextHistory)
+        if (!next || next.kind !== 'file-detail') return
+        setDetailHistory(nextHistory)
+        setActiveResult(next)
+        setOpeningError(next.scan.warnings.join('；'))
+        preview.clear()
+        return
+      }
+      const cursor = getSearchNextCursor(currentResult)
+      if (!cursor) return
+      cancelAction()
+      const controller = new AbortController()
+      actionController.current = controller
+      const isCurrent = () => actionController.current === controller && !controller.signal.aborted
+      setPageBusy(true)
+      setOpeningError('')
+      void callKnowledgeHost(connection, { op: 'search', cursor, limit: SEARCH_PAGE_SIZE }, controller.signal).then((value) => {
+        if (!isCurrent()) return
+        const next = parseSearchResult(value)
+        if (next.kind !== 'file-detail') throw new Error('Host 未返回文件详情')
+        setDetailHistory(appendSearchPageHistory(history, next))
+        setActiveResult(next)
+        setOpeningError(next.scan.warnings.join('；'))
+        preview.clear()
+      }).catch((error: unknown) => {
+        if (isCurrent()) setOpeningError(error instanceof Error ? error.message : '加载下一页失败')
+      }).finally(() => {
+        if (actionController.current !== controller) return
+        actionController.current = null
+        setPageBusy(false)
+      })
     }
 
     if (result.kind === 'overview') {
@@ -137,8 +222,13 @@ export function createKbSearchView(preview: PreviewController, connection?: Know
         result={result}
         preview={preview}
         onBack={overviewResult ? goBack : undefined}
-        onLoadMore={loadMore}
-        loadingMore={pageBusy}
+        pagination={{
+          canPreviousPage: canSearchPreviousPage(detailHistory),
+          canNextPage: canSearchNextPage(detailHistory),
+          loading: pageBusy,
+          onPreviousPage: goPreviousPage,
+          onNextPage: goNextPage,
+        }}
         error={openingError || undefined}
       />
     )

@@ -1,4 +1,5 @@
 import type { SearchOverviewResult } from '../models.ts'
+import { getSearchNextCursor } from './search-pages.ts'
 
 export type SearchOverviewCardProps = {
   result: SearchOverviewResult
@@ -11,12 +12,14 @@ export type SearchOverviewCardProps = {
 
 export function SearchOverviewCard(props: SearchOverviewCardProps) {
   const { result } = props
+  const nextCursor = getSearchNextCursor(result)
+  const pageHint = nextCursor ? ' · 还有下一页' : result.scan.complete ? ' · 已全部展示' : ''
   const totalLabel = result.scan.complete ? `${result.totalFiles} 个文件 · ${result.totalHits} 条命中` : `至少 ${result.totalFiles} 个文件 · 至少 ${result.totalHits} 条命中`
   const empty = result.files.length === 0
   return (
     <section className="zy-search-card" aria-label="知识库文件概览">
       <div className="zy-search-overview">
-        {totalLabel} · 本页 {result.files.length} 个文件
+        {totalLabel} · 本页 {result.files.length} 个文件{pageHint}
       </div>
       {props.openingError ? <div className="zy-search-error" role="alert">{props.openingError}</div> : null}
       {empty ? (
@@ -48,8 +51,8 @@ export function SearchOverviewCard(props: SearchOverviewCardProps) {
       )}
       {result.scan.complete ? null : <div className="zy-search-coverage">本次扫描未完成，计数和文件排序只能视为当前已发现结果的下限。</div>}
       {result.scan.warnings.length ? <div className="zy-search-coverage">{result.scan.warnings.join('；')}</div> : null}
-      {result.page.hasMore && result.page.nextCursor ? (
-        <button className="zy-btn zy-search-more" type="button" disabled={props.loadingMore} onClick={() => props.onLoadMore(result.page.nextCursor ?? '')}>
+      {nextCursor ? (
+        <button className="zy-btn zy-search-more" type="button" disabled={props.loadingMore} onClick={() => props.onLoadMore(nextCursor)}>
           {props.loadingMore ? '加载中…' : '加载更多文件'}
         </button>
       ) : null}

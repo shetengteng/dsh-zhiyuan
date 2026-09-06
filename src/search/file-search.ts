@@ -26,7 +26,12 @@ export async function searchFileDetail(
   scanner: SearchScanner,
 ): Promise<FileDetailSearchOutput> {
   if (!scope.path || !scope.format) throw new Error('文件详情缺少目标路径')
-  const scan = await scanner.scan({ rootDir: scope.rootDir, terms: scope.query.terms, targetPath: scope.path })
+  const scan = await scanner.scan({
+    rootDir: scope.rootDir,
+    terms: scope.query.terms,
+    targetPath: scope.path,
+    perFileMatchLimit: 'unlimited',
+  })
   const group = groupMatchesByFile(scan.matches).find((item) => item.path === scope.path)
   const matches = group?.matches ?? []
   const warnings = [...scan.warnings]

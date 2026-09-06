@@ -8,11 +8,13 @@ import type { ScannerInput, ScannerMatch, ScannerResult, SearchScanner } from '.
 export class RipgrepScanner implements SearchScanner {
   async scan(input: ScannerInput): Promise<ScannerResult> {
     const binaryPath = await resolveRg()
-    const run = await runRg(binaryPath, buildArguments(input.terms, input.targetPath), input.rootDir)
+    const perFileMatchLimit = input.perFileMatchLimit ?? SEARCH_RG_MAX_COUNT_PER_FILE
+    const run = await runRg(binaryPath, buildArguments(input.terms, input.targetPath, perFileMatchLimit), input.rootDir)
     const matches = parseRg(run.stdout, input.rootDir)
     const matchesByFile = new Map<string, number>()
     for (const match of matches) matchesByFile.set(match.path, (matchesByFile.get(match.path) ?? 0) + 1)
-    const perFileTruncated = [...matchesByFile.values()].some((count) => count > SEARCH_RG_MAX_COUNT_PER_FILE)
+    const perFileTruncated = perFileMatchLimit !== 'unlimited'
+      && [...matchesByFile.values()].some((count) => count > perFileMatchLimit)
     if (perFileTruncated) {
       run.warnings.push('单个文件命中超过扫描上限，结果可能不完整')
       run.complete = false
@@ -33,13 +35,19 @@ type RgRun = {
   stopReason?: ScannerResult['stopReason']
 }
 
-function buildArguments(terms: string[], targetPath?: string): string[] {
+function buildArguments(
+  terms: string[],
+  targetPath: string | undefined,
+  perFileMatchLimit: NonNullable<ScannerInput['perFileMatchLimit']>,
+): string[] {
+  const matchLimitArguments = perFileMatchLimit === 'unlimited'
+    ? []
+    : ['--max-count', String(perFileMatchLimit + 1)]
   const args = [
     '--json',
     '--column',
     '--glob-case-insensitive',
-    '--max-count',
-    String(SEARCH_RG_MAX_COUNT_PER_FILE + 1),
+    ...matchLimitArguments,
     '--max-filesize',
     SEARCH_RG_MAX_FILESIZE,
   ]

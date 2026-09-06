@@ -244,6 +244,27 @@ test('file-detail 锁定单文件并按命中分页，其他文件不参与结�
   })
 })
 
+test('文件详情使用完整单文件扫描策略，概览保持默认上限', async () => {
+  await withBase('zy-search-scan-policy-', { 'a.md': '违约。\n' }, async (root, baseId) => {
+    const scanner: SearchScanner = {
+      scan: async (input) => {
+        if (input.targetPath) assert.equal(input.perFileMatchLimit, 'unlimited')
+        else assert.equal(input.perFileMatchLimit, undefined)
+        return {
+          matches: [{ path: 'a.md', line: 1, columnByte: 1 }],
+          warnings: [],
+          complete: true,
+        }
+      },
+    }
+    const overview = asOverview(await searchBase(root, { baseId, query: '违约' }, scanner))
+    assert.equal(overview.files[0]?.path, 'a.md')
+    const detail = asFileDetail(await searchBase(root, { baseId, query: '违约', path: 'a.md' }, scanner))
+    assert.equal(detail.totalHits, 1)
+    assert.equal(detail.scan.complete, true)
+  })
+})
+
 test('正则 OR、类目收窄和文件明细保持同一 path 语义', async () => {
   await withBase('zy-search-regex-', {
     '合同/2024/供应商合同.md': '若乙方违约，甲方可解约。\ntermination 条款见附件。\n',
@@ -342,5 +363,11 @@ test('扫描器不完整时返回 scan.stopReason，不能伪造可续页 cursor
     assert.deepEqual(result.scan.warnings, ['检索结果过多，已截断'])
     assert.equal(result.page.hasMore, false)
     assert.equal(result.page.nextCursor, undefined)
+    const detail = asFileDetail(await searchBase(root, { baseId, query: '违约', path: 'a.md', limit: 1 }, scanner))
+    assert.equal(detail.scan.complete, false)
+    assert.equal(detail.scan.stopReason, 'stdout-limit')
+    assert.deepEqual(detail.scan.warnings, ['检索结果过多，已截断'])
+    assert.equal(detail.page.hasMore, false)
+    assert.equal(detail.page.nextCursor, undefined)
   })
 })

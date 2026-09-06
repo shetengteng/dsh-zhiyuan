@@ -1,3 +1,5 @@
+import { useCallback } from 'react'
+import type { MouseEvent, ReactElement } from 'react'
 import type { SearchHit } from '../models.ts'
 import { CitationTag } from '../CitationTag.tsx'
 import { matchedExcerptLine, parseLabeledFields, type LabeledField } from '../search-utils.ts'
@@ -8,23 +10,31 @@ export type SearchHitCardProps = {
   onOpenHit: (hit: SearchHit, trigger: HTMLButtonElement) => void
 }
 
-export function SearchHitCard(props: SearchHitCardProps) {
+export function SearchHitCard(props: SearchHitCardProps): ReactElement {
   const { hit } = props
+  const onOpenHit = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    props.onOpenHit(hit, event.currentTarget)
+  }, [hit, props.onOpenHit])
   return (
-    <button
+    <article
       className={props.selected ? 'zy-hit is-selected' : 'zy-hit'}
-      type="button"
-      aria-pressed={props.selected}
-      aria-label={`打开 ${hit.path} 第 ${hit.matchLine} 行`}
-      onClick={(event) => props.onOpenHit(hit, event.currentTarget)}
+      aria-label={`引用 ${hit.n}：${hit.path} 第 ${hit.matchLine} 行`}
     >
-      <div className="zy-src">
-        <CitationTag n={hit.n} />
-        <span className="zy-path" title={hit.path}>{hit.path}</span>
-        <span className="zy-hit-loc">{hitLineLabel(hit)}</span>
-      </div>
-      <HitExcerpt text={matchedExcerptLine(hit)} />
-    </button>
+      <CitationTag n={hit.n} onClick={onOpenHit} />
+      <button
+        className="zy-hit-content"
+        type="button"
+        aria-pressed={props.selected}
+        aria-label={`打开 ${hit.path} 第 ${hit.matchLine} 行`}
+        onClick={onOpenHit}
+      >
+        <div className="zy-src">
+          <span className="zy-path" title={hit.path}>{hit.path}</span>
+          <span className="zy-hit-loc">{hitLineLabel(hit)}</span>
+        </div>
+        <HitExcerpt text={matchedExcerptLine(hit)} />
+      </button>
+    </article>
   )
 }
 

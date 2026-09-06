@@ -111,10 +111,12 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
       {editable ? (
-        <div className="zy-csv-page-tools" aria-label="表格分页工具">
+        <div className="zy-csv-page-tools" aria-label="表格分页工具" aria-busy={pageBusy || undefined}>
           <span className="zy-csv-page-status" aria-live="polite">第 {page.windowStartRow || 0}–{page.windowEndRow || 0} 行，共 {page.totalRows} 行</span>
-          <button className="zy-btn" type="button" disabled={pageBusy || page.windowStartRow <= 1} onClick={() => void loadPage(previousStartRow)}>上一页</button>
-          <button className="zy-btn" type="button" disabled={pageBusy || page.windowEndRow >= page.totalRows} onClick={() => void loadPage(nextStartRow)}>下一页</button>
+          <div className="zy-csv-page-actions">
+            <button className="zy-csv-page-button" type="button" disabled={pageBusy || page.windowStartRow <= 1} onClick={() => void loadPage(previousStartRow)}>上一页</button>
+            <button className="zy-csv-page-button" type="button" disabled={pageBusy || page.windowEndRow >= page.totalRows} onClick={() => void loadPage(nextStartRow)}>下一页</button>
+          </div>
         </div>
       ) : null}
       {pageError ? <div className="zy-csv-page-error" role="alert">{pageError}</div> : null}

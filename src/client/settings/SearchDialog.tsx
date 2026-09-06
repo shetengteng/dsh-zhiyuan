@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import type { SearchHit, SearchResult } from '../models.ts'
 import { SearchHitCard } from '../search/SearchHitCard.tsx'
+import { SearchPagination } from '../search/SearchPagination.tsx'
+import { getSearchNextCursor } from '../search/search-pages.ts'
 import { Note } from './Dialogs.tsx'
 import { SearchIcon } from './Icons.tsx'
 import { WorkbenchModal } from './WorkbenchModal.tsx'
@@ -16,6 +18,10 @@ export type SearchDialogProps = {
   onClose: () => void
   onSearch: (query: string) => void
   onLoadMore: (cursor: string) => void
+  onPreviousPage: () => void
+  onNextPage: () => void
+  canPreviousPage: boolean
+  canNextPage: boolean
   onOpenFile: (entryPath: string) => void
   onBack: () => void
   onOpenHit: (hit: SearchHit) => void
@@ -44,6 +50,10 @@ export function SearchDialog(props: SearchDialogProps) {
         searched={props.searched}
         openingPath={props.openingPath}
         onLoadMore={props.onLoadMore}
+        onPreviousPage={props.onPreviousPage}
+        onNextPage={props.onNextPage}
+        canPreviousPage={props.canPreviousPage}
+        canNextPage={props.canNextPage}
         onOpenFile={props.onOpenFile}
         onBack={props.onBack}
         onOpenHit={props.onOpenHit}
@@ -58,6 +68,10 @@ function SearchResults(props: {
   searched: boolean
   openingPath?: string
   onLoadMore: (cursor: string) => void
+  onPreviousPage: () => void
+  onNextPage: () => void
+  canPreviousPage: boolean
+  canNextPage: boolean
   onOpenFile: (entryPath: string) => void
   onBack: () => void
   onOpenHit: (hit: SearchHit) => void
@@ -77,10 +91,12 @@ function OverviewResults(props: {
   onOpenFile: (entryPath: string) => void
 }) {
   const { result } = props
+  const nextCursor = getSearchNextCursor(result)
+  const pageHint = nextCursor ? ' · 还有下一页' : result.scan.complete ? ' · 已全部展示' : ''
   const totalLabel = result.scan.complete ? `${result.totalFiles} 个文件 · ${result.totalHits} 条命中` : `至少 ${result.totalFiles} 个文件 · 至少 ${result.totalHits} 条命中`
   return (
     <div className="zy-search-body">
-      <p className="zy-search-status">{totalLabel} · 本页 {result.files.length} 个文件</p>
+      <p className="zy-search-status">{totalLabel} · 本页 {result.files.length} 个文件{pageHint}</p>
       {result.files.length ? (
         <div className="zy-search-files">
           {result.files.map((file) => (
@@ -102,8 +118,10 @@ function OverviewResults(props: {
         </div>
       ) : <p className="zy-search-empty">{result.scan.complete ? '没有找到相关文件。' : '扫描尚未完成，当前没有可展示的文件。'}</p>}
       <SearchScanNote complete={result.scan.complete} warnings={result.scan.warnings} />
-      {result.page.hasMore && result.page.nextCursor ? (
-        <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(result.page.nextCursor ?? '')}>加载更多文件</button>
+      {nextCursor ? (
+        <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(nextCursor)}>
+          {props.busy ? '加载中…' : '加载更多文件'}
+        </button>
       ) : null}
     </div>
   )
@@ -112,11 +130,16 @@ function OverviewResults(props: {
 function DetailResults(props: {
   result: Extract<SearchResult, { kind: 'file-detail' }>
   busy: boolean
-  onLoadMore: (cursor: string) => void
+  onPreviousPage: () => void
+  onNextPage: () => void
+  canPreviousPage: boolean
+  canNextPage: boolean
   onBack: () => void
   onOpenHit: (hit: SearchHit) => void
 }) {
   const { result } = props
+  const nextCursor = getSearchNextCursor(result)
+  const pageHint = nextCursor ? ' · 还有下一页' : result.scan.complete ? ' · 已全部展示' : ''
   const totalLabel = result.scan.complete ? `${result.totalHits} 条命中` : `至少 ${result.totalHits} 条命中`
   return (
     <div className="zy-search-body">
@@ -124,7 +147,7 @@ function DetailResults(props: {
         <button className="zy-btn zy-search-back" type="button" onClick={props.onBack}>返回文件概览</button>
         <div className="zy-search-detail-copy">
           <code className="zy-search-file-path" title={result.path}>{result.path}</code>
-          <span className="zy-search-file-meta">{result.format} · {totalLabel} · 本页 {result.hits.length} 条</span>
+          <span className="zy-search-file-meta">{result.format} · {totalLabel} · 本页 {result.hits.length} 条{pageHint}</span>
         </div>
       </div>
       {result.groupHeader ? <div className="zy-search-file-header">{result.groupHeader}</div> : null}
@@ -136,9 +159,13 @@ function DetailResults(props: {
         </div>
       ) : <p className="zy-search-empty">{result.scan.complete ? '这个文件没有找到相关命中。' : '扫描尚未完成，当前没有可展示的命中。'}</p>}
       <SearchScanNote complete={result.scan.complete} warnings={result.scan.warnings} />
-      {result.page.hasMore && result.page.nextCursor ? (
-        <button className="zy-btn zy-search-more" type="button" disabled={props.busy} onClick={() => props.onLoadMore(result.page.nextCursor ?? '')}>加载更多命中</button>
-      ) : null}
+      <SearchPagination
+        canPreviousPage={props.canPreviousPage}
+        canNextPage={props.canNextPage}
+        loading={props.busy}
+        onPreviousPage={props.onPreviousPage}
+        onNextPage={props.onNextPage}
+      />
     </div>
   )
 }
