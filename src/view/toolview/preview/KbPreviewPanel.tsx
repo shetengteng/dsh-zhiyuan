@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import type { ReadEntryResult, SearchHit } from '../../types.ts'
 import { CitationTag } from '../../CitationTag.tsx'
 import { matchedExcerptLine } from '../../search/hit-display.ts'
@@ -6,57 +6,21 @@ import { ensureSettingsStyles } from '../../settings/styles.ts'
 import { EntryPreviewContent } from '../../../content/client-api.tsx'
 import type { PreviewController } from './preview-state.ts'
 import { usePreviewState } from './preview-state.ts'
-import { widenPreviewDetailsPanel } from './preview-width.ts'
 
 type DetailsPanelProps = {
   closeDetails?: () => void
   sessionId?: string
 }
 
-const PREVIEW_HEAD_MIN_HEIGHT = 45
-
 export function createKbPreviewPanel(preview: PreviewController) {
   return function KbPreviewPanel(props: DetailsPanelProps) {
     ensureSettingsStyles()
     const previewState = usePreviewState(preview)
     const selectedHit = previewState.selected
-    const panelRef = useRef<HTMLElement>(null)
-    const headRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       preview.activateSession(props.sessionId)
     }, [preview, props.sessionId])
-
-    useEffect(() => {
-      if (!selectedHit || !panelRef.current) return
-      return widenPreviewDetailsPanel(panelRef.current)
-    }, [selectedHit])
-
-    useLayoutEffect(() => {
-      const head = headRef.current
-      const mainHeader = findConversationHeader()
-      if (!head || !mainHeader) return
-
-      const syncHeight = () => {
-        const measuredHeight = Math.round(mainHeader.getBoundingClientRect().height)
-        if (!Number.isFinite(measuredHeight) || measuredHeight < 40 || measuredHeight > 180) return
-        const height = Math.max(PREVIEW_HEAD_MIN_HEIGHT, measuredHeight)
-        head.style.setProperty('height', `${height}px`)
-        head.style.setProperty('min-height', `${height}px`)
-      }
-
-      syncHeight()
-      const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(syncHeight)
-      resizeObserver?.observe(mainHeader)
-      const animationFrame = typeof requestAnimationFrame === 'undefined' ? undefined : requestAnimationFrame(syncHeight)
-
-      return () => {
-        if (animationFrame !== undefined && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(animationFrame)
-        resizeObserver?.disconnect()
-        head.style.removeProperty('height')
-        head.style.removeProperty('min-height')
-      }
-    }, [])
 
     useEffect(() => {
       const onKeyDown = (event: KeyboardEvent) => {
@@ -76,8 +40,8 @@ export function createKbPreviewPanel(preview: PreviewController) {
     const title = selectedHit ? <PreviewTitle hit={selectedHit} /> : '选择引用'
 
     return (
-      <aside ref={panelRef} className="zy-preview-panel" aria-label={selectedHit ? `${fileName(selectedHit.path)} 引用 ${selectedHit.n}` : '预览'}>
-        <div ref={headRef} className="zy-preview-head">
+      <aside className="zy-preview-panel" aria-label={selectedHit ? `${fileName(selectedHit.path)} 引用 ${selectedHit.n}` : '预览'}>
+        <div className="zy-preview-head">
           <div className="zy-preview-head-copy">
             <div className="zy-preview-title">{title}</div>
             {selectedHit ? <PreviewLocation hit={selectedHit} /> : null}
@@ -95,18 +59,6 @@ export function createKbPreviewPanel(preview: PreviewController) {
       </aside>
     )
   }
-}
-
-function findConversationHeader(): HTMLElement | null {
-  const scrollBody = document.querySelector<HTMLElement>('[data-conversation-scroll]')
-  let scope = scrollBody?.parentElement ?? null
-  while (scope) {
-    const header = scope.querySelector('header')
-    if (header instanceof HTMLElement) return header
-    scope = scope.parentElement
-  }
-  const header = document.querySelector('header')
-  return header instanceof HTMLElement ? header : null
 }
 
 function PreviewLocation(props: { hit: SearchHit }) {
