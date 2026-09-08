@@ -1,6 +1,6 @@
-import { CSV_MAX_PATCH_CHANGES, CSV_MAX_PHYSICAL_LINE_BYTES } from '../../identity.ts'
+import { CSV_MAX_PATCH_CHANGES, CSV_MAX_PHYSICAL_LINE_BYTES } from '../../model/constants.ts'
 import type { EntryWriteChange, TableCellChange, TableHeaderChange, TablePatch } from '../api.ts'
-import { KbError } from '../../types.ts'
+import { KbError } from '../../model/types.ts'
 
 const REVISION_PATTERN = /^[a-f0-9]{64}$/u
 

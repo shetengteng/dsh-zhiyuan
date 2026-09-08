@@ -42,7 +42,7 @@ await esbuild.build({
 const innerPath = join(lib, '_client.cjs')
 await esbuild.build({
   absWorkingDir: root,
-  entryPoints: ['src/client/index.ts'],
+  entryPoints: ['src/view/index.ts'],
   outfile: 'lib/_client.cjs',
   bundle: true,
   format: 'cjs',

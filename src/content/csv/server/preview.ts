@@ -1,12 +1,12 @@
-import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../identity.ts'
+import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
 import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../api.ts'
 import { splitPhysicalLines } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
-import { KbError } from '../../../types.ts'
+import { KbError } from '../../../model/types.ts'
 import { createCsvEditorPage, createCsvPreviewWindow } from './csv-document.ts'
 import { readCsvDocument } from './editor.ts'
 import type { EntryReadContext } from '../../host-contract.ts'
-import type { ReadEntryResult } from '../../../types.ts'
+import type { ReadEntryResult } from '../../../model/types.ts'
 
 export async function readCsvPreview(context: EntryReadContext): Promise<ReadEntryResult> {
   let loaded

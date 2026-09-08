@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPreviewRequestManager } from '../src/client/settings/preview/preview-request.ts'
+import { createPreviewRequestManager } from '../src/view/settings/preview/preview-request.ts'
 
 test('新预览请求会取消旧请求并拒绝旧结果写回', () => {
   const manager = createPreviewRequestManager()

@@ -6,7 +6,7 @@ import {
   isFileDrag,
   resolveDroppedSource,
   sourceDisplayName,
-} from '../src/client/settings/drop-source-path.ts'
+} from '../src/view/settings/drop-source-path.ts'
 
 function transfer(input: {
   path?: string

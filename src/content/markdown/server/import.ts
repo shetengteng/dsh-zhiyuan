@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { EntryFormat } from '../../api.ts'
 import { sha256File } from '../../shared/file-hash.ts'
-import { KbError } from '../../../types.ts'
+import { KbError } from '../../../model/types.ts'
 import type { PrepareImportContext } from '../../host-contract.ts'
 import type { PreparedEntry } from '../../shared/ingest-output.ts'
 

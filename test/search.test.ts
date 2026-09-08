@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { createBase } from '../src/bases.ts'
-import { matchedExcerptLine, parseLabeledFields, queryTerms } from '../src/client/search-utils.ts'
-import { searchBase, type SearchRequest, type SearchScanner } from '../src/search/index.ts'
-import { canMergeWindows, groupMatchesByFile } from '../src/search/file-summary.ts'
-import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/types.ts'
-import { KbError } from '../src/types.ts'
+import { createBase } from '../src/service/kb/bases.ts'
+import { matchedExcerptLine, parseLabeledFields, queryTerms } from '../src/view/search/hit-display.ts'
+import { searchBase, type SearchRequest, type SearchScanner } from '../src/service/search/index.ts'
+import { canMergeWindows, groupMatchesByFile } from '../src/service/search/file-summary.ts'
+import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/types.ts'
+import { KbError } from '../src/model/types.ts'
 
 test('命中展示使用实际命中行，而不是上下文第一行', () => {
   assert.equal(matchedExcerptLine({

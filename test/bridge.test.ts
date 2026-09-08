@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/private-rpc-contract.ts'
-import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../src/client/bridge.ts'
+import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/rpc-contract.ts'
+import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../src/view/bridge.ts'
 
 test('私有 bridge：所有设置操作走独立 channel，不需要会话', async () => {
   const calls: Array<{ channel: string; endpoint: string; payload: unknown; signal?: AbortSignal }> = []

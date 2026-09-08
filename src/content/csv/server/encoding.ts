@@ -1,5 +1,5 @@
 import { open } from 'node:fs/promises'
-import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../../../identity.ts'
+import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../../../model/constants.ts'
 import { encodeUtf8CsvWithBom, normalizeCsvNewlines } from '../../shared/utf8.ts'
 import { decodeCsvBytes } from './decode.ts'
 

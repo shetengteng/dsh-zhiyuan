@@ -4,7 +4,7 @@ import type { EntryWriteChange, TableEditorPage } from './api.ts'
 import { CsvPreview } from './csv/client/CsvPreview.tsx'
 import { CsvTextPreview } from './csv/client/CsvTextPreview.tsx'
 import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/MarkdownPreview.tsx'
-import type { ReadEntryResult, TableEntryPreview } from '../client/models.ts'
+import type { ReadEntryResult, TableEntryPreview } from '../model/types.ts'
 
 /** 面向 Client 的编辑器句柄；具体编辑器仍由格式模块私有。 */
 export type EntryEditorHandle = {

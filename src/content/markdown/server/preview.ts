@@ -4,7 +4,7 @@ import { EntryContentKind, EntryFormat } from '../../api.ts'
 import { splitPhysicalLines, truncationFor } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
 import type { EntryReadContext } from '../../host-contract.ts'
-import type { ReadEntryResult } from '../../../types.ts'
+import type { ReadEntryResult } from '../../../model/types.ts'
 
 export async function readMarkdownPreview(context: EntryReadContext): Promise<ReadEntryResult> {
   const bytes = await readFile(context.absolutePath)

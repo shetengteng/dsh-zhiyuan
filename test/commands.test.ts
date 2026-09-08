@@ -4,11 +4,11 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, test } from 'node:test'
-import { createBase } from '../src/bases.ts'
-import { registerKbCommands, resolveIngestTo } from '../src/commands.ts'
-import { COMMAND_NAME } from '../src/identity.ts'
-import { createJobRunner, type JobRunner } from '../src/jobs.ts'
-import { setDataRootForTest } from '../src/paths.ts'
+import { createBase } from '../src/service/kb/bases.ts'
+import { registerKbCommands, resolveImportTo } from '../src/controller/commands.ts'
+import { COMMAND_NAME } from '../src/model/constants.ts'
+import { createJobRunner, type JobRunner } from '../src/platform/jobs.ts'
+import { setDataRootForTest } from '../src/platform/paths.ts'
 
 type CmdResult = { kind: 'success' | 'error'; text?: string }
 type Handler = (input: { rawInput: string }) => Promise<CmdResult>
@@ -74,7 +74,7 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
   test('空输入与 status 返回队列状态', async () => {
     const jobs: JobRunner = {
       enqueue: async (_op, work) => work(),
-      status: () => ({ running: true, op: 'ingest', failed: [{ op: 'ingest', message: 'x', at: 1 }] }),
+      status: () => ({ running: true, op: 'import', failed: [{ op: 'import', message: 'x', at: 1 }] }),
     }
     const { handler } = capture(jobs)
     assert.deepEqual(json(await handler({ rawInput: '' })), jobs.status())
@@ -88,15 +88,15 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
     assert.match(result.text ?? '', /用法/)
   })
 
-  test('ingest 缺 path / --base / --to 分别报错', async () => {
+  test('import 缺 path / --base / --to 分别报错', async () => {
     await withRoot(async (_root, run) => {
-      assert.match((await run('ingest')).text ?? '', /用法/)
-      assert.match((await run('ingest /tmp/a.md')).text ?? '', /必须指定 --base/)
-      assert.match((await run('ingest /tmp/a.md --base work')).text ?? '', /--to|--root/)
+      assert.match((await run('import')).text ?? '', /用法/)
+      assert.match((await run('import /tmp/a.md')).text ?? '', /必须指定 --base/)
+      assert.match((await run('import /tmp/a.md --base work')).text ?? '', /--to|--root/)
     })
   })
 
-  test('ingest 无 --to 时复用上次类目；--root 仍进库根', async () => {
+  test('import 无 --to 时复用上次类目；--root 仍进库根', async () => {
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
       const first = join(root, 'a.md')
@@ -105,42 +105,42 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
       await writeFile(first, 'one')
       await writeFile(second, 'two')
       await writeFile(third, 'three')
-      json(await run(`ingest ${first} --base ${base.id} --to 合同/2024`))
-      const reused = json(await run(`ingest ${second} --base ${base.id}`)) as { copied: string[] }
+      json(await run(`import ${first} --base ${base.id} --to 合同/2024`))
+      const reused = json(await run(`import ${second} --base ${base.id}`)) as { copied: string[] }
       assert.ok(reused.copied.includes('合同/2024/b.md'))
-      const rooted = json(await run(`ingest ${third} --base ${base.id} --root`)) as { copied: string[] }
+      const rooted = json(await run(`import ${third} --base ${base.id} --root`)) as { copied: string[] }
       assert.ok(rooted.copied.includes('c.md'))
     })
   })
 
-  test('ingest --to 入队并拷进类目；源文件不改', async () => {
+  test('import --to 入队并拷进类目；源文件不改', async () => {
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
       const src = join(root, '供应商合同.md')
       await writeFile(src, '条款')
-      const body = json(await run(`ingest ${src} --base ${base.id} --to 合同/2024`)) as { copied: string[] }
+      const body = json(await run(`import ${src} --base ${base.id} --to 合同/2024`)) as { copied: string[] }
       assert.ok(body.copied.includes('合同/2024/供应商合同.md'))
       assert.equal(existsSync(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md')), true)
     })
   })
 
-  test('ingest --root 与 --path；--preserve-tree / --no-create', async () => {
+  test('import --root 与 --path；--preserve-tree / --no-create', async () => {
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
       const src = join(root, 'a.md')
       await writeFile(src, 'hi')
-      const rooted = json(await run(`ingest --path ${src} --base ${base.id} --root`)) as { copied: string[] }
+      const rooted = json(await run(`import --path ${src} --base ${base.id} --root`)) as { copied: string[] }
       assert.ok(rooted.copied.includes('a.md'))
 
       const nested = join(root, 'src', '子', 'b.md')
       await mkdir(join(root, 'src', '子'), { recursive: true })
       await writeFile(nested, 'tree')
-      const preserved = json(await run(`ingest ${join(root, 'src')} --base ${base.id} --to 归档 --preserve-tree`)) as {
+      const preserved = json(await run(`import ${join(root, 'src')} --base ${base.id} --to 归档 --preserve-tree`)) as {
         copied: string[]
       }
       assert.ok(preserved.copied.some((item) => item.includes('子/b.md')))
 
-      const missing = await run(`ingest ${src} --base ${base.id} --to 尚不存在 --no-create`)
+      const missing = await run(`import ${src} --base ${base.id} --to 尚不存在 --no-create`)
       assert.equal(missing.kind, 'error')
       assert.match(missing.text ?? '', /类目不存在/)
     })
@@ -291,14 +291,14 @@ describe('kb call', { concurrency: false }, () => {
     })
   })
 
-  test('call search / ingest 走同一套 Host 函数', async () => {
+  test('call search / import 走同一套 Host 函数', async () => {
     const jobs = createJobRunner()
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
       const src = join(root, 'a.md')
       await writeFile(src, '违约条款')
       const copied = json(await run(callLine({
-        op: 'ingest',
+        op: 'import',
         baseId: base.id,
         sourcePath: src,
         destCategory: '合同/2024',
@@ -340,12 +340,12 @@ describe('kb call', { concurrency: false }, () => {
     }, jobs)
   })
 
-  test('resolveIngestTo：--to 优先，--root 次之，否则上次类目', async () => {
+  test('resolveImportTo：--to 优先，--root 次之，否则上次类目', async () => {
     await withRoot(async (root) => {
       const base = await createTestBase(root)
-      assert.equal(await resolveIngestTo(root, base.id, '合同/2024', false), '合同/2024')
-      assert.equal(await resolveIngestTo(root, base.id, undefined, true), '')
-      await assert.rejects(() => resolveIngestTo(root, base.id, undefined, false), /--to/)
+      assert.equal(await resolveImportTo(root, base.id, '合同/2024', false), '合同/2024')
+      assert.equal(await resolveImportTo(root, base.id, undefined, true), '')
+      await assert.rejects(() => resolveImportTo(root, base.id, undefined, false), /--to/)
     })
   })
 
@@ -358,13 +358,13 @@ describe('kb call', { concurrency: false }, () => {
     assert.equal(disposed, true)
   })
 
-  test('call ingest createMissing=false 时类目不存在则失败', async () => {
+  test('call import createMissing=false 时类目不存在则失败', async () => {
     await withRoot(async (root, run) => {
       const base = await createTestBase(root)
       const src = join(root, 'a.md')
       await writeFile(src, 'x')
       const result = await run(callLine({
-        op: 'ingest',
+        op: 'import',
         baseId: base.id,
         sourcePath: src,
         destCategory: '没有这个',

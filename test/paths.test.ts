@@ -3,8 +3,8 @@ import { mkdtemp, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { assertInside, assertNoSymlinkEscape, expandUserPath, resolveDest, resolveEntry, setDataRootForTest } from '../src/paths.ts'
-import { KbError } from '../src/types.ts'
+import { assertInside, assertNoSymlinkEscape, expandUserPath, resolveDest, resolveEntry, setDataRootForTest } from '../src/platform/paths.ts'
+import { KbError } from '../src/model/types.ts'
 
 const root = '/tmp/zhiyuan-path-root'
 

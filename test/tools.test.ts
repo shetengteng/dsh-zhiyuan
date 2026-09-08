@@ -3,11 +3,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, test } from 'node:test'
-import { createBase } from '../src/bases.ts'
-import { type JobRunner } from '../src/jobs.ts'
-import { setDataRootForTest } from '../src/paths.ts'
-import { VERSION_LABEL } from '../src/identity.ts'
-import { registerKbTools } from '../src/tools.ts'
+import { createBase } from '../src/service/kb/bases.ts'
+import { type JobRunner } from '../src/platform/jobs.ts'
+import { setDataRootForTest } from '../src/platform/paths.ts'
+import { VERSION_LABEL } from '../src/model/constants.ts'
+import { registerKbTools } from '../src/controller/tools.ts'
 
 type ToolDef = {
   name: string
@@ -58,11 +58,11 @@ async function withRoot(fn: (root: string, tools: Map<string, ToolDef>) => Promi
 }
 
 describe('kb tools', { concurrency: false }, () => {
-  test('注册三件套：list / ingest / search', () => {
+  test('注册三件套：list / import / search', () => {
     const tools = capture()
-    assert.deepEqual([...tools.keys()].sort(), ['kb_ingest', 'kb_list_bases', 'kb_search'])
+    assert.deepEqual([...tools.keys()].sort(), ['kb_import', 'kb_list_bases', 'kb_search'])
     assert.equal(tools.get('kb_list_bases')?.isConcurrencySafe?.(), true)
-    assert.deepEqual(tools.get('kb_ingest')?.parameters?.required, ['baseId', 'sourcePath'])
+    assert.deepEqual(tools.get('kb_import')?.parameters?.required, ['baseId', 'sourcePath'])
     const searchParameters = tools.get('kb_search')?.parameters
     assert.deepEqual(searchParameters?.oneOf?.map((item) => item.required), [['baseId', 'query'], ['cursor']])
   })
@@ -83,25 +83,25 @@ describe('kb tools', { concurrency: false }, () => {
     })
   })
 
-  test('kb_ingest：缺参、缺库、成功入队', async () => {
+  test('kb_import：缺参、缺库、成功入队', async () => {
     await withRoot(async (root, tools) => {
-      const ingest = tools.get('kb_ingest')
-      if (!ingest) throw new Error('missing')
-      await assert.rejects(() => ingest.execute({}), /baseId 必填/)
-      await assert.rejects(() => ingest.execute({ baseId: '  ', sourcePath: '/tmp/a.md' }), /baseId 必填/)
-      await assert.rejects(() => ingest.execute({ baseId: 'work' }), /sourcePath 必填/)
-      await assert.rejects(() => ingest.execute({ baseId: 'life', sourcePath: join(root, 'a.md') }), /先建库/)
+      const importTool = tools.get('kb_import')
+      if (!importTool) throw new Error('missing')
+      await assert.rejects(() => importTool.execute({}), /baseId 必填/)
+      await assert.rejects(() => importTool.execute({ baseId: '  ', sourcePath: '/tmp/a.md' }), /baseId 必填/)
+      await assert.rejects(() => importTool.execute({ baseId: 'work' }), /sourcePath 必填/)
+      await assert.rejects(() => importTool.execute({ baseId: 'life', sourcePath: join(root, 'a.md') }), /先建库/)
       const base = await createBase(root, { title: '工作库', description: '描述' })
       const src = join(root, 'a.md')
       await writeFile(src, 'hello')
-      const result = await ingest.execute({
+      const result = await importTool.execute({
         baseId: base.id,
         sourcePath: src,
         destCategory: '合同/2024',
       }) as { copied: string[]; skipped: number; failed: number }
       assert.ok(result.copied.includes('合同/2024/a.md'))
-      assert.match(ingest.output.render({}, result)[0].text, /导入 1/)
-      assert.match(ingest.output.render({}, {})[0].text, /导入 0 · 跳过 0 · 失败 0/)
+      assert.match(importTool.output.render({}, result)[0].text, /导入 1/)
+      assert.match(importTool.output.render({}, {})[0].text, /导入 0 · 跳过 0 · 失败 0/)
     })
   })
 
@@ -173,14 +173,14 @@ describe('kb tools', { concurrency: false }, () => {
     })
   })
 
-  test('kb_ingest 把 KbError 转成普通 Error', async () => {
+  test('kb_import 把 KbError 转成普通 Error', async () => {
     await withRoot(async (root, tools) => {
-      const ingest = tools.get('kb_ingest')
-      if (!ingest) throw new Error('missing')
+      const importTool = tools.get('kb_import')
+      if (!importTool) throw new Error('missing')
       const base = await createBase(root, { title: '工作库', description: '描述' })
       await assert.rejects(async () => {
         try {
-          await ingest.execute({
+          await importTool.execute({
             baseId: base.id,
             sourcePath: srcMissing(root),
             destCategory: '../life',

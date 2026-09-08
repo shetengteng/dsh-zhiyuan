@@ -5,9 +5,9 @@ import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPa
 import type { SourceFormat, EntryFormat as EntryFormatValue } from './api.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
-import type { ReadEntryResult } from '../types.ts'
+import type { ReadEntryResult } from '../model/types.ts'
 import type { TableEditorPage } from './api.ts'
-import { KbError } from '../types.ts'
+import { KbError } from '../model/types.ts'
 
 type SourceRoute = {
   format: SourceFormat

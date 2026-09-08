@@ -10,7 +10,7 @@ Zhiyuan (DSH Knowledge Base): let the AI find answers in the documents you desig
 | Settings entry | Zhiyuan (知源) |
 | Package        | `dsh-zhiyuan`  |
 
-One npm package, one install: Host (create / ingest / search) + Web workbench. Target runtime **DSH `0.1.2-rc.1`**.
+One npm package, one install: Host (create / import / search) + Web workbench. Target runtime **DSH `0.1.2-rc.1`**.
 
 [中文](./README.md)
 
@@ -18,10 +18,10 @@ One npm package, one install: Host (create / ingest / search) + Web workbench. T
 
 You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and a numeric excerpt id, which the current chat model uses to write the answer.
 
-- **Source text lives in folders only.** Ingest copies files. It does not store external links, and it does not write full text into a database.
+- **Source text lives in folders only.** Import copies files. It does not store external links, and it does not write full text into a database.
 - **A category is a subdirectory.** Example: `bases/<uuid>/合同/2024/供应商合同.md`.
 - **Select a base, then search.** If the user does not name a base, the model must list bases and pick one `baseId`. Scanning every base is forbidden.
-- **Offline.** Ingest and search do not use the network. A complete natural-language answer still depends on having a local model.
+- **Offline.** Import and search do not use the network. A complete natural-language answer still depends on having a local model.
 
 The workbench mounts on the left of Settings as `settings.section` (`id: knowledge`, label「知源」). The narrow plugin config card is not a second workbench.
 
@@ -30,11 +30,11 @@ The workbench mounts on the left of Settings as `settings.section` (`id: knowled
 | Not in this MVP                                   | Why                                                                                 |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | SQLite FTS / chunked index                        | Personal scale greps in place; reopen around ~2000 docs or when ranking is required |
-| Auto-pick / auto-create / auto-classify on ingest | A wrong base means the funnel never finds the file                                  |
+| Auto-pick / auto-create / auto-classify on import | A wrong base means the funnel never finds the file                                  |
 | PDF / DOCX / watched source folders               | First version commits to md/txt only                                                |
 | Remote embeddings / fake vectors / `kb_ask`       | Breaks offline; not this phase                                                      |
 | Top-level sidebar「知识库」, conversation chips   | No official seat, or it would grow a second admin UI                                |
-| Treating project `grep` as knowledge-base search  | Repo search ≠ ingested documents                                                    |
+| Treating project `grep` as knowledge-base search  | Repo search ≠ imported documents                                                    |
 
 A later engine swap (FTS) must not change tool names, the “select a base first” funnel, or the rule that hits must carry citations.
 
@@ -84,15 +84,15 @@ Base card fields: `id` / `title` / `description` / `aliases`. The system generat
 
 ## How to use
 
-1. **Create a base**: Settings → Zhiyuan → New. Title and description are required; titles must be unique, and the system generates the UUID; aliases are optional (e.g.「工作」「公司」). The ingest path never creates a base.
-2. **Ingest**: Provide an existing `baseId` and category `destCategory` (empty = base root). Missing categories create folders; a missing base fails. The source path is read-only and is not modified.
+1. **Create a base**: Settings → Zhiyuan → New. Title and description are required; titles must be unique, and the system generates the UUID; aliases are optional (e.g.「工作」「公司」). The import path never creates a base.
+2. **Import**: Provide an existing `baseId` and category `destCategory` (empty = base root). Missing categories create folders; a missing base fails. The source path is read-only and is not modified.
 3. **Ask**: Ask about facts in the library. The model should call `kb_list_bases`, then one `kb_search`. With no hits it must not say “according to the knowledge base”.
 4. **Trial search**: The workbench search box calls search directly, without the model, to confirm it still works offline.
 
 Slash commands (same fields as the tools):
 
 ```text
-/kb ingest <path> --base <id> --to <destCategory>
+/kb import <path> --base <id> --to <destCategory>
 /kb status
 ```
 
@@ -103,10 +103,10 @@ If `--to` is omitted, reuse that base’s last category; otherwise the command e
 | Tool            | Role                                                                                                            |
 | --------------- | --------------------------------------------------------------------------------------------------------------- |
 | `kb_list_bases` | List bases: id / title / description / aliases / category names / approx. doc count. No filenames, no body text |
-| `kb_ingest`     | Copy into an existing base. `baseId` and `sourcePath` required; `destCategory` required in meaning              |
+| `kb_import`     | Copy into an existing base. `baseId` and `sourcePath` required; `destCategory` required in meaning              |
 | `kb_search`     | Scan only the named base. Missing `baseId` fails validation. Prefer 3–8 `aliases`, one OR query                 |
 
-Skill hard rules: if no base is named, list first; if two bases fit, ask the user; expand query terms only once; project `grep` / `glob` is not knowledge-base search; never invent a new base on ingest.
+Skill hard rules: if no base is named, list first; if two bases fit, ask the user; expand query terms only once; project `grep` / `glob` is not knowledge-base search; never invent a new base on import.
 
 Hit cards in the conversation show path, excerpt, and a numeric id tag. Answers use Markdown inline code for citation ids (for example, `1`). Opening a card shows a read-only Markdown preview in DSH's right details column: no edits, and it does not jump to Settings.
 
@@ -123,12 +123,12 @@ After install, at least confirm:
 Happy path (product acceptance):
 
 1. Create the “工作库” base, aliases: 工作, 公司. The system generates its UUID. Description must say this library is for clauses and meeting notes, not personal bills.
-2. Ingest a local contract markdown into category `合同/2024` (the folder may not exist yet).
+2. Import a local contract markdown into category `合同/2024` (the folder may not exist yet).
 3. Disk path is `bases/<uuid>/合同/2024/…`; the source file is unchanged.
 4. Ask about a termination clause: the model lists bases, then calls `kb_search` with the returned `baseId`; hits include line numbers.
-5. Unplug the network: ingest again and trial-search again; both still succeed.
+5. Unplug the network: import again and trial-search again; both still succeed.
 
-Must fail: ingest into a missing base; `destCategory` with `..` or an absolute path; `kb_search` without `baseId`; a single file over 5 MB (that file fails, others may continue); search on an empty base returns an empty list.
+Must fail: import into a missing base; `destCategory` with `..` or an absolute path; `kb_search` without `baseId`; a single file over 5 MB (that file fails, others may continue); search on an empty base returns an empty list.
 
 ## Disable and uninstall
 

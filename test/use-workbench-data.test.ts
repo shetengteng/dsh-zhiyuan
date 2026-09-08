@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { pickWorkbenchBaseId } from '../src/client/settings/use-workbench-data.ts'
-import type { BaseSummary } from '../src/types.ts'
+import { pickWorkbenchBaseId } from '../src/view/settings/use-workbench-data.ts'
+import type { BaseSummary } from '../src/model/types.ts'
 
 function summary(id: string, lastUsed = false): BaseSummary {
   return {

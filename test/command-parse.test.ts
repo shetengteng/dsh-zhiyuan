@@ -1,25 +1,25 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { flagBool, flagString, parseFlags, splitAliases, tokenize } from '../src/command-parse.ts'
+import { flagBool, flagString, parseFlags, splitAliases, tokenize } from '../src/controller/command-parse.ts'
 
 test('tokenize：空白、双引号、单引号、未闭合当普通词', () => {
   assert.deepEqual(tokenize(''), [])
-  assert.deepEqual(tokenize('  ingest  /tmp/a.md  '), ['ingest', '/tmp/a.md'])
-  assert.deepEqual(tokenize('ingest "/tmp/合同 2024.md" --base work'), [
-    'ingest',
+  assert.deepEqual(tokenize('  import  /tmp/a.md  '), ['import', '/tmp/a.md'])
+  assert.deepEqual(tokenize('import "/tmp/合同 2024.md" --base work'), [
+    'import',
     '/tmp/合同 2024.md',
     '--base',
     'work',
   ])
-  assert.deepEqual(tokenize("ingest '/tmp/a b.md' --to 合同"), ['ingest', '/tmp/a b.md', '--to', '合同'])
+  assert.deepEqual(tokenize("import '/tmp/a b.md' --to 合同"), ['import', '/tmp/a b.md', '--to', '合同'])
   assert.deepEqual(tokenize('call {"op":"list"}'), ['call', '{"op":"list"}'])
 })
 
 test('parseFlags：首个非 flag 是 sub，其余进 rest / flags', () => {
   assert.deepEqual(parseFlags([]), { sub: '', rest: [], flags: {} })
   assert.deepEqual(parseFlags(['status']), { sub: 'status', rest: [], flags: {} })
-  const parsed = parseFlags(['ingest', '/tmp/a.md', '--base', 'work', '--to', '合同/2024', '--preserve-tree'])
-  assert.equal(parsed.sub, 'ingest')
+  const parsed = parseFlags(['import', '/tmp/a.md', '--base', 'work', '--to', '合同/2024', '--preserve-tree'])
+  assert.equal(parsed.sub, 'import')
   assert.deepEqual(parsed.rest, ['/tmp/a.md'])
   assert.equal(parsed.flags.base, 'work')
   assert.equal(parsed.flags.to, '合同/2024')
@@ -27,7 +27,7 @@ test('parseFlags：首个非 flag 是 sub，其余进 rest / flags', () => {
 })
 
 test('parseFlags：下一个也是 -- 则当前 flag 为 true；连续布尔 flag', () => {
-  const parsed = parseFlags(['ingest', '--root', '--no-create', '--base', 'work'])
+  const parsed = parseFlags(['import', '--root', '--no-create', '--base', 'work'])
   assert.equal(parsed.flags.root, true)
   assert.equal(parsed.flags['no-create'], true)
   assert.equal(parsed.flags.base, 'work')

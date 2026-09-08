@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { SearchFileDetailPage, SearchFileDetailResult, SearchFileSummary, SearchHit, SearchOverviewPage, SearchOverviewResult } from '../src/types.ts'
+import type { SearchFileDetailPage, SearchFileDetailResult, SearchFileSummary, SearchHit, SearchOverviewPage, SearchOverviewResult } from '../src/model/types.ts'
 import {
   appendSearchPage,
   appendSearchPageHistory,
@@ -11,7 +11,7 @@ import {
   getSearchPage,
   SEARCH_PAGE_SIZE,
   selectSearchPage,
-} from '../src/client/search/search-pages.ts'
+} from '../src/view/search/search-pages.ts'
 
 const query = { terms: ['供应商'], aliases: [] }
 const scan = { complete: true, warnings: [] }

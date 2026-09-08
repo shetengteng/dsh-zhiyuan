@@ -92,7 +92,7 @@ dsh web
 斜杠命令（与工具同一套字段）：
 
 ```text
-/kb ingest <path> --base <id> --to <destCategory>
+/kb import <path> --base <id> --to <destCategory>
 /kb status
 ```
 
@@ -103,7 +103,7 @@ dsh web
 | 工具            | 作用                                                                    |
 | --------------- | ----------------------------------------------------------------------- |
 | `kb_list_bases` | 列库：id / 标题 / 描述 / 别名 / 类目名 / 约多少篇。不含文件名、不含正文 |
-| `kb_ingest`     | 拷进已有库。`baseId`、`sourcePath` 必填；`destCategory` 语义必填        |
+| `kb_import`     | 拷进已有库。`baseId`、`sourcePath` 必填；`destCategory` 语义必填        |
 | `kb_search`     | 只扫指定库。不带 `baseId` 则校验失败。`aliases` 建议 3～8 个，一次 OR   |
 
 Skill 硬规则：没点名库先列库，两个都像就问人；换词只做一次；当前项目里的 `grep` / `glob` 不算知识库检索；禁止猜一个新库再导入。
@@ -128,7 +128,7 @@ Skill 硬规则：没点名库先列库，两个都像就问人；换词只做�
 4. 问违约条款：模型先列库，再用返回的 `baseId` 调 `kb_search`；命中带行号。
 5. 拔网线：再导入、再试搜，仍成功。
 
-必须失败：ingest 到不存在的库；`destCategory` 含 `..` 或绝对路径；`kb_search` 不带 `baseId`；单文件超过 5 MB（该文件失败，其他可继续）；空库搜索返回空列表。
+必须失败：import 到不存在的库；`destCategory` 含 `..` 或绝对路径；`kb_search` 不带 `baseId`；单文件超过 5 MB（该文件失败，其他可继续）；空库搜索返回空列表。
 
 ## 停用与卸载
 

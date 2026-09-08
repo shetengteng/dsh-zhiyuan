@@ -3,9 +3,11 @@ import { mkdtemp, readFile, rm, writeFile, mkdir, symlink } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, deleteBase, deleteEntry, listBases, listTree, readEntry, updateBase, writeEntryContent } from '../src/bases.ts'
-import { ingest } from '../src/ingest.ts'
-import { KbError } from '../src/types.ts'
+import { listBases, listTree } from '../src/service/kb/base-tree.ts'
+import { createBase, deleteBase, updateBase } from '../src/service/kb/bases.ts'
+import { deleteEntry, readEntry, writeEntryContent } from '../src/service/kb/entry.ts'
+import { importFiles } from '../src/service/kb/import.ts'
+import { KbError } from '../src/model/types.ts'
 
 async function sandbox(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'zy-base-'))
@@ -111,7 +113,7 @@ test('导入路径不调 createBase：缺库报错', async () => {
   const root = await sandbox()
   const src = join(root, 'src.md')
   await writeFile(src, 'hello')
-  await assert.rejects(() => ingest(root, {
+  await assert.rejects(() => importFiles(root, {
     baseId: 'life',
     sourcePath: src,
     destCategory: '合同/2024',

@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { EntryPageContext, EntryWriteContext } from '../../host-contract.ts'
 import type { TableEditorPage } from '../../api.ts'
-import { KbError } from '../../../types.ts'
+import { KbError } from '../../../model/types.ts'
 
 /** Markdown 写入唯一入口：只接受整文件替换。 */
 export async function writeMarkdownContent(context: EntryWriteContext): Promise<void> {

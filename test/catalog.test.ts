@@ -13,8 +13,8 @@ import {
   removeBase,
   upsertBase,
   writeCatalog,
-} from '../src/catalog.ts'
-import { DEFAULT_MAX_BASE_BYTES, DEFAULT_MAX_FILE_BYTES } from '../src/identity.ts'
+} from '../src/service/kb/catalog.ts'
+import { DEFAULT_MAX_BASE_BYTES, DEFAULT_MAX_FILE_BYTES } from '../src/model/constants.ts'
 
 test('emptyCatalog 默认 prefs', () => {
   const catalog = emptyCatalog()

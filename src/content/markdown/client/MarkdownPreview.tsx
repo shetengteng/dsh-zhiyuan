@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import type { TextEntryPreview } from '../../../client/models.ts'
+import type { TextEntryPreview } from '../../../model/types.ts'
 import { MdEditor, type MdEditorHandle } from './MarkdownEditor.tsx'
 
 export type MarkdownPreviewProps = {

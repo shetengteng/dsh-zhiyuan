@@ -3,10 +3,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createJobRunner } from '../src/jobs.ts'
-import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/private-rpc-contract.ts'
-import { registerKnowledgePrivateRpc } from '../src/private-rpc.ts'
-import { setDataRootForTest } from '../src/paths.ts'
+import { createJobRunner } from '../src/platform/jobs.ts'
+import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/rpc-contract.ts'
+import { registerKnowledgePrivateRpc } from '../src/controller/private-rpc.ts'
+import { setDataRootForTest } from '../src/platform/paths.ts'
 
 test('私有 RPC：只登记 loopback 通道，并分发操作和任务状态', { concurrency: false }, async () => {
   const dataRoot = await mkdtemp(join(tmpdir(), 'zy-private-rpc-'))
