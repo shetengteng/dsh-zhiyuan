@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
 import type { BaseSummary, JobStatus, Prefs, TreeNode } from '../types.ts'
 
@@ -30,6 +30,14 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState<WorkbenchNotice | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const call = (payload: Record<string, unknown>, signal?: AbortSignal) => callKnowledgeHost(connection, payload, signal)
 
@@ -38,17 +46,23 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
     setNotice(null)
     try {
       const list = await call({ op: 'list' }) as BaseSummary[]
+      if (!mountedRef.current) return
       setBases(list)
       const nextBaseId = pickWorkbenchBaseId(list, baseId || currentBaseId)
       setCurrentBaseId(nextBaseId)
-      if (nextBaseId) setTree(await call({ op: 'tree', id: nextBaseId }) as TreeNode[])
-      else setTree([])
-      setPrefs(await call({ op: 'prefs' }) as Prefs)
-      setJob(await getKnowledgeJobStatus(connection) as JobStatus)
+      const nextTree = nextBaseId ? await call({ op: 'tree', id: nextBaseId }) as TreeNode[] : []
+      if (!mountedRef.current) return
+      setTree(nextTree)
+      const nextPrefs = await call({ op: 'prefs' }) as Prefs
+      if (!mountedRef.current) return
+      setPrefs(nextPrefs)
+      const nextJob = await getKnowledgeJobStatus(connection) as JobStatus
+      if (!mountedRef.current) return
+      setJob(nextJob)
     } catch (err) {
-      setNotice({ tone: 'error', text: err instanceof Error ? err.message : String(err) })
+      if (mountedRef.current) setNotice({ tone: 'error', text: err instanceof Error ? err.message : String(err) })
     } finally {
-      setPending(false)
+      if (mountedRef.current) setPending(false)
     }
   }
 
@@ -57,13 +71,15 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
     setPending(true)
     try {
       const value = await work()
+      if (!mountedRef.current) return
       options?.onSuccess?.()
       await refresh(currentBaseId)
+      if (!mountedRef.current) return
       options?.after?.(value)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      if (mountedRef.current) setError(err instanceof Error ? err.message : String(err))
     } finally {
-      setPending(false)
+      if (mountedRef.current) setPending(false)
     }
   }
 

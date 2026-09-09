@@ -1,8 +1,8 @@
 import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
 import { createPreviewController, type PreviewSelection } from './toolview/preview/preview-state.ts'
-import { PACKAGE_NAME, SECTION_ID, SECTION_LABEL, SECTION_ORDER } from '../model/constants.ts'
-import { createSettingsSection } from './settings/SettingsSection.tsx'
+import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL } from '../model/constants.ts'
+import { createFooterAction } from './FooterAction.tsx'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './payload/read-entry.ts'
 import { disposeSettingsStyles } from './settings/styles.ts'
@@ -39,15 +39,15 @@ export function apply(ctx: {
   const preview = createPreviewController(ctx.layout, loadPreview)
   const KbSearchView = createKbSearchView(preview, ctx.connection)
   const KbPreviewPanel = createKbPreviewPanel(preview)
-  const SettingsSection = createSettingsSection(ctx.connection)
+  const FooterAction = createFooterAction(ctx.connection)
 
-  ctx.slots.inject('settings.section', () => ctx.slots.register({
-    name: 'settings.section',
-    id: SECTION_ID,
-    order: SECTION_ORDER,
+  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: FOOTER_ACTION_ID,
+    order: FOOTER_ACTION_ORDER,
     label: () => SECTION_LABEL,
     registrant: PACKAGE_NAME,
-  }, SettingsSection))
+  }, FooterAction))
 
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
     name: 'tool.call.toolview',

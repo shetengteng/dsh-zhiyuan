@@ -49,7 +49,12 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     const currentBase = bases.find((item) => item.id === currentBaseId)
     const run = <T,>(work: () => Promise<T>, after?: (value: T) => void) => runWork(work, { onSuccess: () => setDialog(null), after })
 
-    useEffect(() => { void refresh() }, [])
+    useEffect(() => {
+      void refresh()
+      return () => {
+        searchRequestVersion.current += 1
+      }
+    }, [])
 
     const resetSearch = () => {
       searchRequestVersion.current += 1
