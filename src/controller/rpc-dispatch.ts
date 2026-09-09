@@ -10,7 +10,7 @@ import { deleteEntry, readEntry, readEntryPage, writeEntryContent } from '../ser
 import { buildImportInput, importFiles } from '../service/kb/import.ts'
 import { importDroppedBytes } from '../service/kb/import-drop.ts'
 import { pickSource } from '../service/kb/pick-file.ts'
-import { searchBase } from '../service/search/index.ts'
+import { searchKnowledgeBase } from './search-operation.ts'
 import { asRecord, hasField, optionalBoolean, optionalPositiveInteger, optionalString, optionalStringArray, readPreviewOptions, requireString, type JsonRecord } from './rpc-input.ts'
 
 const MAX_PREF_FILE_BYTES = 1024 * 1024 * 1024
@@ -109,12 +109,12 @@ export async function executeKnowledgeOperation(payload: unknown, jobs: JobRunne
     }
     case 'search': {
       if (hasField(data, 'cursor')) {
-        return searchBase(dataRoot, {
+        return searchKnowledgeBase(dataRoot, {
           cursor: requireString(data, 'cursor'),
           ...(optionalPositiveInteger(data, 'limit') === undefined ? {} : { limit: optionalPositiveInteger(data, 'limit') }),
         })
       }
-      return searchBase(dataRoot, {
+      return searchKnowledgeBase(dataRoot, {
         baseId: requireString(data, 'baseId'),
         query: requireString(data, 'query'),
         aliases: optionalStringArray(data, 'aliases'),

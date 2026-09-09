@@ -1,4 +1,4 @@
-import { EntryFormat, SourceFormat } from '../api.ts'
+import { EntryFormat, SourceFormat } from '../../model/content-contract.ts'
 import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } from '../host-contract.ts'
 import { prepareMarkdownImport } from './server/import.ts'
 import { readMarkdownPreview } from './server/preview.ts'

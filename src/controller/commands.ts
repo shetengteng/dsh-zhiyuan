@@ -3,7 +3,8 @@ import { lastDestCategory } from '../service/kb/catalog.ts'
 import { importFiles, buildImportInput } from '../service/kb/import.ts'
 import type { JobRunner } from '../platform/jobs.ts'
 import { resolveDataRoot } from '../platform/paths.ts'
-import { searchBase, type SearchRequest } from '../service/search/index.ts'
+import type { SearchRequest } from '../service/search/index.ts'
+import { searchKnowledgeBase } from './search-operation.ts'
 import { flagBool, flagString, parseFlags, splitAliases, tokenize } from './command-parse.ts'
 import { KbError } from '../model/types.ts'
 import { executeKnowledgeOperation } from './rpc-dispatch.ts'
@@ -93,7 +94,7 @@ export function registerKbCommands(
         if (parsed.sub === 'call') return ok(await handleCall(parsed.rest.join(' '), jobs))
         if (parsed.sub === 'search') {
           const dataRoot = await resolveDataRoot()
-          return ok(await searchBase(dataRoot, buildSearchRequest(parsed.rest, parsed.flags)))
+          return ok(await searchKnowledgeBase(dataRoot, buildSearchRequest(parsed.rest, parsed.flags)))
         }
         return { kind: 'error', text: '用法：/kb import <path> --base <id> --to <类目> 或 /kb status' }
       } catch (error) {

@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Modal } from '../dialogs/Modal.tsx'
 import type { ReadEntryResult } from '../../types.ts'
 import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/client-api.tsx'
-import type { EntryWriteChange, TableEditorPage } from '../../../content/api.ts'
+import type { EntryWriteChange, TableEditorPage } from '../../../model/content-contract.ts'
 import { Note } from '../dialogs/BaseDialogs.tsx'
 
 export type PreviewDialogProps = {

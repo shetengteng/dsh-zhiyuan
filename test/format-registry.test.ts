@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EntryFormat, SourceFormat } from '../src/content/api.ts'
+import { EntryFormat, SourceFormat } from '../src/model/content-contract.ts'
 import { contentRegistry } from '../src/content/host-api.ts'
 
 test('内容 registry 是导入、库内条目和搜索 glob 的唯一 M0 路由来源', () => {

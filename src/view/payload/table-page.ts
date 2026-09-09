@@ -1,4 +1,4 @@
-import type { TableEditorPage } from '../../content/api.ts'
+import type { TableEditorPage } from '../../model/content-contract.ts'
 import { isTableWindowData } from './read-entry.ts'
 
 function isTableEditorPage(value: unknown): value is TableEditorPage {

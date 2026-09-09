@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase } from '../src/service/kb/bases.ts'
+import { createBase, markUsed, requireBase } from '../src/service/kb/bases.ts'
 import { readEntry, readEntryPage, writeEntryContent } from '../src/service/kb/entry.ts'
 import { readCatalog, writeCatalog } from '../src/service/kb/catalog.ts'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/model/constants.ts'
@@ -11,10 +11,23 @@ import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
 import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 import { createCsvSearchDocument } from '../src/content/csv/server/search-excerpt.ts'
 import { importFiles } from '../src/service/kb/import.ts'
-import { searchBase, type SearchRequest } from '../src/service/search/index.ts'
-import type { SearchFileDetailResult, SearchOverviewResult } from '../src/model/types.ts'
+import { searchBase as searchBaseWithAccess, type SearchRequest } from '../src/service/search/index.ts'
+import type { SearchBaseAccess } from '../src/service/search/base-access.ts'
+import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/types.ts'
 import { KbError } from '../src/model/types.ts'
 import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
+
+function createSearchBaseAccess(dataRoot: string): SearchBaseAccess {
+  return {
+    ensureBase: (baseId) => requireBase(dataRoot, baseId),
+    markBaseUsed: (baseId) => markUsed(dataRoot, baseId),
+  }
+}
+
+async function searchBase(dataRoot: string, input: SearchRequest): Promise<SearchResult> {
+  return searchBaseWithAccess(dataRoot, input, createSearchBaseAccess(dataRoot))
+}
+
 async function sandbox(prefix = 'zy-csv-'): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }

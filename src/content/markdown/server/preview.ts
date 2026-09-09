@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { EntryContentKind, EntryFormat } from '../../api.ts'
+import { EntryContentKind, EntryFormat } from '../../../model/content-contract.ts'
 import { splitPhysicalLines, truncationFor } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
 import type { EntryReadContext } from '../../host-contract.ts'

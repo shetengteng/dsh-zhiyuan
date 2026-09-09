@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFile, rename, rm, stat, writeFile } from 'node:fs/promises'
-import type { EntryFormat } from '../api.ts'
+import type { EntryFormat } from '../../model/content-contract.ts'
 import { sha256File } from './file-hash.ts'
 
 export type PreparedContent =

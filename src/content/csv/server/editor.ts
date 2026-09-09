@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { CSV_MAX_IMPORT_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
 import { stripUtf8Bom } from '../../shared/utf8.ts'
-import type { TableEditorPage } from '../../api.ts'
+import type { TableEditorPage } from '../../../model/content-contract.ts'
 import type { EntryPageContext } from '../../host-contract.ts'
 import { KbError } from '../../../model/types.ts'
 import { createCsvEditorPage, parseCsvDocument, type CsvDocument } from './csv-document.ts'

@@ -2,11 +2,11 @@ import { extname } from 'node:path'
 import { csvContentFormat } from './csv/index.ts'
 import { markdownContentFormat } from './markdown/index.ts'
 import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPathContext, EntryReadContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
-import type { SourceFormat, EntryFormat as EntryFormatValue } from './api.ts'
+import type { SourceFormat, EntryFormat as EntryFormatValue } from '../model/content-contract.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../model/types.ts'
-import type { TableEditorPage } from './api.ts'
+import type { TableEditorPage } from '../model/content-contract.ts'
 import { KbError } from '../model/types.ts'
 
 type SourceRoute = {

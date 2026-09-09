@@ -1,5 +1,5 @@
 import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
-import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../api.ts'
+import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../../model/content-contract.ts'
 import { splitPhysicalLines } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
 import { KbError } from '../../../model/types.ts'

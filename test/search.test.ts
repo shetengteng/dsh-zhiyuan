@@ -3,12 +3,28 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { createBase } from '../src/service/kb/bases.ts'
+import { createBase, markUsed, requireBase } from '../src/service/kb/bases.ts'
 import { matchedExcerptLine, parseLabeledFields, queryTerms } from '../src/view/search/hit-display.ts'
-import { searchBase, type SearchRequest, type SearchScanner } from '../src/service/search/index.ts'
+import { searchBase as searchBaseWithAccess, type SearchRequest, type SearchScanner } from '../src/service/search/index.ts'
+import type { SearchBaseAccess } from '../src/service/search/base-access.ts'
 import { canMergeWindows, groupMatchesByFile } from '../src/service/search/file-summary.ts'
 import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/types.ts'
 import { KbError } from '../src/model/types.ts'
+
+function createSearchBaseAccess(dataRoot: string): SearchBaseAccess {
+  return {
+    ensureBase: (baseId) => requireBase(dataRoot, baseId),
+    markBaseUsed: (baseId) => markUsed(dataRoot, baseId),
+  }
+}
+
+async function searchBase(
+  dataRoot: string,
+  input: SearchRequest,
+  scanner?: SearchScanner,
+): Promise<SearchResult> {
+  return searchBaseWithAccess(dataRoot, input, createSearchBaseAccess(dataRoot), scanner)
+}
 
 test('命中展示使用实际命中行，而不是上下文第一行', () => {
   assert.equal(matchedExcerptLine({

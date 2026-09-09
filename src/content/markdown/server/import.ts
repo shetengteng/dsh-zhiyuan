@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises'
-import { EntryFormat } from '../../api.ts'
+import { EntryFormat } from '../../../model/content-contract.ts'
 import { sha256File } from '../../shared/file-hash.ts'
 import { KbError } from '../../../model/types.ts'
 import type { PrepareImportContext } from '../../host-contract.ts'

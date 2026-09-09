@@ -1,4 +1,3 @@
-import { markUsed } from '../kb/bases.ts'
 import { KbError } from '../../model/types.ts'
 import type { SearchResult } from '../../model/search-result.ts'
 import { encodeSearchCursor, cursorQueryFromSearch, decodeSearchCursor } from './pagination.ts'
@@ -7,25 +6,29 @@ import { searchOverview } from './overview-search.ts'
 import { normalizeCursorQuery, normalizeSearchRequest, type SearchRequest } from './search-input.ts'
 import { resolveSearchScope } from './search-scope.ts'
 import { createRipgrepScanner, type SearchScanner } from './scanner/index.ts'
+import type { SearchBaseAccess } from './base-access.ts'
 
 export async function searchBase(
   dataRoot: string,
   input: SearchRequest,
+  baseAccess: SearchBaseAccess,
   scanner: SearchScanner = createRipgrepScanner(),
 ): Promise<SearchResult> {
   const request = normalizeSearchRequest(input)
   const result = request.mode === 'initial'
-    ? await searchInitial(dataRoot, request, scanner)
-    : await searchContinue(dataRoot, request.cursor, request.limit, scanner)
-  await markUsed(dataRoot, result.baseId)
+    ? await searchInitial(dataRoot, request, baseAccess, scanner)
+    : await searchContinue(dataRoot, request.cursor, request.limit, baseAccess, scanner)
+  await baseAccess.markBaseUsed(result.baseId)
   return result
 }
 
 async function searchInitial(
   dataRoot: string,
   request: Extract<ReturnType<typeof normalizeSearchRequest>, { mode: 'initial' }>,
+  baseAccess: SearchBaseAccess,
   scanner: SearchScanner,
 ): Promise<SearchResult> {
+  await baseAccess.ensureBase(request.baseId)
   const scope = await resolveSearchScope(dataRoot, {
     baseId: request.baseId,
     query: request.query,
@@ -40,8 +43,15 @@ async function searchInitial(
   return addOverviewCursor(output.result, output.nextFileIndex)
 }
 
-async function searchContinue(dataRoot: string, cursor: string, limit: number, scanner: SearchScanner): Promise<SearchResult> {
+async function searchContinue(
+  dataRoot: string,
+  cursor: string,
+  limit: number,
+  baseAccess: SearchBaseAccess,
+  scanner: SearchScanner,
+): Promise<SearchResult> {
   const payload = decodeSearchCursor(cursor)
+  await baseAccess.ensureBase(payload.query.baseId)
   const query = normalizeCursorQuery(payload.query)
   if (payload.scope === 'files') {
     const scope = await resolveSearchScope(dataRoot, { baseId: payload.query.baseId, query, category: payload.query.category })
@@ -81,5 +91,6 @@ function addDetailCursor(result: Extract<SearchResult, { kind: 'file-detail' }>,
   return { ...result, page: { ...result.page, nextCursor: cursor } }
 }
 
+export type { SearchBaseAccess } from './base-access.ts'
 export type { ContinueSearchRequest, InitialSearchRequest, SearchRequest } from './search-input.ts'
 export type { SearchScanner } from './scanner/index.ts'

@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
 import { CSV_PREVIEW_MAX_CHARS, CSV_PREVIEW_MAX_ROWS, SEARCH_CONTEXT } from '../../../model/constants.ts'
-import type { TableEditorPage, TableWindowData, PreviewTruncation } from '../../api.ts'
+import type { TableEditorPage, TableWindowData, PreviewTruncation } from '../../../model/content-contract.ts'
 import { KbError } from '../../../model/types.ts'
 
 type CsvRecordRange = {

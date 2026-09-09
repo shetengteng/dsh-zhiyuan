@@ -1,4 +1,4 @@
-import type { PreviewTruncation } from '../api.ts'
+import type { PreviewTruncation } from '../../model/content-contract.ts'
 
 export type LineWindow = { start: number; end: number }
 

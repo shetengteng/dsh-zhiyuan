@@ -1,4 +1,4 @@
-import { EntryFormat, SourceFormat } from '../api.ts'
+import { EntryFormat, SourceFormat } from '../../model/content-contract.ts'
 import type { ContentFormatModule, EntryFormatHandler, SourceFormatHandler } from '../host-contract.ts'
 import { prepareCsvImport } from './server/import.ts'
 import { readCsvPage } from './server/editor.ts'

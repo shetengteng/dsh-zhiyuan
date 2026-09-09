@@ -1,8 +1,7 @@
 import { existsSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import { requireBase } from '../kb/bases.ts'
 import { contentRegistry } from '../../content/host-api.ts'
-import type { EntryFormat } from '../../content/api.ts'
+import type { EntryFormat } from '../../model/content-contract.ts'
 import { baseDir, assertInside, assertNoSymlinkEscape, resolveDest } from '../../platform/paths.ts'
 import { KbError } from '../../model/types.ts'
 import type { SearchQuery } from '../../model/search-result.ts'
@@ -21,7 +20,6 @@ export async function resolveSearchScope(
   dataRoot: string,
   input: { baseId: string; query: SearchQuery; category?: string; path?: string },
 ): Promise<ResolvedSearchScope> {
-  await requireBase(dataRoot, input.baseId)
   const rootDir = baseDir(dataRoot, input.baseId)
   const category = resolveCategory(rootDir, dataRoot, input.baseId, input.category)
   const categoryRoot = category ? resolveDest(dataRoot, input.baseId, category).absolute : rootDir

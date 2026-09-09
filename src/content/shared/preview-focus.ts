@@ -1,4 +1,4 @@
-import { EntryPreviewView, type EntryPreviewOptions, type PreviewStatus } from '../api.ts'
+import { EntryPreviewView, type EntryPreviewOptions, type PreviewStatus } from '../../model/content-contract.ts'
 
 export type PreviewFocus = {
   view: typeof EntryPreviewView[keyof typeof EntryPreviewView]

@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react'
-import { EntryContentKind } from './api.ts'
-import type { EntryWriteChange, TableEditorPage } from './api.ts'
+import { EntryContentKind } from '../model/content-contract.ts'
+import type { EntryWriteChange, TableEditorPage } from '../model/content-contract.ts'
 import { CsvPreview } from './csv/client/CsvPreview.tsx'
 import { CsvTextPreview } from './csv/client/CsvTextPreview.tsx'
 import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/MarkdownPreview.tsx'

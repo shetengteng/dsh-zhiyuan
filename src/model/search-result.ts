@@ -1,4 +1,4 @@
-import type { EntryFormat } from '../content/api.ts'
+import type { EntryFormat } from './content-contract.ts'
 
 export type SearchHit = {
   n: number

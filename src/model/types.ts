@@ -1,4 +1,4 @@
-import type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from '../content/api.ts'
+import type {  EntryFormat, EntryPreviewView, PreviewStatus, PreviewTruncation, TableWindowData } from './content-contract.ts'
 
 export type CatalogPrefs = {
   defaultBaseId: string
@@ -141,7 +141,7 @@ export class KbError extends Error {
     this.code = code
   }
 }
-export type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from '../content/api.ts'
+export type { EntryContentKind, EntryFormat, EntryPreviewView, EntryWriteChange, PreviewStatus, PreviewTruncation, TableCellChange, TableEditorPage, TableHeaderChange, TablePatch, TableWindowData } from './content-contract.ts'
 
 export type {
   SearchFileDetailPage,

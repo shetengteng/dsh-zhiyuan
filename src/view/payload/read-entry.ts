@@ -1,6 +1,6 @@
 import type { ReadEntryResult } from '../types.ts'
-import type { TableWindowData } from '../../content/api.ts'
-import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../../content/api.ts'
+import type { TableWindowData } from '../../model/content-contract.ts'
+import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../../model/content-contract.ts'
 
 export type LegacyPreviewContext = {
   view?: 'tree' | 'search-hit'

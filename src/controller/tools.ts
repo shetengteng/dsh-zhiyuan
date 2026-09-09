@@ -5,7 +5,7 @@ import { KbError } from '../model/types.ts'
 import { listBases } from '../service/kb/base-tree.ts'
 import { importFiles } from '../service/kb/import.ts'
 import { renderSearchResult, searchPresentationMeta } from '../service/search/result/templates/index.ts'
-import { searchBase } from '../service/search/index.ts'
+import { searchKnowledgeBase } from './search-operation.ts'
 import { asToolRecord, buildToolImportInput, buildToolSearchRequest } from './tool-input.ts'
 import { renderImportResult } from './tool-render.ts'
 
@@ -153,7 +153,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner = createJobRunner(
         const input = asToolRecord(args)
         try {
           const dataRoot = await resolveDataRoot()
-          return await searchBase(dataRoot, buildToolSearchRequest(input))
+          return await searchKnowledgeBase(dataRoot, buildToolSearchRequest(input))
         } catch (error) {
           fail(error)
         }

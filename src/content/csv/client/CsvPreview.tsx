@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TableVirtuoso } from 'react-virtuoso'
-import type { EntryWriteChange, TableEditorPage, TableWindowData } from '../../api.ts'
+import type { EntryWriteChange, TableEditorPage, TableWindowData } from '../../../model/content-contract.ts'
 import type { TableEntryPreview } from '../../../model/types.ts'
 import {
   buildPatch,

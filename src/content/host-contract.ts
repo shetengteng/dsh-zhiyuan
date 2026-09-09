@@ -1,4 +1,4 @@
-import type { EntryPreviewOptions, EntryFormat, EntryWriteChange, SourceFormat, TableEditorPage } from './api.ts'
+import type { EntryPreviewOptions, EntryFormat, EntryWriteChange, SourceFormat, TableEditorPage } from '../model/content-contract.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResult } from '../model/types.ts'
