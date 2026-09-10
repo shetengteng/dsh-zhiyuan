@@ -6,7 +6,7 @@ import { createJobRunner } from './platform/jobs.ts'
 import { clearDataRootCache, resolveDataRoot } from './platform/paths.ts'
 import { FileCatalogRepository } from './repository/kb/file-catalog-repository.ts'
 import { createKnowledgeServices } from './service/kb/knowledge-services.ts'
-import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skills/skill.ts'
+import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skills/zhiyuan-kb/index.ts'
 
 export const name = PACKAGE_NAME
 

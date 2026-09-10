@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 
 const SKILL_RESOURCE_PATH = 'skills/zhiyuan-kb/SKILL.md'
 const SKILL_RESOURCE_URLS = [
-  new URL('./zhiyuan-kb/SKILL.md', import.meta.url),
+  // 源码直跑（node --experimental-strip-types / tsx）时与本文件同目录
+  new URL('./SKILL.md', import.meta.url),
+  // 打包进 lib/index.js 后，资源被复制到 lib/skills/zhiyuan-kb/
   new URL('./skills/zhiyuan-kb/SKILL.md', import.meta.url),
 ]
 const SYSTEM_PROMPT_START = '<!-- dsh:system-prompt:start -->'

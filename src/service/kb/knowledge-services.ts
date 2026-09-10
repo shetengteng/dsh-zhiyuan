@@ -19,7 +19,7 @@ import { getLastDestinationCategory, resolveImportDestination } from './import-d
 import { enqueueKnowledgeImport } from './import-service.ts'
 import { importFiles } from './import.ts'
 import { getPreferences, updatePreferences } from './preferences.ts'
-import { searchKb } from '../search/knowledge-search.ts'
+import { searchKb } from '../search/search-kb.ts'
 import type { SearchKbAccess } from '../search/kb-access.ts'
 
 export type KnowledgeServices = {

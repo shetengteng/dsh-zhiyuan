@@ -6,7 +6,7 @@ import {
   registerZhiyuanSkill,
   ZHIYUAN_PROMPT_SECTION,
   ZHIYUAN_SKILL,
-} from '../src/skills/skill.ts'
+} from '../src/skills/zhiyuan-kb/index.ts'
 
 test('skill 正文锁住检索流程、边界、出处和导入规则', () => {
   const body = ZHIYUAN_SKILL.content

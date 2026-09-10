@@ -10,10 +10,11 @@ import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/model/constants.ts'
 import { KbError } from '../src/model/error/kb-error.ts'
 import type { Catalog } from '../src/model/entity/catalog.ts'
 import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/response/search-response.ts'
+import type { SearchRequest } from '../src/model/request/search-request.ts'
 import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
 import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
 import type { SearchKbAccess } from '../src/service/search/kb-access.ts'
-import { searchKb as searchKbWithAccess, type SearchRequest } from '../src/service/search/index.ts'
+import { searchKb as searchKbWithAccess } from '../src/service/search/search-kb.ts'
 import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 
 const catalogRepository = new FileCatalogRepository()

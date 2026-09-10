@@ -1,3 +1,5 @@
+// 检索用例编排：请求归一化、初始/续页分发、游标编码与库使用标记。
+
 import { KbError } from '../../model/error/kb-error.ts'
 import type { SearchResult } from '../../model/response/search-response.ts'
 import { encodeSearchCursor, cursorQueryFromSearch, decodeSearchCursor } from './pagination.ts'
@@ -90,7 +92,3 @@ function addDetailCursor(result: Extract<SearchResult, { kind: 'file-detail' }>,
   })
   return { ...result, page: { ...result.page, nextCursor: cursor } }
 }
-
-export type { SearchKbAccess } from './kb-access.ts'
-export type { ContinueSearchRequest, InitialSearchRequest, SearchRequest } from './search-input.ts'
-export type { SearchScanner } from './scanner/index.ts'
