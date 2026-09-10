@@ -1,0 +1,43 @@
+package-lock.json
+  s_02b2198c1d2b61::t_c6b45e39128edd 3,9
+package.json
+  s_02b2198c1d2b61::t_4904cc1d5c1eb5 3
+src/model/response/kb-response.ts
+  s_ea761cd1e3c325::t_4aa405d5e4bd3c 1-18
+test/import.test.ts
+  s_fb905e0d27f46a::t_904fe14f745f45 7-19,23-24,28,32-33,38,43,46-47,52,55-56,61,67,72,79,88,91,95,100,108,117,124,127,129,134,137-141,146,148,155
+test/paths.test.ts
+  s_fb905e0d27f46a::t_192b59ef8dfa33 7,35,37,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8d7424d8d58489baccc91e01bd06ba8c1de3c587",
+  "prompts": {},
+  "sessions": {
+    "s_02b2198c1d2b61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a089e6-fb5d-7a32-883d-b3556137882e",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "shetengteng <work_stt@163.com>"
+    },
+    "s_ea761cd1e3c325": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08b2d-39b1-7653-8452-59b085895cf5",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "shetengteng <work_stt@163.com>"
+    },
+    "s_fb905e0d27f46a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a089bb-3613-7471-8324-326293a4f0b9",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "shetengteng <work_stt@163.com>"
+    }
+  }
+}
