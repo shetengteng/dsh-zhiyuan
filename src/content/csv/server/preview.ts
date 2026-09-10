@@ -2,13 +2,13 @@ import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/co
 import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../../model/content-contract.ts'
 import { splitPhysicalLines } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
-import { KbError } from '../../../model/types.ts'
+import { KbError } from '../../../model/error/kb-error.ts'
 import { createCsvEditorPage, createCsvPreviewWindow } from './csv-document.ts'
 import { readCsvDocument } from './editor.ts'
 import type { EntryReadContext } from '../../host-contract.ts'
-import type { ReadEntryResult } from '../../../model/types.ts'
+import type { ReadEntryResponse } from '../../../model/response/entry-response.ts'
 
-export async function readCsvPreview(context: EntryReadContext): Promise<ReadEntryResult> {
+export async function readCsvPreview(context: EntryReadContext): Promise<ReadEntryResponse> {
   let loaded
   try {
     loaded = await readCsvDocument(context.absolutePath, CSV_PREVIEW_MAX_BYTES)
@@ -24,7 +24,7 @@ export async function readCsvPreview(context: EntryReadContext): Promise<ReadEnt
 function csvEditPreview(
   context: EntryReadContext,
   loaded: Awaited<ReturnType<typeof readCsvDocument>>,
-): ReadEntryResult {
+): ReadEntryResponse {
   const table = createCsvEditorPage(loaded.document, 1, TABLE_EDITOR_PAGE_SIZE, loaded.revision)
   const lastRecord = table.windowEndRow ? loaded.document.records[table.windowEndRow - 1] : loaded.document.header
   return {
@@ -45,7 +45,7 @@ function csvEditPreview(
 function csvReadPreview(
   context: EntryReadContext,
   loaded: Awaited<ReturnType<typeof readCsvDocument>>,
-): ReadEntryResult {
+): ReadEntryResponse {
   const lines = splitPhysicalLines(loaded.text)
   const focus = resolvePreviewFocus(lines, loaded.revision, context.options)
   const window = createCsvPreviewWindow(

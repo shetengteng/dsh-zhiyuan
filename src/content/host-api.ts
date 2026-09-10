@@ -6,11 +6,14 @@ export { parseEntryWriteChange } from './shared/table-patch.ts'
 export type {
   EntryPreviewOptions,
   EntryWriteChange,
-  PreviewStatus,
-  PreviewTruncation,
   TableCellChange,
-  TableEditorPage,
   TableHeaderChange,
   TablePatch,
+} from '../model/request/entry-request.ts'
+
+export type {
+  PreviewStatus,
+  PreviewTruncation,
+  TableEditorPage,
   TableWindowData,
-} from '../model/content-contract.ts'
+} from '../model/response/entry-response.ts'

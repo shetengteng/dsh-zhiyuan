@@ -1,4 +1,4 @@
-import type { SearchOverviewResult } from '../../../../model/search-result.ts'
+import type { SearchOverviewResult } from '../../../../model/response/search-response.ts'
 
 type TextBlock = { type: 'text'; text: string }
 
@@ -13,6 +13,9 @@ export function renderOverviewResult(value: unknown): TextBlock[] {
     : result.scan.complete ? '知识库中没有找到相关文件' : '当前扫描未完成，暂未找到可返回的文件'
   const notes: string[] = []
   if (result.page.hasMore) notes.push('当前仅展示文件概览的一页，仍有更多文件。')
+  if (result.page.hasMore && result.page.nextCursor) {
+    notes.push(`下一页 cursor（请原样复制，只传 cursor 和可选 limit）：\`${result.page.nextCursor}\``)
+  }
   if (!result.scan.complete) {
     notes.push('本次扫描未完成，文件数和命中数都是当前已发现的下限。')
     if (result.scan.stopReason) notes.push(`停止原因：${result.scan.stopReason}`)
@@ -24,7 +27,7 @@ export function renderOverviewResult(value: unknown): TextBlock[] {
 export function searchPresentationMeta(value: unknown): JsonRecord {
   const result = asRecord(value)
   if (!result || (result.kind !== 'overview' && result.kind !== 'file-detail')) return {}
-  const keys = ['kind', 'scope', 'baseId', 'category', 'query', 'files', 'totalFiles', 'totalHits', 'page', 'scan', 'path', 'format', 'groupHeader', 'hits', 'presentation']
+  const keys = ['kind', 'scope', 'kbId', 'category', 'query', 'files', 'totalFiles', 'totalHits', 'page', 'scan', 'path', 'format', 'groupHeader', 'hits', 'presentation']
   const meta: JsonRecord = {}
   for (const key of keys) if (Object.prototype.hasOwnProperty.call(result, key)) meta[key] = result[key]
   return meta

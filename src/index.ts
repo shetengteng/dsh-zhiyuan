@@ -1,11 +1,12 @@
-import { createJobRunner } from './platform/jobs.ts'
+import { registerKbCommands } from './controller/command/index.ts'
+import { registerKnowledgePrivateRpc } from './controller/rpc/index.ts'
+import { registerKbTools } from './controller/tool/index.ts'
 import { PACKAGE_NAME } from './model/constants.ts'
-import { setCatalogWarningSink } from './service/kb/catalog.ts'
-import { registerKbCommands } from './controller/commands.ts'
-import { registerKbTools } from './controller/tools.ts'
-import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skills/skill.ts'
+import { createJobRunner } from './platform/jobs.ts'
 import { clearDataRootCache, resolveDataRoot } from './platform/paths.ts'
-import { registerKnowledgePrivateRpc } from './controller/private-rpc.ts'
+import { FileCatalogRepository } from './repository/kb/file-catalog-repository.ts'
+import { createKnowledgeServices } from './service/kb/knowledge-services.ts'
+import { registerZhiyuanPrompt, registerZhiyuanSkill } from './skills/skill.ts'
 
 export const name = PACKAGE_NAME
 
@@ -21,6 +22,10 @@ type AsyncOff = () => Promise<void>
 
 export function apply(ctx: HostCtx): void {
   const jobs = createJobRunner()
+  const catalogRepository = new FileCatalogRepository({
+    onWarning: (message) => ctx.logger?.warn?.(`[zhiyuan] ${message}`),
+  })
+  const knowledgeServices = createKnowledgeServices(catalogRepository)
   const disposers: Off[] = []
   let alive = true
   const reportCleanupError = (error: unknown): void => {
@@ -48,16 +53,15 @@ export function apply(ctx: HostCtx): void {
   }
 
   ctx.logger?.info('[zhiyuan] host loaded')
-  setCatalogWarningSink((message) => ctx.logger?.warn?.(`[zhiyuan] ${message}`))
 
   ctx.inject(['commands'], (scoped) => {
-    track(registerKbCommands(scoped as { commands: { register: (def: unknown) => () => void } }, jobs))
+    track(registerKbCommands(scoped as { commands: { register: (def: unknown) => () => void } }, jobs, knowledgeServices))
   })
   ctx.inject(['connection'], (scoped) => {
-    trackAsync(registerKnowledgePrivateRpc(scoped as Parameters<typeof registerKnowledgePrivateRpc>[0], jobs))
+    trackAsync(registerKnowledgePrivateRpc(scoped as Parameters<typeof registerKnowledgePrivateRpc>[0], jobs, knowledgeServices))
   })
   ctx.inject(['tools'], (scoped) => {
-    track(registerKbTools(scoped as { tools: { register: (def: unknown) => () => void } }, jobs))
+    track(registerKbTools(scoped as { tools: { register: (def: unknown) => () => void } }, jobs, knowledgeServices))
   })
   ctx.inject(['skills'], (scoped) => {
     track(registerZhiyuanSkill(scoped as { skills?: { register: (skill: unknown) => () => void } }))

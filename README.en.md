@@ -19,8 +19,8 @@ One npm package, one install: Host (create / import / search) + Web workbench. T
 You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and a numeric excerpt id, which the current chat model uses to write the answer.
 
 - **Source text lives in folders only.** Import copies files. It does not store external links, and it does not write full text into a database.
-- **A category is a subdirectory.** Example: `bases/<uuid>/合同/2024/供应商合同.md`.
-- **Select a base, then search.** If the user does not name a base, the model must list bases and pick one `baseId`. Scanning every base is forbidden.
+- **A category is a subdirectory.** Example: `kbs/<uuid>/合同/2024/供应商合同.md`.
+- **Select a base, then search.** If the user does not name a base, the model must list bases and pick one `kbId`. Scanning every base is forbidden.
 - **Offline.** Import and search do not use the network. A complete natural-language answer still depends on having a local model.
 
 The workbench mounts on the left of Settings as `settings.section` (`id: knowledge`, label「知源」). The narrow plugin config card is not a second workbench.
@@ -71,12 +71,12 @@ The Host owns durable state. The data root uses the official DSH plugin data dir
 ```text
 <plugin-data>/dsh-zhiyuan/
 ├── catalog.json          # base cards + last-used; not source text
-└── bases/
+└── kbs/
     ├── <uuid>/合同/2024/供应商合同.md
     └── <uuid>/
 ```
 
-Bases can still be listed by scanning `bases/` when `catalog.json` is missing. A missing card leaves the description empty and the model will often pick the wrong base, so the create flow requires a description.
+Bases can still be listed by scanning `kbs/` when `catalog.json` is missing. A missing card leaves the description empty and the model will often pick the wrong base, so the create flow requires a description.
 
 Workbench Preferences can change: default base, per-file cap (default 5 MB), per-base text cap (default 10 GB). Parsers: md/txt enabled; everything else disabled.
 
@@ -85,14 +85,14 @@ Base card fields: `id` / `title` / `description` / `aliases`. The system generat
 ## How to use
 
 1. **Create a base**: Settings → Zhiyuan → New. Title and description are required; titles must be unique, and the system generates the UUID; aliases are optional (e.g.「工作」「公司」). The import path never creates a base.
-2. **Import**: Provide an existing `baseId` and category `destCategory` (empty = base root). Missing categories create folders; a missing base fails. The source path is read-only and is not modified.
-3. **Ask**: Ask about facts in the library. The model should call `kb_list_bases`, then one `kb_search`. With no hits it must not say “according to the knowledge base”.
+2. **Import**: Provide an existing `kbId` and category `destCategory` (empty = base root). Missing categories create folders; a missing base fails. The source path is read-only and is not modified.
+3. **Ask**: Ask about facts in the library. The model should call `kb_list`, then one `kb_search`. With no hits it must not say “according to the knowledge base”.
 4. **Trial search**: The workbench search box calls search directly, without the model, to confirm it still works offline.
 
 Slash commands (same fields as the tools):
 
 ```text
-/kb import <path> --base <id> --to <destCategory>
+/kb import <path> --kb <id> --to <destCategory>
 /kb status
 ```
 
@@ -100,11 +100,11 @@ If `--to` is omitted, reuse that base’s last category; otherwise the command e
 
 ## Tools for the AI
 
-| Tool            | Role                                                                                                            |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `kb_list_bases` | List bases: id / title / description / aliases / category names / approx. doc count. No filenames, no body text |
-| `kb_import`     | Copy into an existing base. `baseId` and `sourcePath` required; `destCategory` required in meaning              |
-| `kb_search`     | Scan only the named base. Missing `baseId` fails validation. Prefer 3–8 `aliases`, one OR query                 |
+| Tool        | Role                                                                                                            |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| `kb_list`   | List bases: id / title / description / aliases / category names / approx. doc count. No filenames, no body text |
+| `kb_import` | Copy into an existing base. `kbId` and `sourcePath` required; `destCategory` required in meaning                |
+| `kb_search` | Scan only the named base. Missing `kbId` fails validation. Prefer 3–8 `aliases`, one OR query                   |
 
 Skill hard rules: if no base is named, list first; if two bases fit, ask the user; expand query terms only once; project `grep` / `glob` is not knowledge-base search; never invent a new base on import.
 
@@ -124,17 +124,17 @@ Happy path (product acceptance):
 
 1. Create the “工作库” base, aliases: 工作, 公司. The system generates its UUID. Description must say this library is for clauses and meeting notes, not personal bills.
 2. Import a local contract markdown into category `合同/2024` (the folder may not exist yet).
-3. Disk path is `bases/<uuid>/合同/2024/…`; the source file is unchanged.
-4. Ask about a termination clause: the model lists bases, then calls `kb_search` with the returned `baseId`; hits include line numbers.
+3. Disk path is `kbs/<uuid>/合同/2024/…`; the source file is unchanged.
+4. Ask about a termination clause: the model lists bases, then calls `kb_search` with the returned `kbId`; hits include line numbers.
 5. Unplug the network: import again and trial-search again; both still succeed.
 
-Must fail: import into a missing base; `destCategory` with `..` or an absolute path; `kb_search` without `baseId`; a single file over 5 MB (that file fails, others may continue); search on an empty base returns an empty list.
+Must fail: import into a missing base; `destCategory` with `..` or an absolute path; `kb_search` without `kbId`; a single file over 5 MB (that file fails, others may continue); search on an empty base returns an empty list.
 
 ## Disable and uninstall
 
 Remove this package from the profile’s dependency / bundle layer, then restart the Host. The Cordis row `zhiyuan` must disappear; Web must no longer inject the「知源」section.
 
-Uninstall does **not** delete `bases/` or `catalog.json` in the plugin data directory. Delete that directory yourself if you want the local copies gone. Deleting a base or an entry deletes the knowledge-base copy, not the original source path.
+Uninstall does **not** delete `kbs/` or `catalog.json` in the plugin data directory. Delete that directory yourself if you want the local copies gone. Deleting a base or an entry deletes the knowledge-base copy, not the original source path.
 
 ## Develop
 

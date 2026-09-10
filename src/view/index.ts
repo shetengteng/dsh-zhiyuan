@@ -27,14 +27,14 @@ export function apply(ctx: {
   const loadPreview = async (selection: PreviewSelection, signal: AbortSignal) => {
     const value = await callKnowledgeHost(ctx.connection, {
       op: 'read',
-      id: selection.baseId,
+      id: selection.kbId,
       path: selection.hit.path,
       view: 'search-hit',
       matchLine: selection.hit.matchLine,
       matchColumnByte: selection.hit.matchColumnByte,
       sourceFingerprint: selection.hit.sourceFingerprint,
     }, signal)
-    return parseReadEntry(value, { view: 'search-hit', matchLine: selection.hit.matchLine })
+    return parseReadEntry(value)
   }
   const preview = createPreviewController(ctx.layout, loadPreview)
   const KbSearchView = createKbSearchView(preview, ctx.connection)

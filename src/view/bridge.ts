@@ -1,12 +1,9 @@
-import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../model/rpc-contract.ts'
-
-type RpcResult = {
-  ok: true
-  value: unknown
-} | {
-  ok: false
-  error: { message?: string; code?: string }
-}
+import {
+  KNOWLEDGE_OPERATION_ENDPOINT,
+  KNOWLEDGE_RPC_CHANNEL,
+  KNOWLEDGE_STATUS_ENDPOINT,
+  type KnowledgeRpcEnvelope,
+} from '../model/wire/knowledge-rpc-contract.ts'
 
 export type KnowledgePrivateConnection = {
   rpc?: {
@@ -18,7 +15,7 @@ function unwrapPrivateResult(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !('ok' in value)) {
     throw new Error('Host RPC 返回无效')
   }
-  const result = value as RpcResult
+  const result = value as KnowledgeRpcEnvelope<unknown>
   if (result.ok) return result.value
   throw new Error(result.error?.message || result.error?.code || '知源请求失败')
 }

@@ -6,7 +6,7 @@ test('搜索 overview payload 严格保留分页、扫描和展示协议', () =>
   const payload = {
     kind: 'overview' as const,
     scope: 'files' as const,
-    baseId: 'work',
+    kbId: 'work',
     query: { terms: ['违约', '解约'], aliases: ['解约'] },
     files: [{ path: 'a.md', format: 'markdown' as const, totalHits: 1 }],
     totalFiles: 1,
@@ -22,7 +22,7 @@ test('搜索 file-detail payload 接受单文件命中结果', () => {
   const payload = {
     kind: 'file-detail' as const,
     scope: 'hits' as const,
-    baseId: 'work',
+    kbId: 'work',
     category: '合同/2024',
     query: { terms: ['违约'], aliases: [] },
     path: '合同/2024/a.md',
@@ -46,7 +46,7 @@ test('旧 flat 搜索 payload 和缺少新字段的 payload 都拒绝', () => {
   assert.throws(() => parseSearchResult({
     kind: 'overview',
     scope: 'files',
-    baseId: 'work',
+    kbId: 'work',
     query: { terms: ['违约'], aliases: [] },
     files: [],
     totalFiles: 0,

@@ -1,5 +1,5 @@
 import { contentRegistry } from '../../content/host-api.ts'
-import type { SearchOverviewResult } from '../../model/search-result.ts'
+import type { SearchOverviewResult } from '../../model/response/search-response.ts'
 import type { SearchScanner } from './scanner/scanner-contract.ts'
 import type { ResolvedSearchScope } from './search-scope.ts'
 import { groupMatchesByFile, summarizeFileGroups } from './file-summary.ts'
@@ -29,7 +29,7 @@ export async function searchOverview(
   const result: SearchOverviewResult = {
     kind: 'overview',
     scope: 'files',
-    baseId: scope.baseId,
+    kbId: scope.kbId,
     ...(scope.category ? { category: scope.category } : {}),
     query: scope.query,
     files: pageFiles,

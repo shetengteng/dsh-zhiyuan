@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/rpc-contract.ts'
+import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/wire/knowledge-rpc-contract.ts'
 import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../src/view/bridge.ts'
 
 test('私有 bridge：所有设置操作走独立 channel，不需要会话', async () => {
@@ -10,12 +10,12 @@ test('私有 bridge：所有设置操作走独立 channel，不需要会话', as
     rpc: {
       call: async (channel, endpoint, payload, requestSignal) => {
         calls.push({ channel, endpoint, payload, signal: requestSignal })
-        return { ok: true, value: endpoint === KNOWLEDGE_STATUS_ENDPOINT ? { running: false, failed: [] } : { bases: [] } }
+        return { ok: true, value: endpoint === KNOWLEDGE_STATUS_ENDPOINT ? { running: false, failed: [] } : { kbs: [] } }
       },
     },
   }
 
-  assert.deepEqual(await callKnowledgeHost(connection, { op: 'list' }, signal), { bases: [] })
+  assert.deepEqual(await callKnowledgeHost(connection, { op: 'list' }, signal), { kbs: [] })
   assert.deepEqual(await getKnowledgeJobStatus(connection), { running: false, failed: [] })
   assert.deepEqual(calls, [
     { channel: KNOWLEDGE_RPC_CHANNEL, endpoint: KNOWLEDGE_OPERATION_ENDPOINT, payload: { op: 'list' }, signal },

@@ -1,28 +1,9 @@
 import { SEARCH_CURSOR_MAX_LENGTH } from '../../model/constants.ts'
-import { KbError } from '../../model/types.ts'
-import type { SearchQuery } from '../../model/search-result.ts'
+import type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
+import { KbError } from '../../model/error/kb-error.ts'
+import type { SearchQuery } from '../../model/response/search-response.ts'
 
-export type SearchCursorQuery = {
-  baseId: string
-  terms: string[]
-  aliases: string[]
-  category?: string
-  path?: string
-}
-
-export type SearchCursorPayload =
-  | {
-      version: 3
-      scope: 'files'
-      query: Omit<SearchCursorQuery, 'path'>
-      position: { fileIndex: number }
-    }
-  | {
-      version: 3
-      scope: 'hits'
-      query: SearchCursorQuery & { path: string }
-      position: { hitIndex: number }
-    }
+export type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
 
 export function encodeSearchCursor(payload: SearchCursorPayload): string {
   if (!isValidPayload(payload)) throw new KbError('invalid_field', '搜索游标位置无效')
@@ -33,7 +14,7 @@ export function encodeSearchCursor(payload: SearchCursorPayload): string {
 
 export function decodeSearchCursor(cursor: string): SearchCursorPayload {
   if (!cursor || cursor.length > SEARCH_CURSOR_MAX_LENGTH || !/^[A-Za-z0-9_-]+$/u.test(cursor)) {
-    throw new KbError('invalid_field', '搜索游标无效或已过期')
+    throw new KbError('invalid_field', '搜索游标无效或已过期，请重新执行首次检索并原样使用返回的 cursor')
   }
   try {
     const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
@@ -41,13 +22,13 @@ export function decodeSearchCursor(cursor: string): SearchCursorPayload {
     if (!isValidPayload(value)) throw new Error('invalid cursor')
     return value
   } catch {
-    throw new KbError('invalid_field', '搜索游标无效或已过期')
+    throw new KbError('invalid_field', '搜索游标无效或已过期，请重新执行首次检索并原样使用返回的 cursor')
   }
 }
 
-export function cursorQueryFromSearch(query: SearchQuery, baseId: string, category?: string, path?: string): SearchCursorQuery {
+export function cursorQueryFromSearch(query: SearchQuery, kbId: string, category?: string, path?: string): SearchCursorQuery {
   return {
-    baseId,
+    kbId,
     terms: [...query.terms],
     aliases: [...query.aliases],
     ...(category ? { category } : {}),
@@ -57,9 +38,9 @@ export function cursorQueryFromSearch(query: SearchQuery, baseId: string, catego
 
 function isValidPayload(value: unknown): value is SearchCursorPayload {
   const record = asRecord(value)
-  if (!record || record.version !== 3 || (record.scope !== 'files' && record.scope !== 'hits')) return false
+  if (!record || record.version !== 4 || (record.scope !== 'files' && record.scope !== 'hits')) return false
   const query = asRecord(record.query)
-  if (!query || typeof query.baseId !== 'string' || !query.baseId.trim()
+  if (!query || typeof query.kbId !== 'string' || !query.kbId.trim()
     || !isStringArray(query.terms) || !query.terms.length || !isStringArray(query.aliases)) return false
   if (query.category !== undefined && (typeof query.category !== 'string' || !query.category.trim())) return false
   if (record.scope === 'files') {

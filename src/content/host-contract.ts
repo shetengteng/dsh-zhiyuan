@@ -1,7 +1,8 @@
-import type { EntryPreviewOptions, EntryFormat, EntryWriteChange, SourceFormat, TableEditorPage } from '../model/content-contract.ts'
+import type { EntryFormat, SourceFormat } from '../model/content-contract.ts'
+import type { EntryPreviewOptions, EntryWriteChange } from '../model/request/entry-request.ts'
+import type { ReadEntryResponse, TableEditorPage } from '../model/response/entry-response.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
-import type { ReadEntryResult } from '../model/types.ts'
 
 export type PrepareImportContext = {
   sourcePath: string
@@ -26,8 +27,8 @@ export type EntryPageContext = EntryPathContext & {
 export type EntryWriteContext = EntryPathContext & {
   change: EntryWriteChange
   maxFileBytes: number
-  maxBaseBytes: number
-  baseBytesWithoutEntry: number
+  maxKbBytes: number
+  kbBytesWithoutEntry: number
 }
 
 export type SourceFormatHandler = {
@@ -43,7 +44,7 @@ export type SourceFormatHandler = {
 export type EntryFormatHandler = {
   format: EntryFormat
   entryExtensions: readonly string[]
-  readContent: (context: EntryReadContext) => Promise<ReadEntryResult>
+  readContent: (context: EntryReadContext) => Promise<ReadEntryResponse>
   readPage: (context: EntryPageContext) => Promise<TableEditorPage>
   writeContent: (context: EntryWriteContext) => Promise<void>
   readForSearch: (context: EntryPathContext) => Promise<SearchDocument>

@@ -1,6 +1,6 @@
 /** 检索结果按文件分组、确定性排序与分页位置的纯函数。不读文件、不产生副作用。 */
 
-import type { RestFileCount } from '../../model/types.ts'
+import type { RestFileCount } from '../../model/context/search-pagination-context.ts'
 
 export type MatchPosition = {
   path: string

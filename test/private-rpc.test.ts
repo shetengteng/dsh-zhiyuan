@@ -3,10 +3,14 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { registerKnowledgePrivateRpc } from '../src/controller/rpc/knowledge-rpc-controller.ts'
+import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/wire/knowledge-rpc-contract.ts'
 import { createJobRunner } from '../src/platform/jobs.ts'
-import { KNOWLEDGE_OPERATION_ENDPOINT, KNOWLEDGE_RPC_CHANNEL, KNOWLEDGE_STATUS_ENDPOINT } from '../src/model/rpc-contract.ts'
-import { registerKnowledgePrivateRpc } from '../src/controller/private-rpc.ts'
 import { setDataRootForTest } from '../src/platform/paths.ts'
+import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
+import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
+
+const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())
 
 test('私有 RPC：只登记 loopback 通道，并分发操作和任务状态', { concurrency: false }, async () => {
   const dataRoot = await mkdtemp(join(tmpdir(), 'zy-private-rpc-'))
@@ -27,7 +31,7 @@ test('私有 RPC：只登记 loopback 通道，并分发操作和任务状态', 
           },
         },
       },
-    }, createJobRunner())
+    }, createJobRunner(), knowledgeServices)
     if (!handler) throw new Error('私有 RPC 未注册')
 
     assert.equal(channel, KNOWLEDGE_RPC_CHANNEL)

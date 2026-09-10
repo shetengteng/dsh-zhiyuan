@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Modal } from './Modal.tsx'
-import { Field, Note } from './BaseDialogs.tsx'
+import { Field, Note } from './KbDialogs.tsx'
 import { claimFileDrag, fileToBase64, resolveDroppedSource, sourceDisplayName } from '../drop-source-path.ts'
 
 /** 设置工作台的导入弹框。 */
 
 export function ImportDialog(props: {
-  baseTitle: string
+  kbTitle: string
   error: string
   busy: boolean
   onClose: () => void
@@ -166,7 +166,7 @@ export function ImportDialog(props: {
     <Modal
       open
       onClose={props.onClose}
-      title={`导入到 ${props.baseTitle}`}
+      title={`导入到 ${props.kbTitle}`}
       className="zy-modal-form-wide"
       footer={(
         <div className="zy-footbar">

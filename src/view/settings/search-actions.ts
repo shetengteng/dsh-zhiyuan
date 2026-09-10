@@ -15,7 +15,7 @@ import {
 type SearchHostCall = (payload: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>
 
 type SearchActionOptions = {
-  baseId: string
+  kbId: string
   call: SearchHostCall
   searchResult: SearchResult | null
   searchOverviewResult: SearchOverviewResult | null
@@ -52,7 +52,7 @@ export function createSearchActions(options: SearchActionOptions): SearchActionH
     options.setSearchOpeningPath('')
     options.setSearchBusy(true)
     options.setSearchError('')
-    void options.call({ op: 'search', baseId: options.baseId, query: nextQuery, limit: SEARCH_PAGE_SIZE }).then((value) => {
+    void options.call({ op: 'search', kbId: options.kbId, query: nextQuery, limit: SEARCH_PAGE_SIZE }).then((value) => {
       if (version !== options.searchRequestVersion.current) return
       const result = parseSearchResult(value)
       options.setSearchResult(result)
@@ -79,7 +79,7 @@ export function createSearchActions(options: SearchActionOptions): SearchActionH
     options.setSearchError('')
     void options.call({
       op: 'search',
-      baseId: overview.baseId,
+      kbId: overview.kbId,
       query: overview.query.terms[0] ?? '',
       aliases: overview.query.aliases,
       ...(overview.category ? { category: overview.category } : {}),

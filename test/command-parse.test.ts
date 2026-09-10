@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { flagBool, flagString, parseFlags, splitAliases, tokenize } from '../src/controller/command-parse.ts'
+import { flagBool, flagString, parseFlags, splitAliases, tokenize } from '../src/controller/command/kb-command-parser.ts'
 
 test('tokenize：空白、双引号、单引号、未闭合当普通词', () => {
   assert.deepEqual(tokenize(''), [])
   assert.deepEqual(tokenize('  import  /tmp/a.md  '), ['import', '/tmp/a.md'])
-  assert.deepEqual(tokenize('import "/tmp/合同 2024.md" --base work'), [
+  assert.deepEqual(tokenize('import "/tmp/合同 2024.md" --kb work'), [
     'import',
     '/tmp/合同 2024.md',
-    '--base',
+    '--kb',
     'work',
   ])
   assert.deepEqual(tokenize("import '/tmp/a b.md' --to 合同"), ['import', '/tmp/a b.md', '--to', '合同'])
@@ -18,19 +18,19 @@ test('tokenize：空白、双引号、单引号、未闭合当普通词', () => 
 test('parseFlags：首个非 flag 是 sub，其余进 rest / flags', () => {
   assert.deepEqual(parseFlags([]), { sub: '', rest: [], flags: {} })
   assert.deepEqual(parseFlags(['status']), { sub: 'status', rest: [], flags: {} })
-  const parsed = parseFlags(['import', '/tmp/a.md', '--base', 'work', '--to', '合同/2024', '--preserve-tree'])
+  const parsed = parseFlags(['import', '/tmp/a.md', '--kb', 'work', '--to', '合同/2024', '--preserve-tree'])
   assert.equal(parsed.sub, 'import')
   assert.deepEqual(parsed.rest, ['/tmp/a.md'])
-  assert.equal(parsed.flags.base, 'work')
+  assert.equal(parsed.flags.kb, 'work')
   assert.equal(parsed.flags.to, '合同/2024')
   assert.equal(parsed.flags['preserve-tree'], true)
 })
 
 test('parseFlags：下一个也是 -- 则当前 flag 为 true；连续布尔 flag', () => {
-  const parsed = parseFlags(['import', '--root', '--no-create', '--base', 'work'])
+  const parsed = parseFlags(['import', '--root', '--no-create', '--kb', 'work'])
   assert.equal(parsed.flags.root, true)
   assert.equal(parsed.flags['no-create'], true)
-  assert.equal(parsed.flags.base, 'work')
+  assert.equal(parsed.flags.kb, 'work')
 })
 
 test('flagString 只认字符串；布尔 flag 视为未提供', () => {

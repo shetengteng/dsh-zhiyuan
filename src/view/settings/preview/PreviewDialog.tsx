@@ -1,12 +1,13 @@
 import { useRef } from 'react'
 import { Modal } from '../dialogs/Modal.tsx'
-import type { ReadEntryResult } from '../../types.ts'
+import type { ReadEntryResponse } from '../../types.ts'
 import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/client-api.tsx'
-import type { EntryWriteChange, TableEditorPage } from '../../../model/content-contract.ts'
-import { Note } from '../dialogs/BaseDialogs.tsx'
+import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
+import type { TableEditorPage } from '../../../model/response/entry-response.ts'
+import { Note } from '../dialogs/KbDialogs.tsx'
 
 export type PreviewDialogProps = {
-  preview: ReadEntryResult
+  preview: ReadEntryResponse
   editable: boolean
   deletable: boolean
   error: string
@@ -63,7 +64,7 @@ export function PreviewDialog(props: PreviewDialogProps) {
 }
 
 /** 命中失效时降级为纯文本展示；形态转换在弹框内完成，上层不感知格式。 */
-function toTextFallback(preview: ReadEntryResult, fallbackText: string): ReadEntryResult {
+function toTextFallback(preview: ReadEntryResponse, fallbackText: string): ReadEntryResponse {
   if (preview.kind === 'text') return { ...preview, text: fallbackText }
   const { table: _table, ...meta } = preview
   return { ...meta, kind: 'text', text: fallbackText }

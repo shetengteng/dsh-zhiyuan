@@ -1,11 +1,6 @@
-import type { ReadEntryResult } from '../types.ts'
-import type { TableWindowData } from '../../model/content-contract.ts'
+import type { ReadEntryResponse } from '../types.ts'
+import type { TableWindowData } from '../../model/response/entry-response.ts'
 import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../../model/content-contract.ts'
-
-export type LegacyPreviewContext = {
-  view?: 'tree' | 'search-hit'
-  matchLine?: number
-}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
@@ -42,7 +37,7 @@ function isEntryContentBody(entry: Record<string, unknown>): boolean {
   return false
 }
 
-export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewContext = {}): ReadEntryResult {
+export function parseReadEntry(value: unknown): ReadEntryResponse {
   const entry = asRecord(value)
   const validFormat = isEntryFormat(entry?.format)
   const validView = isEntryPreviewView(entry?.view)
@@ -60,16 +55,14 @@ export function parseReadEntry(value: unknown, legacyContext: LegacyPreviewConte
     && isPositiveInteger(entry.windowStartLine) && isPositiveInteger(entry.windowEndLine)
     && entry.windowEndLine >= entry.windowStartLine && validTruncation && typeof entry.totalChars === 'number'
     && Number.isFinite(entry.totalChars) && validStatus) {
-    return value as ReadEntryResult
+    return value as ReadEntryResponse
   }
   // CSV 表格结构不可用时只显示原始文本，避免错误交给 Markdown 渲染。
-  if (entry?.format === 'csv') return parseCsvTextFallback(entry, legacyContext)
-  // legacy 回退仅用于不带 kind 的旧 Markdown Host 响应；kind 存在但校验失败必须硬失败。
-  if (entry?.kind !== undefined) throw new Error('Host 返回的预览数据无效')
-  return parseLegacyMarkdownPreview(entry, legacyContext)
+  if (entry?.format === 'csv') return parseCsvTextFallback(entry)
+  throw new Error('Host 返回的预览数据无效')
 }
 
-function parseCsvTextFallback(entry: Record<string, unknown> | null, context: LegacyPreviewContext): ReadEntryResult {
+function parseCsvTextFallback(entry: Record<string, unknown> | null): ReadEntryResponse {
   if (!entry || typeof entry.path !== 'string' || typeof entry.text !== 'string') {
     throw new Error('Host 返回的预览数据无效')
   }
@@ -79,34 +72,11 @@ function parseCsvTextFallback(entry: Record<string, unknown> | null, context: Le
     kind: 'text',
     text: entry.text,
     format: 'csv',
-    view: isEntryPreviewView(entry.view) ? entry.view : context.view ?? 'tree',
+    view: isEntryPreviewView(entry.view) ? entry.view : 'tree',
     windowStartLine: 1,
     windowEndLine: lineCount,
     truncation: 'none',
     totalChars: entry.text.length,
     previewStatus: 'fallback',
-  }
-}
-
-function parseLegacyMarkdownPreview(entry: Record<string, unknown> | null, context: LegacyPreviewContext): ReadEntryResult {
-  if (!entry || typeof entry.path !== 'string' || typeof entry.text !== 'string') {
-    throw new Error('Host 返回的预览数据无效')
-  }
-  const lineCount = Math.max(1, entry.text.split(/\r?\n/).length)
-  const matchLine = isPositiveInteger(context.matchLine) && context.matchLine <= lineCount
-    ? context.matchLine
-    : undefined
-  return {
-    path: entry.path,
-    kind: 'text',
-    text: entry.text,
-    format: 'markdown',
-    view: context.view ?? 'tree',
-    windowStartLine: 1,
-    windowEndLine: lineCount,
-    ...(matchLine === undefined ? {} : { focusLine: matchLine }),
-    truncation: 'none',
-    totalChars: entry.text.length,
-    previewStatus: 'ready',
   }
 }

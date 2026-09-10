@@ -1,6 +1,6 @@
 import { renderFileDetailResult } from './file-detail-template.ts'
 import { renderOverviewResult } from './overview-template.ts'
-import type { SearchResult } from '../../../../model/search-result.ts'
+import type { SearchResult } from '../../../../model/response/search-response.ts'
 
 export { searchPresentationMeta } from './overview-template.ts'
 
@@ -18,7 +18,7 @@ export function presentationMeta(value: SearchResult): Record<string, unknown> {
     ? {
         kind: value.kind,
         scope: value.scope,
-        baseId: value.baseId,
+        kbId: value.kbId,
         ...(value.category ? { category: value.category } : {}),
         query: value.query,
         files: value.files,
@@ -31,7 +31,7 @@ export function presentationMeta(value: SearchResult): Record<string, unknown> {
     : {
         kind: value.kind,
         scope: value.scope,
-        baseId: value.baseId,
+        kbId: value.kbId,
         ...(value.category ? { category: value.category } : {}),
         query: value.query,
         path: value.path,

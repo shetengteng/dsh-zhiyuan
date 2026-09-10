@@ -1,4 +1,4 @@
-import type { SearchFileDetailResult } from '../../../../model/search-result.ts'
+import type { SearchFileDetailResult } from '../../../../model/response/search-response.ts'
 
 type TextBlock = { type: 'text'; text: string }
 
@@ -15,6 +15,9 @@ export function renderFileDetailResult(value: unknown): TextBlock[] {
     : result.scan.complete ? `文件 ${result.path} 没有找到相关命中` : `文件 ${result.path} 的扫描未完成，暂未找到可返回的命中`
   const notes: string[] = []
   if (result.page.hasMore) notes.push('当前仅展示文件详情的一页，仍有更多命中。')
+  if (result.page.hasMore && result.page.nextCursor) {
+    notes.push(`下一页 cursor（请原样复制，只传 cursor 和可选 limit）：\`${result.page.nextCursor}\``)
+  }
   if (!result.scan.complete) {
     notes.push('本次扫描未完成，命中数是当前已发现的下限。')
     if (result.scan.stopReason) notes.push(`停止原因：${result.scan.stopReason}`)

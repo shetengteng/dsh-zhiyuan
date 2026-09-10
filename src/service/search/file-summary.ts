@@ -1,5 +1,5 @@
 import type { ScannerMatch } from './scanner/scanner-contract.ts'
-import type { SearchFileSummary } from '../../model/search-result.ts'
+import type { SearchFileSummary } from '../../model/response/search-response.ts'
 import { contentRegistry } from '../../content/host-api.ts'
 import { EntryFormat } from '../../model/content-contract.ts'
 

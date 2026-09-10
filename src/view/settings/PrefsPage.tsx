@@ -1,26 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Menu, IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { BaseSummary, Prefs } from '../types.ts'
-import { Note } from './dialogs/BaseDialogs.tsx'
+import type { KbSummaryResponse, CatalogPrefs } from '../types.ts'
+import { Note } from './dialogs/KbDialogs.tsx'
 
 const MIB = 1024 * 1024
 const GIB = 1024 * 1024 * 1024
 
 export function PrefsPage(props: {
-  prefs: Prefs
-  bases: BaseSummary[]
+  prefs: CatalogPrefs
+  kbs: KbSummaryResponse[]
   busy: boolean
   error: string
-  onSave: (prefs: Prefs) => void
+  onSave: (prefs: CatalogPrefs) => void
 }) {
   const [draft, setDraft] = useState(props.prefs)
   const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => { setDraft(props.prefs) }, [props.prefs])
 
-  const selectedBase = props.bases.find((base) => base.id === draft.defaultBaseId)
-  const label = selectedBase ? (selectedBase.title || selectedBase.id) : '（无）'
+  const selectedKb = props.kbs.find((kb) => kb.id === draft.defaultKbId)
+  const label = selectedKb ? (selectedKb.title || selectedKb.id) : '（无）'
 
-  const commit = (next: Prefs) => {
+  const commit = (next: CatalogPrefs) => {
     setDraft(next)
     props.onSave(next)
   }
@@ -35,13 +35,13 @@ export function PrefsPage(props: {
         <Menu
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
-          selectedId={draft.defaultBaseId || 'none'}
+          selectedId={draft.defaultKbId || 'none'}
           items={[
             { id: 'none', label: '（无）' },
-            ...props.bases.map((base) => ({ id: base.id, label: base.title || base.id })),
+            ...props.kbs.map((kb) => ({ id: kb.id, label: kb.title || kb.id })),
           ]}
           onSelect={(id: string) => {
-            commit({ ...draft, defaultBaseId: id === 'none' ? '' : id })
+            commit({ ...draft, defaultKbId: id === 'none' ? '' : id })
             setMenuOpen(false)
           }}
           align="end"
@@ -71,10 +71,10 @@ export function PrefsPage(props: {
       <QuotaField
         label="单库文字上限"
         description="超过拒绝本批导入。"
-        bytes={draft.maxBaseBytes}
+        bytes={draft.maxKbBytes}
         unit="GB"
         disabled={props.busy}
-        onCommit={(bytes) => commit({ ...draft, maxBaseBytes: bytes })}
+        onCommit={(bytes) => commit({ ...draft, maxKbBytes: bytes })}
       />
       <p className="zy-set-title zy-prefs-h">解析器</p>
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>Markdown / txt</span></div>

@@ -1,10 +1,10 @@
 import { execFile as execFileCb } from 'node:child_process'
 import { promisify } from 'node:util'
 import { contentRegistry } from '../../content/host-api.ts'
-import { KbError } from '../../model/types.ts'
+import { KbError } from '../../model/error/kb-error.ts'
+import type { PickSourceResponse } from '../../model/response/operation-response.ts'
 
 export type PickKind = 'file' | 'dir'
-export type PickResult = { path: string } | { cancelled: true }
 
 export type ExecFileFn = (
   file: string,
@@ -61,7 +61,7 @@ function isCancelExit(error: unknown): boolean {
 export async function pickSource(
   kind: PickKind,
   opts?: { exec?: ExecFileFn; platform?: NodeJS.Platform },
-): Promise<PickResult> {
+): Promise<PickSourceResponse> {
   const exec = opts?.exec ?? defaultExec
   const platform = opts?.platform ?? process.platform
   const { file, args } = invokeArgs(kind, platform)

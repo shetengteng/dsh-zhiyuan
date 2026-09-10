@@ -3,12 +3,12 @@ import type { SearchHit, SearchResult } from '../../types.ts'
 import { SearchHitCard } from '../../search/SearchHitCard.tsx'
 import { SearchPagination } from '../../search/SearchPagination.tsx'
 import { getSearchNextCursor } from '../../search/search-pages.ts'
-import { Note } from './BaseDialogs.tsx'
+import { Note } from './KbDialogs.tsx'
 import { SearchIcon } from '../Icons.tsx'
 import { Modal } from './Modal.tsx'
 
 export type SearchDialogProps = {
-  baseTitle: string
+  kbTitle: string
   query: string
   result: SearchResult | null
   warning: string
@@ -29,7 +29,7 @@ export type SearchDialogProps = {
 
 export function SearchDialog(props: SearchDialogProps) {
   return (
-    <Modal open onClose={props.onClose} title={`搜索 ${props.baseTitle}`} className="zy-modal-search">
+    <Modal open onClose={props.onClose} title={`搜索 ${props.kbTitle}`} className="zy-modal-search">
       <form
         onSubmit={(event: { preventDefault: () => void; currentTarget: HTMLFormElement }) => {
           event.preventDefault()

@@ -3,47 +3,60 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createBase, markUsed, requireBase } from '../src/service/kb/bases.ts'
-import { readEntry, readEntryPage, writeEntryContent } from '../src/service/kb/entry.ts'
-import { readCatalog, writeCatalog } from '../src/service/kb/catalog.ts'
-import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/model/constants.ts'
 import { readValidatedUtf8Csv } from '../src/content/csv/server/encoding.ts'
-import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 import { createCsvSearchDocument } from '../src/content/csv/server/search-excerpt.ts'
-import { importFiles } from '../src/service/kb/import.ts'
-import { searchBase as searchBaseWithAccess, type SearchRequest } from '../src/service/search/index.ts'
-import type { SearchBaseAccess } from '../src/service/search/base-access.ts'
-import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/types.ts'
-import { KbError } from '../src/model/types.ts'
 import { encodeUtf8CsvWithBom } from '../src/content/shared/utf8.ts'
+import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../src/model/constants.ts'
+import { KbError } from '../src/model/error/kb-error.ts'
+import type { Catalog } from '../src/model/entity/catalog.ts'
+import type { SearchFileDetailResult, SearchOverviewResult, SearchResult } from '../src/model/response/search-response.ts'
+import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
+import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
+import type { SearchKbAccess } from '../src/service/search/kb-access.ts'
+import { searchKb as searchKbWithAccess, type SearchRequest } from '../src/service/search/index.ts'
+import { decodeCsvBytes } from '../src/content/csv/server/decode.ts'
 
-function createSearchBaseAccess(dataRoot: string): SearchBaseAccess {
+const catalogRepository = new FileCatalogRepository()
+const knowledgeServices = createKnowledgeServices(catalogRepository)
+const {
+  createKb: createKb,
+  importFiles,
+  markKbUsed: markUsed,
+  readEntry,
+  readEntryPage,
+  requireKb: requireKb,
+  writeEntryContent,
+} = knowledgeServices
+const readCatalog = (dataRoot: string): Promise<Catalog> => catalogRepository.read(dataRoot)
+const writeCatalog = (dataRoot: string, catalog: Catalog): Promise<void> => catalogRepository.save(dataRoot, catalog)
+
+function createSearchKbAccess(dataRoot: string): SearchKbAccess {
   return {
-    ensureBase: (baseId) => requireBase(dataRoot, baseId),
-    markBaseUsed: (baseId) => markUsed(dataRoot, baseId),
+    ensureKb: (kbId) => requireKb(dataRoot, kbId),
+    markKbUsed: (kbId) => markUsed(dataRoot, kbId),
   }
 }
 
-async function searchBase(dataRoot: string, input: SearchRequest): Promise<SearchResult> {
-  return searchBaseWithAccess(dataRoot, input, createSearchBaseAccess(dataRoot))
+async function searchKb(dataRoot: string, input: SearchRequest): Promise<SearchResult> {
+  return searchKbWithAccess(dataRoot, input, createSearchKbAccess(dataRoot))
 }
 
 async function sandbox(prefix = 'zy-csv-'): Promise<string> {
   return mkdtemp(join(tmpdir(), prefix))
 }
 
-async function searchFirstFile(root: string, baseId: string, query: string): Promise<SearchFileDetailResult> {
-  const overview = await searchBase(root, { baseId, query })
+async function searchFirstFile(root: string, kbId: string, query: string): Promise<SearchFileDetailResult> {
+  const overview = await searchKb(root, { kbId, query })
   if (overview.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
   const path = overview.files[0]?.path
   if (!path) throw new Error('搜索没有返回文件')
-  const detail = await searchBase(root, { baseId, query, path })
+  const detail = await searchKb(root, { kbId, query, path })
   if (detail.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
   return detail
 }
 
-async function searchFirstOverview(root: string, baseId: string, query: string): Promise<SearchOverviewResult> {
-  const result = await searchBase(root, { baseId, query })
+async function searchFirstOverview(root: string, kbId: string, query: string): Promise<SearchOverviewResult> {
+  const result = await searchKb(root, { kbId, query })
   if (result.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
   return result
 }
@@ -51,22 +64,22 @@ async function searchFirstOverview(root: string, baseId: string, query: string):
 test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '台账', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '台账', description: 'CSV 测试' })
     const source = join(root, 'table.CSV')
     const raw = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('名称,金额\n甲公司,120\n', 'utf8')])
     await writeFile(source, raw)
 
-    const result = await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
     assert.deepEqual(result.copied, ['table.CSV'])
     assert.equal(result.files[0]?.sourceRelPath, 'table.CSV')
     assert.equal(result.files[0]?.writtenBytes, raw.length)
-    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'table.CSV')), raw)
+    assert.deepEqual(await readFile(join(root, 'kbs', kb.id, 'table.CSV')), raw)
 
-    const overview = await searchBase(root, { baseId: base.id, query: '公司' })
+    const overview = await searchKb(root, { kbId: kb.id, query: '公司' })
     if (overview.kind !== 'overview') throw new Error('搜索初次请求应返回文件概览')
     const group = overview.files[0]
     if (!group) throw new Error('未找到 CSV 文件概览')
-    const search = await searchBase(root, { baseId: base.id, query: '公司', path: group.path })
+    const search = await searchKb(root, { kbId: kb.id, query: '公司', path: group.path })
     if (search.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
     const hit = search.hits[0]
     assert.equal(group.path, 'table.CSV')
@@ -80,7 +93,7 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
     assert.equal(hit?.matchColumnByte, 4)
     assert.equal('documents' in search, false)
 
-    const preview = await readEntry(root, base.id, 'table.CSV', {
+    const preview = await readEntry(root, kb.id, 'table.CSV', {
       view: 'search-hit',
       matchLine: hit?.matchLine,
       matchColumnByte: hit?.matchColumnByte,
@@ -104,15 +117,15 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
       focusedRow: 1,
     })
 
-    const editable = await readEntry(root, base.id, 'table.CSV', { view: 'tree', readMode: 'edit' })
+    const editable = await readEntry(root, kb.id, 'table.CSV', { view: 'tree', readMode: 'edit' })
     if (editable.kind !== 'table') throw new Error('CSV 编辑预览应为表格形态')
     assert.equal(editable.table?.complete, true)
     assert.match(editable.table?.revision ?? '', /^[a-f0-9]{64}$/)
-    await writeEntryContent(root, base.id, 'table.CSV', { kind: 'text', text: '名称,金额\n乙公司,"98,000"' })
-    const written = await readFile(join(root, 'bases', base.id, 'table.CSV'))
+    await writeEntryContent(root, kb.id, 'table.CSV', { kind: 'text', text: '名称,金额\n乙公司,"98,000"' })
+    const written = await readFile(join(root, 'kbs', kb.id, 'table.CSV'))
     assert.deepEqual(written.subarray(0, 3), Buffer.from([0xef, 0xbb, 0xbf]))
     assert.equal(written.subarray(3).toString('utf8'), '名称,金额\n乙公司,"98,000"')
-    await assert.rejects(() => writeEntryContent(root, base.id, 'table.CSV', { kind: 'text', text: '名称,金额\n"未闭合' }), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, kb.id, 'table.CSV', { kind: 'text', text: '名称,金额\n"未闭合' }), (error: unknown) => (
       error instanceof KbError && error.code === 'csv_parse_invalid'
     ))
   } finally {
@@ -123,17 +136,17 @@ test('UTF-8 CSV 导入后写成 UTF-8 BOM、可搜索、表格预览和编辑', 
 test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越界修改', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '分页', description: 'CSV 分页编辑测试' })
+    const kb = await createKb(root, { title: '分页', description: 'CSV 分页编辑测试' })
     const rows = Array.from({ length: 650 }, (_, index) => `原始${index + 1},${index + 1}`).join('\n')
-    await writeEntryContent(root, base.id, 'large.csv', { kind: 'text', text: `名称,编号\n${rows}` })
+    await writeEntryContent(root, kb.id, 'large.csv', { kind: 'text', text: `名称,编号\n${rows}` })
 
-    const readOnly = await readEntry(root, base.id, 'large.csv')
+    const readOnly = await readEntry(root, kb.id, 'large.csv')
     if (readOnly.kind !== 'table') throw new Error('CSV 预览应为表格形态')
     assert.equal(readOnly.table?.rows.length, 500)
     assert.equal(readOnly.table?.totalRows, 650)
     assert.equal(readOnly.table?.complete, false)
 
-    const initial = await readEntry(root, base.id, 'large.csv', { view: 'tree', readMode: 'edit' })
+    const initial = await readEntry(root, kb.id, 'large.csv', { view: 'tree', readMode: 'edit' })
     if (initial.kind !== 'table') throw new Error('CSV 编辑预览应为表格形态')
     assert.equal(initial.table?.rows.length, 200)
     assert.equal(initial.table?.windowStartRow, 1)
@@ -142,28 +155,28 @@ test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越�
     const revision = initial.table?.revision
     if (!revision) throw new Error('CSV 编辑预览缺少版本标识')
 
-    const secondPage = await readEntryPage(root, base.id, 'large.csv', 201, 200)
+    const secondPage = await readEntryPage(root, kb.id, 'large.csv', 201, 200)
     assert.equal(secondPage.rows.length, 200)
     assert.equal(secondPage.windowStartRow, 201)
     assert.equal(secondPage.windowEndRow, 400)
     assert.equal(secondPage.rows[0]?.[0], '原始201')
 
-    await assert.rejects(() => writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
+    await assert.rejects(() => writeEntryContent(root, kb.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [],
       cellChanges: [{ row: 651, column: 0, value: '越界' }],
     } }), (error: unknown) => error instanceof KbError && error.code === 'csv_patch_invalid')
 
-    await writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
+    await writeEntryContent(root, kb.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [{ column: 0, value: '新名称' }],
       cellChanges: [{ row: 201, column: 0, value: '已修改201' }],
     } })
-    const written = await readFile(join(root, 'bases', base.id, 'large.csv'), 'utf8')
+    const written = await readFile(join(root, 'kbs', kb.id, 'large.csv'), 'utf8')
     assert.match(written, /^\uFEFF新名称,编号\n原始1,1/m)
     assert.match(written, /已修改201,201/)
 
-    await assert.rejects(() => writeEntryContent(root, base.id, 'large.csv', { kind: 'table-patch', patch: {
+    await assert.rejects(() => writeEntryContent(root, kb.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [],
       cellChanges: [{ row: 1, column: 0, value: '过期' }],
@@ -176,16 +189,16 @@ test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越�
 test('坏 CSV 只失败当前文件，批次后续文件继续导入', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '混合', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '混合', description: 'CSV 测试' })
     const source = join(root, 'source')
     await mkdir(source)
     await writeFile(join(source, 'bad.csv'), Buffer.from([0xff, 0xfe, 0xfd]))
     await writeFile(join(source, 'ok.md'), '仍然导入')
-    const result = await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
     assert.equal(result.failed, 1)
     assert.equal(result.files.find((item) => item.sourceRelPath === 'bad.csv')?.code, 'csv_encoding_invalid')
     assert.ok(result.copied.includes('ok.md'))
-    assert.equal(await readFile(join(root, 'bases', base.id, 'ok.md'), 'utf8'), '仍然导入')
+    assert.equal(await readFile(join(root, 'kbs', kb.id, 'ok.md'), 'utf8'), '仍然导入')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -217,17 +230,17 @@ test('CSV 严格校验控制字符、超长物理行和读取上限', async () =
 test('CSV 同值多行各自成条，搜后面的值不会落到第一条', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '多行', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '多行', description: 'CSV 测试' })
     const source = join(root, 'ledger.csv')
     await writeFile(source, '名称,金额\n甲公司,120\n乙公司,120\n丙公司,80\n')
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
 
-    const sameValue = await searchFirstFile(root, base.id, '120')
+    const sameValue = await searchFirstFile(root, kb.id, '120')
     assert.equal(sameValue.hits.length, 2)
     assert.equal(sameValue.hits[0]?.matchedExcerpt, '名称: 甲公司 | 金额: 120')
     assert.equal(sameValue.hits[1]?.matchedExcerpt, '名称: 乙公司 | 金额: 120')
 
-    const later = await searchFirstFile(root, base.id, '丙公司')
+    const later = await searchFirstFile(root, kb.id, '丙公司')
     assert.equal(later.hits.length, 1)
     assert.equal(later.hits[0]?.matchLine, 4)
     assert.equal(later.hits[0]?.matchedExcerpt, '名称: 丙公司 | 金额: 80')
@@ -239,15 +252,15 @@ test('CSV 同值多行各自成条，搜后面的值不会落到第一条', asyn
 test('CSV 末段命中返回围绕命中的窗口，不退化为文件头', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '窗口', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '窗口', description: 'CSV 测试' })
     const source = join(root, 'window.csv')
     const body = Array.from({ length: 40 }, (_, index) => index === 39 ? '末段关键字,1' : `第${index + 1}行,0`).join('\n')
     await writeFile(source, body)
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchFirstFile(root, base.id, '末段关键字')
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
+    const search = await searchFirstFile(root, kb.id, '末段关键字')
     const hit = search.hits[0]
     if (!hit) throw new Error('未找到末段命中')
-    const preview = await readEntry(root, base.id, hit.path, {
+    const preview = await readEntry(root, kb.id, hit.path, {
       view: 'search-hit',
       matchLine: hit.matchLine,
       matchColumnByte: hit.matchColumnByte,
@@ -264,11 +277,11 @@ test('CSV 末段命中返回围绕命中的窗口，不退化为文件头', asyn
 test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为逗号 CSV', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '逻辑记录', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '逻辑记录', description: 'CSV 测试' })
     const source = join(root, 'quoted.csv')
     await writeFile(source, '供应商;备注;金额\n甲公司;"第一行\n第二行, 含逗号";120\n乙公司;正常;80\n')
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchFirstFile(root, base.id, '第二行')
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
+    const search = await searchFirstFile(root, kb.id, '第二行')
     const hit = search.hits[0]
     if (!hit) throw new Error('未找到引号内换行的命中')
     assert.equal(hit.matchLine, 3)
@@ -277,7 +290,7 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
     assert.match(hit.excerpt, /备注: 第一行↩第二行, 含逗号/)
     assert.equal(hit.matchedExcerpt, '供应商: 甲公司 | 备注: 第一行↩第二行, 含逗号 | 金额: 120')
 
-    const preview = await readEntry(root, base.id, hit.path, {
+    const preview = await readEntry(root, kb.id, hit.path, {
       view: 'search-hit',
       matchLine: hit.matchLine,
       matchColumnByte: hit.matchColumnByte,
@@ -288,8 +301,8 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
     assert.deepEqual(preview.table?.rows[0], ['甲公司', '第一行\n第二行, 含逗号', '120'])
     assert.equal(preview.table?.focusedRow, 1)
 
-    await writeEntryContent(root, base.id, 'quoted.csv', { kind: 'text', text: '供应商;备注\n甲公司;"第一行\n第二行, 含逗号"' })
-    const written = await readFile(join(root, 'bases', base.id, 'quoted.csv'))
+    await writeEntryContent(root, kb.id, 'quoted.csv', { kind: 'text', text: '供应商;备注\n甲公司;"第一行\n第二行, 含逗号"' })
+    const written = await readFile(join(root, 'kbs', kb.id, 'quoted.csv'))
     assert.equal(written.subarray(3).toString('utf8'), '供应商,备注\n甲公司,"第一行\n第二行, 含逗号"')
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -299,11 +312,11 @@ test('CSV 表格按逻辑记录处理引号内换行，并在保存时规范为�
 test('CSV 支持 CR 物理换行，预览仍按记录展示', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: 'CR 换行', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: 'CR 换行', description: 'CSV 测试' })
     const source = join(root, 'cr.csv')
     await writeFile(source, '名称,金额\r甲公司,120\r')
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const preview = await readEntry(root, base.id, 'cr.csv')
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
+    const preview = await readEntry(root, kb.id, 'cr.csv')
     if (preview.kind !== 'table') throw new Error('CSV 预览应为表格形态')
     assert.deepEqual(preview.table?.headers, ['名称', '金额'])
     assert.deepEqual(preview.table?.rows, [['甲公司', '120']])
@@ -315,17 +328,17 @@ test('CSV 支持 CR 物理换行，预览仍按记录展示', async () => {
 test('CSV 编辑同时服从单文件和单库配额', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '编辑配额', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '编辑配额', description: 'CSV 测试' })
     const catalog = await readCatalog(root)
-    catalog.prefs = { ...catalog.prefs, maxFileBytes: 8, maxBaseBytes: 100 }
+    catalog.prefs = { ...catalog.prefs, maxFileBytes: 8, maxKbBytes: 100 }
     await writeCatalog(root, catalog)
-    await assert.rejects(() => writeEntryContent(root, base.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, kb.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
       error instanceof KbError && error.code === 'file_too_large'
     ))
 
-    catalog.prefs = { ...catalog.prefs, maxFileBytes: 100, maxBaseBytes: 8 }
+    catalog.prefs = { ...catalog.prefs, maxFileBytes: 100, maxKbBytes: 8 }
     await writeCatalog(root, catalog)
-    await assert.rejects(() => writeEntryContent(root, base.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
+    await assert.rejects(() => writeEntryContent(root, kb.id, 'limit.csv', { kind: 'text', text: '名称\n甲公司' }), (error: unknown) => (
       error instanceof KbError && error.code === 'quota'
     ))
   } finally {
@@ -358,12 +371,12 @@ function gb18030Available(): boolean {
 test('导入时把无 BOM、CRLF 的 UTF-8 CSV 写成 UTF-8 BOM + LF', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '归一', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '归一', description: 'CSV 测试' })
     const source = join(root, 'plain.csv')
     await writeFile(source, '名称,金额\r\n甲公司,120\r\n')
-    const result = await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
     assert.deepEqual(result.copied, ['plain.csv'])
-    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'plain.csv')), NORMALIZED_TABLE)
+    assert.deepEqual(await readFile(join(root, 'kbs', kb.id, 'plain.csv')), NORMALIZED_TABLE)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -372,17 +385,17 @@ test('导入时把无 BOM、CRLF 的 UTF-8 CSV 写成 UTF-8 BOM + LF', async () 
 test('UTF-16 CSV 导入后写成 UTF-8 BOM 且可按列名检索', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: 'UTF16', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: 'UTF16', description: 'CSV 测试' })
     const sourceDir = join(root, 'source')
     await mkdir(sourceDir)
     await writeFile(join(sourceDir, 'le.csv'), Buffer.from('\uFEFF名称,金额\n甲公司,120\n', 'utf16le'))
     await writeFile(join(sourceDir, 'be.csv'), encodeUtf16Be('名称,金额\n乙公司,80\n'))
-    const result = await importFiles(root, { baseId: base.id, sourcePath: sourceDir, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: sourceDir, destCategory: '' })
     assert.ok(result.copied.includes('le.csv'))
     assert.ok(result.copied.includes('be.csv'))
-    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'le.csv')), NORMALIZED_TABLE)
+    assert.deepEqual(await readFile(join(root, 'kbs', kb.id, 'le.csv')), NORMALIZED_TABLE)
 
-    const search = await searchFirstFile(root, base.id, '乙公司')
+    const search = await searchFirstFile(root, kb.id, '乙公司')
     assert.equal(search.path, 'be.csv')
     assert.equal(search.groupHeader, '列: 名称 | 金额')
     assert.equal(search.hits[0]?.excerpt, '名称: 乙公司 | 金额: 80')
@@ -398,17 +411,17 @@ test('GB18030 CSV 导入后写成 UTF-8 BOM，同内容 UTF-8 会跳过', { skip
 
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: 'GBK', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: 'GBK', description: 'CSV 测试' })
     const source = join(root, 'gbk.csv')
     await writeFile(source, GBK_TABLE)
-    const result = await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
     assert.deepEqual(result.copied, ['gbk.csv'])
     assert.ok(result.warnings.some((warning) => warning.includes('encoding_assumed_gb18030')))
-    assert.deepEqual(await readFile(join(root, 'bases', base.id, 'gbk.csv')), NORMALIZED_TABLE)
+    assert.deepEqual(await readFile(join(root, 'kbs', kb.id, 'gbk.csv')), NORMALIZED_TABLE)
 
     const utf8Source = join(root, 'utf8.csv')
     await writeFile(utf8Source, '名称,金额\n甲公司,120\n')
-    const skipped = await importFiles(root, { baseId: base.id, sourcePath: utf8Source, destCategory: '' })
+    const skipped = await importFiles(root, { kbId: kb.id, sourcePath: utf8Source, destCategory: '' })
     assert.equal(skipped.skipped, 1)
     assert.equal(skipped.copied.length, 0)
   } finally {
@@ -419,11 +432,11 @@ test('GB18030 CSV 导入后写成 UTF-8 BOM，同内容 UTF-8 会跳过', { skip
 test('表头命中只返回列名行，不把表头扩成列名: 列名', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '表头', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '表头', description: 'CSV 测试' })
     const source = join(root, 'header.csv')
     await writeFile(source, '供应商,金额\n甲公司,120\n')
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '' })
-    const search = await searchFirstFile(root, base.id, '供应商')
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '' })
+    const search = await searchFirstFile(root, kb.id, '供应商')
     const hit = search.hits.find((item) => item.matchLine === 1)
     assert.equal(hit?.excerpt, '列: 供应商 | 金额')
     assert.equal(hit?.matchedExcerpt, '列: 供应商 | 金额')
@@ -440,10 +453,10 @@ test('截断 UTF-16 与空 CSV 导入失败', async () => {
 
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '坏编码', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '坏编码', description: 'CSV 测试' })
     const emptyFile = join(root, 'empty.csv')
     await writeFile(emptyFile, Buffer.from([0xef, 0xbb, 0xbf]))
-    const result = await importFiles(root, { baseId: base.id, sourcePath: emptyFile, destCategory: '' })
+    const result = await importFiles(root, { kbId: kb.id, sourcePath: emptyFile, destCategory: '' })
     assert.equal(result.failed, 1)
     assert.equal(result.files[0]?.code, 'csv_encoding_invalid')
   } finally {
@@ -454,25 +467,25 @@ test('截断 UTF-16 与空 CSV 导入失败', async () => {
 test('大量中文命中时文件详情可连续分页读取，不受单文件扫描上限阻断', async () => {
   const root = await sandbox()
   try {
-    const base = await createBase(root, { title: '分片', description: 'CSV 测试' })
+    const kb = await createKb(root, { title: '分片', description: 'CSV 测试' })
     const source = join(root, '供应商台账.csv')
     const rows = Array.from({ length: 220 }, (_, index) => `HT-${index},成都锦官物流,${'备注'.repeat(20)}`)
     await writeFile(source, `合同编号,供应商,备注\n${rows.join('\n')}\n`)
-    await importFiles(root, { baseId: base.id, sourcePath: source, destCategory: '合同/2026' })
-    const overview = await searchFirstOverview(root, base.id, '成都锦官物流')
+    await importFiles(root, { kbId: kb.id, sourcePath: source, destCategory: '合同/2026' })
+    const overview = await searchFirstOverview(root, kb.id, '成都锦官物流')
     const summary = overview.files[0]
     assert.equal(summary?.path, '合同/2026/供应商台账.csv')
     if (!summary) throw new Error('未找到 CSV 文件概览')
 
     const pages: SearchFileDetailResult[] = []
     let request: SearchRequest = {
-      baseId: base.id,
+      kbId: kb.id,
       query: '成都锦官物流',
       path: summary.path,
       limit: 10,
     }
     for (let pageIndex = 0; pageIndex < 50; pageIndex += 1) {
-      const result = await searchBase(root, request)
+      const result = await searchKb(root, request)
       if (result.kind !== 'file-detail') throw new Error('搜索文件请求应返回文件详情')
       pages.push(result)
       if (!result.page.nextCursor) break

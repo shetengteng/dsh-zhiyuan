@@ -4,11 +4,15 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, test } from 'node:test'
-import { createBase } from '../src/service/kb/bases.ts'
-import { registerKbCommands, resolveImportTo } from '../src/controller/commands.ts'
+import { registerKbCommands } from '../src/controller/command/kb-command-controller.ts'
 import { COMMAND_NAME } from '../src/model/constants.ts'
 import { createJobRunner, type JobRunner } from '../src/platform/jobs.ts'
 import { setDataRootForTest } from '../src/platform/paths.ts'
+import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
+import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
+
+const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())
+const { createKb, resolveImportTo } = knowledgeServices
 
 type CmdResult = { kind: 'success' | 'error'; text?: string }
 type Handler = (input: { rawInput: string }) => Promise<CmdResult>
@@ -29,7 +33,7 @@ function capture(jobs: JobRunner = instantJobs()): { handler: Handler; def: Reco
         return () => {}
       },
     },
-  }, jobs)
+  }, jobs, knowledgeServices)
   const handler = def.handler as Handler | undefined
   if (!handler) throw new Error('命令未注册')
   return { handler, def }
@@ -59,8 +63,8 @@ function callLine(payload: Record<string, unknown>): string {
   return `call '${JSON.stringify(payload)}'`
 }
 
-async function createTestBase(root: string) {
-  return createBase(root, { title: '工作库', description: '描述' })
+async function createTestKb(root: string) {
+  return createKb(root, { title: '工作库', description: '描述' })
 }
 
 describe('kb 斜杠命令', { concurrency: false }, () => {
@@ -88,59 +92,59 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
     assert.match(result.text ?? '', /用法/)
   })
 
-  test('import 缺 path / --base / --to 分别报错', async () => {
+  test('import 缺 path / --kb / --to 分别报错', async () => {
     await withRoot(async (_root, run) => {
       assert.match((await run('import')).text ?? '', /用法/)
-      assert.match((await run('import /tmp/a.md')).text ?? '', /必须指定 --base/)
-      assert.match((await run('import /tmp/a.md --base work')).text ?? '', /--to|--root/)
+      assert.match((await run('import /tmp/a.md')).text ?? '', /必须指定 --kb/)
+      assert.match((await run('import /tmp/a.md --kb work')).text ?? '', /--to|--root/)
     })
   })
 
   test('import 无 --to 时复用上次类目；--root 仍进库根', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
+      const kb = await createTestKb(root)
       const first = join(root, 'a.md')
       const second = join(root, 'b.md')
       const third = join(root, 'c.md')
       await writeFile(first, 'one')
       await writeFile(second, 'two')
       await writeFile(third, 'three')
-      json(await run(`import ${first} --base ${base.id} --to 合同/2024`))
-      const reused = json(await run(`import ${second} --base ${base.id}`)) as { copied: string[] }
+      json(await run(`import ${first} --kb ${kb.id} --to 合同/2024`))
+      const reused = json(await run(`import ${second} --kb ${kb.id}`)) as { copied: string[] }
       assert.ok(reused.copied.includes('合同/2024/b.md'))
-      const rooted = json(await run(`import ${third} --base ${base.id} --root`)) as { copied: string[] }
+      const rooted = json(await run(`import ${third} --kb ${kb.id} --root`)) as { copied: string[] }
       assert.ok(rooted.copied.includes('c.md'))
     })
   })
 
   test('import --to 入队并拷进类目；源文件不改', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
+      const kb = await createTestKb(root)
       const src = join(root, '供应商合同.md')
       await writeFile(src, '条款')
-      const body = json(await run(`import ${src} --base ${base.id} --to 合同/2024`)) as { copied: string[] }
+      const body = json(await run(`import ${src} --kb ${kb.id} --to 合同/2024`)) as { copied: string[] }
       assert.ok(body.copied.includes('合同/2024/供应商合同.md'))
-      assert.equal(existsSync(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md')), true)
+      assert.equal(existsSync(join(root, 'kbs', kb.id, '合同', '2024', '供应商合同.md')), true)
     })
   })
 
   test('import --root 与 --path；--preserve-tree / --no-create', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
+      const kb = await createTestKb(root)
       const src = join(root, 'a.md')
       await writeFile(src, 'hi')
-      const rooted = json(await run(`import --path ${src} --base ${base.id} --root`)) as { copied: string[] }
+      const rooted = json(await run(`import --path ${src} --kb ${kb.id} --root`)) as { copied: string[] }
       assert.ok(rooted.copied.includes('a.md'))
 
       const nested = join(root, 'src', '子', 'b.md')
       await mkdir(join(root, 'src', '子'), { recursive: true })
       await writeFile(nested, 'tree')
-      const preserved = json(await run(`import ${join(root, 'src')} --base ${base.id} --to 归档 --preserve-tree`)) as {
+      const preserved = json(await run(`import ${join(root, 'src')} --kb ${kb.id} --to 归档 --preserve-tree`)) as {
         copied: string[]
       }
       assert.ok(preserved.copied.some((item) => item.includes('子/b.md')))
 
-      const missing = await run(`import ${src} --base ${base.id} --to 尚不存在 --no-create`)
+      const missing = await run(`import ${src} --kb ${kb.id} --to 尚不存在 --no-create`)
       assert.equal(missing.kind, 'error')
       assert.match(missing.text ?? '', /类目不存在/)
     })
@@ -148,12 +152,12 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
 
   test('search：rest 作 query，--aliases 中英文逗号，--to 收窄类目', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
-      await mkdir(join(root, 'bases', base.id, '合同', '2024'), { recursive: true })
-      await mkdir(join(root, 'bases', base.id, '会议'), { recursive: true })
-      await writeFile(join(root, 'bases', base.id, '合同', '2024', '供应商合同.md'), '若乙方违约则解约。\n')
-      await writeFile(join(root, 'bases', base.id, '会议', '纪要.md'), '周会无合同。\n')
-      const result = json(await run(`search 违约 --base ${base.id} --aliases 解约，termination --to 合同/2024`)) as {
+      const kb = await createTestKb(root)
+      await mkdir(join(root, 'kbs', kb.id, '合同', '2024'), { recursive: true })
+      await mkdir(join(root, 'kbs', kb.id, '会议'), { recursive: true })
+      await writeFile(join(root, 'kbs', kb.id, '合同', '2024', '供应商合同.md'), '若乙方违约则解约。\n')
+      await writeFile(join(root, 'kbs', kb.id, '会议', '纪要.md'), '周会无合同。\n')
+      const result = json(await run(`search 违约 --kb ${kb.id} --aliases 解约，termination --to 合同/2024`)) as {
         kind: 'overview'
         files: Array<{ path: string; totalHits: number }>
         totalFiles: number
@@ -173,7 +177,15 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
     await withRoot(async (_root, run) => {
       const result = await run('search --query 违约')
       assert.equal(result.kind, 'error')
-      assert.match(result.text ?? '', /baseId/)
+      assert.match(result.text ?? '', /kbId/)
+    })
+  })
+
+  test('search 续页拒绝混入首次查询字段', async () => {
+    await withRoot(async (_root, run) => {
+      const result = await run('search --cursor cursor --kb work')
+      assert.equal(result.kind, 'error')
+      assert.match(result.text ?? '', /续页请求只能包含 cursor 和 limit/)
     })
   })
 
@@ -189,7 +201,7 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
 })
 
 describe('kb call', { concurrency: false }, () => {
-  test('list / create / update / deleteBase', async () => {
+  test('list / create / update / deleteKb', async () => {
     await withRoot(async (_root, run) => {
       assert.deepEqual(json(await run(callLine({ op: 'list' }))), [])
       const created = json(await run(callLine({
@@ -206,27 +218,27 @@ describe('kb call', { concurrency: false }, () => {
       const updated = json(await run(callLine({ op: 'update', id: created.id, title: '公司库' }))) as { title: string; id: string }
       assert.equal(updated.id, created.id)
       assert.equal(updated.title, '公司库')
-      const denied = await run(callLine({ op: 'deleteBase', id: created.id }))
+      const denied = await run(callLine({ op: 'deleteKb', id: created.id }))
       assert.equal(denied.kind, 'error')
       assert.match(denied.text ?? '', /确认/)
-      assert.deepEqual(json(await run(callLine({ op: 'deleteBase', id: created.id, confirm: true }))), { ok: true })
+      assert.deepEqual(json(await run(callLine({ op: 'deleteKb', id: created.id, confirm: true }))), { ok: true })
       assert.deepEqual(json(await run(callLine({ op: 'list' }))), [])
     })
   })
 
   test('tree / read / write / deleteEntry', async () => {
     await withRoot(async (_root, run) => {
-      const base = await createTestBase(_root)
-      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: '合同/2024/a.md', change: { kind: 'text', text: 'hello' } }))), { ok: true })
-      const entry = json(await run(callLine({ op: 'read', id: base.id, path: '合同/2024/a.md' }))) as { text: string }
+      const kb = await createTestKb(_root)
+      assert.deepEqual(json(await run(callLine({ op: 'write', id: kb.id, path: '合同/2024/a.md', change: { kind: 'text', text: 'hello' } }))), { ok: true })
+      const entry = json(await run(callLine({ op: 'read', id: kb.id, path: '合同/2024/a.md' }))) as { text: string }
       assert.equal(entry.text, 'hello')
-      const tree = json(await run(callLine({ op: 'tree', id: base.id }))) as Array<{ name: string; kind: string }>
+      const tree = json(await run(callLine({ op: 'tree', id: kb.id }))) as Array<{ name: string; kind: string }>
       assert.equal(tree[0].name, '合同')
       assert.equal(tree[0].kind, 'dir')
-      const denied = await run(callLine({ op: 'deleteEntry', id: base.id, path: '合同/2024/a.md' }))
+      const denied = await run(callLine({ op: 'deleteEntry', id: kb.id, path: '合同/2024/a.md' }))
       assert.equal(denied.kind, 'error')
-      assert.deepEqual(json(await run(callLine({ op: 'deleteEntry', id: base.id, path: '合同/2024/a.md', confirm: true }))), { ok: true })
-      const missing = await run(callLine({ op: 'read', id: base.id, path: '合同/2024/a.md' }))
+      assert.deepEqual(json(await run(callLine({ op: 'deleteEntry', id: kb.id, path: '合同/2024/a.md', confirm: true }))), { ok: true })
+      const missing = await run(callLine({ op: 'read', id: kb.id, path: '合同/2024/a.md' }))
       assert.equal(missing.kind, 'error')
       assert.match(missing.text ?? '', /不存在/)
     })
@@ -234,12 +246,12 @@ describe('kb call', { concurrency: false }, () => {
 
   test('表格分页和修改写入走私有操作边界并校验输入', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
-      assert.deepEqual(json(await run(callLine({ op: 'write', id: base.id, path: 'table.csv', change: { kind: 'text', text: '名称,金额\n甲,120\n乙,80' } }))), { ok: true })
-      const preview = json(await run(callLine({ op: 'read', id: base.id, path: 'table.csv', view: 'tree', readMode: 'edit' }))) as {
+      const kb = await createTestKb(root)
+      assert.deepEqual(json(await run(callLine({ op: 'write', id: kb.id, path: 'table.csv', change: { kind: 'text', text: '名称,金额\n甲,120\n乙,80' } }))), { ok: true })
+      const preview = json(await run(callLine({ op: 'read', id: kb.id, path: 'table.csv', view: 'tree', readMode: 'edit' }))) as {
         table: { revision: string }
       }
-      const page = json(await run(callLine({ op: 'readPage', id: base.id, path: 'table.csv', startRow: 2, pageSize: 1 }))) as {
+      const page = json(await run(callLine({ op: 'readPage', id: kb.id, path: 'table.csv', startRow: 2, pageSize: 1 }))) as {
         windowStartRow: number
         rows: string[][]
       }
@@ -248,7 +260,7 @@ describe('kb call', { concurrency: false }, () => {
 
       const invalid = await run(callLine({
         op: 'write',
-        id: base.id,
+        id: kb.id,
         path: 'table.csv',
         change: { kind: 'table-patch', patch: { revision: preview.table.revision, headerChanges: [{ column: -1, value: '名称' }], cellChanges: [] } },
       }))
@@ -257,7 +269,7 @@ describe('kb call', { concurrency: false }, () => {
 
       assert.deepEqual(json(await run(callLine({
         op: 'write',
-        id: base.id,
+        id: kb.id,
         path: 'table.csv',
         change: { kind: 'table-patch', patch: { revision: preview.table.revision, headerChanges: [], cellChanges: [{ row: 2, column: 1, value: '90' }] } },
       }))), { ok: true })
@@ -267,23 +279,23 @@ describe('kb call', { concurrency: false }, () => {
   test('prefs / setPrefs 只改给出的字段，并拒绝非法偏好', async () => {
     await withRoot(async (_root, run) => {
       const created = json(await run(callLine({ op: 'create', title: '工作库', description: '描述' }))) as { id: string }
-      const prefs = json(await run(callLine({ op: 'prefs' }))) as { defaultBaseId: string; maxFileBytes: number }
-      assert.equal(prefs.defaultBaseId, created.id)
-      const updated = json(await run(callLine({ op: 'setPrefs', maxFileBytes: 1024, defaultBaseId: created.id }))) as {
+      const prefs = json(await run(callLine({ op: 'prefs' }))) as { defaultKbId: string; maxFileBytes: number }
+      assert.equal(prefs.defaultKbId, created.id)
+      const updated = json(await run(callLine({ op: 'setPrefs', maxFileBytes: 1024, defaultKbId: created.id }))) as {
         maxFileBytes: number
-        defaultBaseId: string
-        maxBaseBytes: number
+        defaultKbId: string
+        maxKbBytes: number
       }
       assert.equal(updated.maxFileBytes, 1024)
-      assert.equal(updated.defaultBaseId, created.id)
-      assert.ok(updated.maxBaseBytes > 1024)
+      assert.equal(updated.defaultKbId, created.id)
+      assert.ok(updated.maxKbBytes > 1024)
       const invalid = await run(callLine({ op: 'setPrefs', maxFileBytes: 'nope' }))
       assert.equal(invalid.kind, 'error')
       assert.match(invalid.text ?? '', /maxFileBytes/)
-      const invalidDefault = await run(callLine({ op: 'setPrefs', defaultBaseId: 1 }))
+      const invalidDefault = await run(callLine({ op: 'setPrefs', defaultKbId: 1 }))
       assert.equal(invalidDefault.kind, 'error')
-      assert.match(invalidDefault.text ?? '', /defaultBaseId/)
-      const tooLarge = await run(callLine({ op: 'setPrefs', maxBaseBytes: Number.MAX_SAFE_INTEGER }))
+      assert.match(invalidDefault.text ?? '', /defaultKbId/)
+      const tooLarge = await run(callLine({ op: 'setPrefs', maxKbBytes: Number.MAX_SAFE_INTEGER }))
       assert.equal(tooLarge.kind, 'error')
       assert.match(tooLarge.text ?? '', /额度/)
       const afterInvalid = json(await run(callLine({ op: 'prefs' }))) as { maxFileBytes: number }
@@ -294,12 +306,12 @@ describe('kb call', { concurrency: false }, () => {
   test('call search / import 走同一套 Host 函数', async () => {
     const jobs = createJobRunner()
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
+      const kb = await createTestKb(root)
       const src = join(root, 'a.md')
       await writeFile(src, '违约条款')
       const copied = json(await run(callLine({
         op: 'import',
-        baseId: base.id,
+        kbId: kb.id,
         sourcePath: src,
         destCategory: '合同/2024',
         preserveTree: false,
@@ -307,7 +319,7 @@ describe('kb call', { concurrency: false }, () => {
       assert.ok(copied.copied.includes('合同/2024/a.md'))
       const found = json(await run(callLine({
         op: 'search',
-        baseId: base.id,
+        kbId: kb.id,
         query: '违约',
         aliases: ['条款'],
         category: '合同/2024',
@@ -324,7 +336,7 @@ describe('kb call', { concurrency: false }, () => {
 
       const detail = json(await run(callLine({
         op: 'search',
-        baseId: base.id,
+        kbId: kb.id,
         query: '违约',
         aliases: ['条款'],
         category: '合同/2024',
@@ -342,10 +354,10 @@ describe('kb call', { concurrency: false }, () => {
 
   test('resolveImportTo：--to 优先，--root 次之，否则上次类目', async () => {
     await withRoot(async (root) => {
-      const base = await createTestBase(root)
-      assert.equal(await resolveImportTo(root, base.id, '合同/2024', false), '合同/2024')
-      assert.equal(await resolveImportTo(root, base.id, undefined, true), '')
-      await assert.rejects(() => resolveImportTo(root, base.id, undefined, false), /--to/)
+      const kb = await createTestKb(root)
+      assert.equal(await resolveImportTo(root, kb.id, '合同/2024', false), '合同/2024')
+      assert.equal(await resolveImportTo(root, kb.id, undefined, true), '')
+      await assert.rejects(() => resolveImportTo(root, kb.id, undefined, false), /--to/)
     })
   })
 
@@ -353,19 +365,19 @@ describe('kb call', { concurrency: false }, () => {
     let disposed = false
     const dispose = registerKbCommands({
       commands: { register: () => () => { disposed = true } },
-    }, instantJobs())
+    }, instantJobs(), knowledgeServices)
     dispose()
     assert.equal(disposed, true)
   })
 
   test('call import createMissing=false 时类目不存在则失败', async () => {
     await withRoot(async (root, run) => {
-      const base = await createTestBase(root)
+      const kb = await createTestKb(root)
       const src = join(root, 'a.md')
       await writeFile(src, 'x')
       const result = await run(callLine({
         op: 'import',
-        baseId: base.id,
+        kbId: kb.id,
         sourcePath: src,
         destCategory: '没有这个',
         createMissing: false,

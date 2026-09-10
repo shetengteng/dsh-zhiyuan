@@ -5,9 +5,8 @@ import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPa
 import type { SourceFormat, EntryFormat as EntryFormatValue } from '../model/content-contract.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
-import type { ReadEntryResult } from '../model/types.ts'
-import type { TableEditorPage } from '../model/content-contract.ts'
-import { KbError } from '../model/types.ts'
+import type { ReadEntryResponse, TableEditorPage } from '../model/response/entry-response.ts'
+import { KbError } from '../model/error/kb-error.ts'
 
 type SourceRoute = {
   format: SourceFormat
@@ -69,7 +68,7 @@ export const contentRegistry = {
   entryFormatForPath: (relativePath: string): EntryFormatValue | undefined => ENTRY_ROUTES.get(extensionOf(relativePath))?.format,
   isStoredEntryPath: (relativePath: string): boolean => ENTRY_ROUTES.has(extensionOf(relativePath)),
   prepareImport: (context: PrepareImportContext): Promise<PreparedEntry[]> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
-  readContent: (context: EntryReadContext): Promise<ReadEntryResult> => entryHandlerForPath(context.relativePath).readContent(context),
+  readContent: (context: EntryReadContext): Promise<ReadEntryResponse> => entryHandlerForPath(context.relativePath).readContent(context),
   readPage: (context: EntryPageContext): Promise<TableEditorPage> => entryHandlerForPath(context.relativePath).readPage(context),
   writeContent: (context: EntryWriteContext): Promise<void> => entryHandlerForPath(context.relativePath).writeContent(context),
   readForSearch: (context: EntryPathContext): Promise<SearchDocument> => entryHandlerForPath(context.relativePath).readForSearch(context),

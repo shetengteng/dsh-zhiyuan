@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
-import type { ImportFileResult } from '../../model/types.ts'
+import type { ImportFileResponse } from '../../model/response/import-response.ts'
 
 // 查：唯一命名、目标路径规则、来源缺失文案与错误码映射。
 
@@ -43,7 +43,7 @@ export function outputRelativePath(sourceRelativePath: string, sourceName: strin
 }
 
 /** 判断 KbError.code 是否属于单文件导入失败码（可写入结果，不中断批次）。 */
-export function isIngestFailureCode(code: string): code is NonNullable<ImportFileResult['code']> {
+export function isImportFailureCode(code: string): code is NonNullable<ImportFileResponse['code']> {
   return code === 'ext_denied'
     || code === 'file_too_large'
     || code === 'quota'

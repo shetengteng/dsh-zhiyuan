@@ -4,9 +4,9 @@ import { EntryContentKind, EntryFormat } from '../../../model/content-contract.t
 import { splitPhysicalLines, truncationFor } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
 import type { EntryReadContext } from '../../host-contract.ts'
-import type { ReadEntryResult } from '../../../model/types.ts'
+import type { ReadEntryResponse } from '../../../model/response/entry-response.ts'
 
-export async function readMarkdownPreview(context: EntryReadContext): Promise<ReadEntryResult> {
+export async function readMarkdownPreview(context: EntryReadContext): Promise<ReadEntryResponse> {
   const bytes = await readFile(context.absolutePath)
   const text = bytes.toString('utf8')
   const lines = splitPhysicalLines(text)

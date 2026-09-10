@@ -1,7 +1,7 @@
 import { SEARCH_CONTEXT, SEARCH_LIST_CONTEXT, SEARCH_PAGE_MAX_CHARS } from '../../model/constants.ts'
 import { contentRegistry } from '../../content/host-api.ts'
 import type { SearchDocument } from '../../content/shared/search-document.ts'
-import type { SearchFileDetailResult, SearchHit } from '../../model/search-result.ts'
+import type { SearchFileDetailResult, SearchHit } from '../../model/response/search-response.ts'
 import type { SearchScanner } from './scanner/scanner-contract.ts'
 import type { ResolvedSearchScope } from './search-scope.ts'
 import { assertInside, assertNoSymlinkEscape } from '../../platform/paths.ts'
@@ -47,7 +47,7 @@ export async function searchFileDetail(
   const result: SearchFileDetailResult = {
     kind: 'file-detail',
     scope: 'hits',
-    baseId: scope.baseId,
+    kbId: scope.kbId,
     ...(scope.category ? { category: scope.category } : {}),
     query: scope.query,
     path: scope.path,

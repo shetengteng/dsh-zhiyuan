@@ -1,16 +1,12 @@
 import { existsSync, lstatSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
+import type { DestinationResolution } from '../model/context/kb-context.ts'
+import { KbError } from '../model/error/kb-error.ts'
 import { DATA_DIR_NAME } from '../model/constants.ts'
 import { importDsh } from './import-dsh.ts'
-import { KbError } from '../model/types.ts'
 
-export type DestinationResolution = {
-  relative: string
-  absolute: string
-  segments: string[]
-  deep: boolean
-}
+export type { DestinationResolution } from '../model/context/kb-context.ts'
 
 let cachedDataRoot: string | undefined
 
@@ -39,12 +35,12 @@ export function clearDataRootCache(): void {
   cachedDataRoot = undefined
 }
 
-export function basesRoot(dataRoot: string): string {
-  return join(dataRoot, 'bases')
+export function kbsRoot(dataRoot: string): string {
+  return join(dataRoot, 'kbs')
 }
 
-export function baseDir(dataRoot: string, baseId: string): string {
-  return join(basesRoot(dataRoot), baseId)
+export function kbDir(dataRoot: string, kbId: string): string {
+  return join(kbsRoot(dataRoot), kbId)
 }
 
 export function catalogPath(dataRoot: string): string {
@@ -63,8 +59,8 @@ function splitCategory(destinationCategory: string): string[] {
     .filter(Boolean)
 }
 
-export function assertInside(baseRoot: string, candidatePath: string): string {
-  const absoluteRoot = resolve(baseRoot)
+export function assertInside(kbRoot: string, candidatePath: string): string {
+  const absoluteRoot = resolve(kbRoot)
   const absoluteCandidate = resolve(candidatePath)
   const relativePath = relative(absoluteRoot, absoluteCandidate)
   if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
@@ -84,15 +80,15 @@ function rejectEscapeTokens(segments: string[]): void {
   }
 }
 
-export function resolveDest(dataRoot: string, baseId: string, destinationCategory: string): DestinationResolution {
+export function resolveDest(dataRoot: string, kbId: string, destinationCategory: string): DestinationResolution {
   if (isAbsolute(destinationCategory) || destinationCategory.startsWith('~')) {
     throw new KbError('path_escape', '类目必须是库内相对路径')
   }
   const categorySegments = splitCategory(destinationCategory)
   rejectEscapeTokens(categorySegments)
-  const baseRoot = baseDir(dataRoot, baseId)
-  const absoluteDestination = assertInside(baseRoot, join(baseRoot, ...categorySegments))
-  const normalizedRelativePath = relative(baseRoot, absoluteDestination).split(sep).join('/')
+  const kbRoot = kbDir(dataRoot, kbId)
+  const absoluteDestination = assertInside(kbRoot, join(kbRoot, ...categorySegments))
+  const normalizedRelativePath = relative(kbRoot, absoluteDestination).split(sep).join('/')
   if (normalizedRelativePath === '..' || normalizedRelativePath.startsWith('../')) {
     throw new KbError('path_escape', '解析后的路径逃出了当前库')
   }
@@ -104,12 +100,12 @@ export function resolveDest(dataRoot: string, baseId: string, destinationCategor
   }
 }
 
-export function resolveEntry(dataRoot: string, baseId: string, relativePath: string): string {
-  return resolveDest(dataRoot, baseId, relativePath).absolute
+export function resolveEntry(dataRoot: string, kbId: string, relativePath: string): string {
+  return resolveDest(dataRoot, kbId, relativePath).absolute
 }
 
-export function assertNoSymlinkEscape(baseRoot: string, candidatePath: string): void {
-  const absoluteRoot = resolve(baseRoot)
+export function assertNoSymlinkEscape(kbRoot: string, candidatePath: string): void {
+  const absoluteRoot = resolve(kbRoot)
   let currentPath = candidatePath
   while (true) {
     if (existsSync(currentPath)) {

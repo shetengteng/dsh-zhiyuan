@@ -5,13 +5,13 @@ import { CSV_MAX_IMPORT_BYTES } from '../../../model/constants.ts'
 import { encodeUtf8CsvWithBom, stripUtf8Bom } from '../../shared/utf8.ts'
 import { assertTablePatchShape } from '../../shared/table-patch.ts'
 import type { EntryWriteContext } from '../../host-contract.ts'
-import type { TableCellChange, TableHeaderChange, TablePatch } from '../../../model/content-contract.ts'
-import { KbError } from '../../../model/types.ts'
+import { KbError } from '../../../model/error/kb-error.ts'
+import type { TableCellChange, TableHeaderChange, TablePatch } from '../../../model/request/entry-request.ts'
 import { readCsvDocument } from './editor.ts'
 import { parseCsvDocument, serializeCsvDocument, type CsvDocument } from './csv-document.ts'
 import { validateUtf8CsvBytes } from './encoding.ts'
 
-type CsvWriteContext = Pick<EntryWriteContext, 'absolutePath' | 'baseBytesWithoutEntry' | 'maxBaseBytes' | 'maxFileBytes'>
+type CsvWriteContext = Pick<EntryWriteContext, 'absolutePath' | 'kbBytesWithoutEntry' | 'maxKbBytes' | 'maxFileBytes'>
 
 /** CSV 写入唯一入口：整文件替换，或带 revision 校验的稀疏表格修改。 */
 export async function writeCsvContent(context: EntryWriteContext): Promise<void> {
@@ -30,7 +30,7 @@ export async function writeCsvDocument(context: CsvWriteContext, document: Retur
   const bytes = encodeUtf8CsvWithBom(serializeCsvDocument(document))
   const validation = validateUtf8CsvBytes(bytes, maxFileBytes)
   if (!validation.ok) throw new KbError(validation.code, validation.message)
-  if (context.baseBytesWithoutEntry + bytes.length > context.maxBaseBytes) {
+  if (context.kbBytesWithoutEntry + bytes.length > context.maxKbBytes) {
     throw new KbError('quota', '编辑后将超过单库文字上限')
   }
   const entryDirectory = dirname(context.absolutePath)

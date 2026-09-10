@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL, VERSION_LABEL } from '../../model/constants.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
-import type { DialogKind, ImportResult, SearchOverviewResult, SearchResult } from '../types.ts'
-import { parseImportResult } from '../payload/import-result.ts'
+import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult } from '../types.ts'
+import { parseImportResponse } from '../payload/import-result.ts'
+import { parseCatalogPrefs, parseOperationAck, parsePickSourceResult } from '../payload/settings-response.ts'
 import { parseTableEditorPage } from '../payload/table-page.ts'
 import { canSearchNextPage, canSearchPreviousPage, type SearchPageHistory } from '../search/search-pages.ts'
 import { useWorkbenchData, splitAliases, type WorkbenchNotice } from './use-workbench-data.ts'
@@ -10,8 +11,8 @@ import { useEntryPreview } from './use-entry-preview.ts'
 import { createSearchActions } from './search-actions.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { ConfirmDialog, CreateDialog, EditDialog } from './dialogs/BaseDialogs.tsx'
-import { BasePage } from './BasePage.tsx'
+import { ConfirmDialog, CreateDialog, EditDialog } from './dialogs/KbDialogs.tsx'
+import { KbPage } from './KbPage.tsx'
 import { ImportDialog } from './dialogs/ImportDialogs.tsx'
 import { SearchDialog } from './dialogs/SearchDialog.tsx'
 import { PreviewDialog } from './preview/PreviewDialog.tsx'
@@ -19,13 +20,13 @@ import { PrefsPage } from './PrefsPage.tsx'
 import { SectionIcon } from './SectionIcon.tsx'
 import { ensureSettingsStyles } from './styles.ts'
 
-type SettingsTab = 'bases' | 'prefs' | 'about'
+type SettingsTab = 'kbs' | 'prefs' | 'about'
 
 /** 创建设置 section，并把 UI 操作接到 Host bridge。 */
 export function createSettingsSection(connection?: KnowledgePrivateConnection) {
   return function ZhiyuanSettings() {
     ensureSettingsStyles()
-    const [tab, setTab] = useState('bases' as SettingsTab)
+    const [tab, setTab] = useState('kbs' as SettingsTab)
     const [dialog, setDialog] = useState(null as DialogKind)
     const [query, setQuery] = useState('')
     const [searched, setSearched] = useState(false)
@@ -38,7 +39,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     const searchRequestVersion = useRef(0)
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
 
-    const { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
+    const { kbs, currentKbId, setCurrentKbId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
     const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, cancelPreviews } = useEntryPreview({
       call,
       onOpened: () => setDialog('preview'),
@@ -46,7 +47,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
       onSearchError: (message) => setError(message),
     })
 
-    const currentBase = bases.find((item) => item.id === currentBaseId)
+    const currentKb = kbs.find((item) => item.id === currentKbId)
     const run = <T,>(work: () => Promise<T>, after?: (value: T) => void) => runWork(work, { onSuccess: () => setDialog(null), after })
 
     useEffect(() => {
@@ -69,7 +70,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     }
 
     const searchActions = createSearchActions({
-      baseId: currentBaseId,
+      kbId: currentKbId,
       call,
       searchResult,
       searchOverviewResult,
@@ -91,84 +92,84 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
         <div className="zy-head">
           <div className="zy-head-title"><SectionIcon size={18} /><h1>{SECTION_LABEL}</h1><span className="zy-sub">{VERSION_LABEL}</span></div>
           <div className="zy-tabs" role="tablist">
-            {(['bases', 'prefs', 'about'] as SettingsTab[]).map((id) => (
+            {(['kbs', 'prefs', 'about'] as SettingsTab[]).map((id) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'zy-tab is-on' : 'zy-tab'} onClick={() => setTab(id)}>
-                {id === 'bases' ? '知识库' : id === 'prefs' ? '偏好' : '关于'}
+                {id === 'kbs' ? '知识库' : id === 'prefs' ? '偏好' : '关于'}
               </button>
             ))}
           </div>
         </div>
         {notice ? <p className={`zy-note is-${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.tone === 'success' ? null : <IconWarningOutline16 size={14} />}{notice.text}</p> : null}
-        <div className={tab === 'bases' ? 'zy-body' : 'zy-body is-doc'}>
-          {tab === 'bases' ? (
-            <BasePage
-              bases={bases}
-              currentBase={currentBase}
+        <div className={tab === 'kbs' ? 'zy-body' : 'zy-body is-doc'}>
+          {tab === 'kbs' ? (
+            <KbPage
+              kbs={kbs}
+              currentKb={currentKb}
               tree={tree}
               job={job}
               pending={pending}
-              onSelectBase={(baseId) => { setCurrentBaseId(baseId); void refresh(baseId) }}
+              onSelectKb={(kbId) => { setCurrentKbId(kbId); void refresh(kbId) }}
               onCreate={() => { setError(''); setDialog('create') }}
               onEdit={() => { setError(''); setDialog('edit') }}
               onImport={() => { setError(''); setNotice(null); setDialog('import') }}
               onSearch={() => { resetSearch(); setError(''); setDialog('search') }}
-              onDeleteBase={(base) => {
-                setConfirm({ message: `删除知识库「${base.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteBase', id: base.id, confirm: true }).then(() => undefined)) })
+              onDeleteKb={(kb) => {
+                setConfirm({ message: `删除知识库「${kb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: kb.id, confirm: true }).then(parseOperationAck).then(() => undefined)) })
                 setDialog('confirm')
               }}
-              onOpenEntry={(entryPath) => openTreeEntry(currentBaseId, entryPath)}
+              onOpenEntry={(entryPath) => openTreeEntry(currentKbId, entryPath)}
               onDeleteEntry={(entryPath, kind) => {
                 setConfirm({
                   message: kind === 'dir' ? `删除类目「${entryPath}」？` : `删除文件「${entryPath}」？`,
-                  run: () => run(() => call({ op: 'deleteEntry', id: currentBaseId, path: entryPath, confirm: true }).then(() => undefined)),
+                  run: () => run(() => call({ op: 'deleteEntry', id: currentKbId, path: entryPath, confirm: true }).then(parseOperationAck).then(() => undefined)),
                 })
                 setDialog('confirm')
               }}
             />
           ) : null}
-          {tab === 'prefs' ? <PrefsPage prefs={prefs} bases={bases} busy={pending} error={error} onSave={(next) => void run(() => call({ op: 'setPrefs', ...next }).then(() => undefined))} /> : null}
+          {tab === 'prefs' ? <PrefsPage prefs={prefs} kbs={kbs} busy={pending} error={error} onSave={(next) => void run(() => call({ op: 'setPrefs', ...next }).then(parseCatalogPrefs).then(() => undefined))} /> : null}
           {tab === 'about' ? <AboutPage /> : null}
         </div>
 
         {dialog === 'create' ? <CreateDialog error={error} busy={pending} onClose={() => setDialog(null)} onSubmit={(input) => void run(() => call({ op: 'create', ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))} /> : null}
-        {dialog === 'edit' && currentBase ? (
+        {dialog === 'edit' && currentKb ? (
           <EditDialog
-            base={currentBase}
+            kb={currentKb}
             error={error}
             busy={pending}
             onClose={() => setDialog(null)}
             onDelete={() => {
-              setConfirm({ message: `删除知识库「${currentBase.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteBase', id: currentBase.id, confirm: true }).then(() => undefined)) })
+              setConfirm({ message: `删除知识库「${currentKb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: currentKb.id, confirm: true }).then(parseOperationAck).then(() => undefined)) })
               setDialog('confirm')
             }}
-            onSubmit={(input) => void run(() => call({ op: 'update', id: currentBase.id, ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))}
+            onSubmit={(input) => void run(() => call({ op: 'update', id: currentKb.id, ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))}
           />
         ) : null}
-        {dialog === 'import' && currentBase ? (
+        {dialog === 'import' && currentKb ? (
           <ImportDialog
-            baseTitle={currentBase.title}
+            kbTitle={currentKb.title}
             error={error}
             busy={pending}
             onClose={() => setDialog(null)}
             onPick={async (kind) => {
               setError('')
               try {
-                const pickResult = await call({ op: 'pick', kind }) as { path?: string }
-                return pickResult.path ?? ''
+                const pickResult = parsePickSourceResult(await call({ op: 'pick', kind }))
+                return 'cancelled' in pickResult ? '' : pickResult.path
               } catch (err) {
                 setError(err instanceof Error ? err.message : String(err))
                 return ''
               }
             }}
             onSubmit={(input) => void run(
-              () => call({ op: 'import', ...input, baseId: currentBase.id }).then(parseImportResult),
+              () => call({ op: 'import', ...input, kbId: currentKb.id }).then(parseImportResponse),
               (result) => setNotice(formatImportNotice(result)),
             )}
           />
         ) : null}
-        {dialog === 'search' && currentBase ? (
+        {dialog === 'search' && currentKb ? (
           <SearchDialog
-            baseTitle={currentBase.title}
+            kbTitle={currentKb.title}
             query={query}
             result={searchResult}
             warning={searchError}
@@ -184,7 +185,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             onNextPage={searchActions.onNextPage}
             canPreviousPage={canSearchPreviousPage(searchDetailHistory)}
             canNextPage={canSearchNextPage(searchDetailHistory)}
-            onOpenHit={(hit) => openSearchHit(currentBase.id, hit)}
+            onOpenHit={(hit) => openSearchHit(currentKb.id, hit)}
           />
         ) : null}
         {dialog === 'preview' && preview ? (
@@ -196,21 +197,21 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             busy={pending}
             fallbackText={previewFallback || undefined}
             onClose={() => { cancelPreviews(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
-            onSave={(change) => void run(() => call({ op: 'write', id: currentBaseId, path: preview.path, change }).then(() => undefined))}
-            onLoadPage={(startRow) => call({ op: 'readPage', id: currentBaseId, path: preview.path, startRow }).then(parseTableEditorPage)}
+            onSave={(change) => void run(() => call({ op: 'write', id: currentKbId, path: preview.path, change }).then(parseOperationAck).then(() => undefined))}
+            onLoadPage={(startRow) => call({ op: 'readPage', id: currentKbId, path: preview.path, startRow }).then(parseTableEditorPage)}
             onDelete={() => {
-              setConfirm({ message: `删除文件「${preview.path}」？`, run: () => run(() => call({ op: 'deleteEntry', id: currentBaseId, path: preview.path, confirm: true }).then(() => undefined)) })
+              setConfirm({ message: `删除文件「${preview.path}」？`, run: () => run(() => call({ op: 'deleteEntry', id: currentKbId, path: preview.path, confirm: true }).then(parseOperationAck).then(() => undefined)) })
               setDialog('confirm')
             }}
           />
         ) : null}
-        {dialog === 'confirm' ? <ConfirmDialog message={confirm.message} busy={pending} onClose={() => setDialog(null)} onConfirm={() => void confirm.run()} /> : null}
+        {dialog === 'confirm' ? <ConfirmDialog message={confirm.message} error={error} busy={pending} onClose={() => setDialog(null)} onConfirm={() => void confirm.run()} /> : null}
       </div>
     )
   }
 }
 
-function formatImportNotice(result: ImportResult): WorkbenchNotice {
+function formatImportNotice(result: ImportResponse): WorkbenchNotice {
   const summary = `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}`
   if (!result.failed) return { tone: 'success', text: summary }
   const details = result.files.filter((item) => item.status === 'failed').slice(0, 2).map((item) => `${item.sourceRelPath}：${item.reason ?? '处理失败'}`).join('；')

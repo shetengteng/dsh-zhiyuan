@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { ReadEntryResult, SearchHit } from '../../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../../types.ts'
 import { CitationTag } from '../../CitationTag.tsx'
 import { matchedExcerptLine } from '../../search/hit-display.ts'
 import { ensureSettingsStyles } from '../../settings/styles.ts'
@@ -74,7 +74,7 @@ function PreviewTitle(props: { hit: SearchHit }) {
   )
 }
 
-function PreviewContent(props: { hit: SearchHit; preview: ReadEntryResult | null; status: 'idle' | 'loading' | 'ready' | 'error'; error: string }) {
+function PreviewContent(props: { hit: SearchHit; preview: ReadEntryResponse | null; status: 'idle' | 'loading' | 'ready' | 'error'; error: string }) {
   const { hit } = props
   if (props.status === 'loading') {
     return <FallbackPreview hit={hit} status="正在加载命中附近…" />

@@ -1,4 +1,4 @@
-import type { SearchScanStopReason } from '../../../model/search-result.ts'
+import type { SearchScanStopReason } from '../../../model/response/search-response.ts'
 
 export type ScannerPerFileMatchLimit = number | 'unlimited'
 

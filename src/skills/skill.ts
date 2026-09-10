@@ -46,7 +46,7 @@ const SYSTEM_PROMPT_TEXT = extractSystemPrompt(SKILL_BODY)
 
 export const ZHIYUAN_SKILL = {
   name: 'zhiyuan-kb',
-  description: '在用户指定的知识库中检索原文：先用 kb_search 获取文件 overview，再用 query、aliases 和 path 获取 file-detail；未指定库时先 kb_list_bases。',
+  description: '在用户指定的知识库中检索原文：先用 kb_search 获取文件 overview，再用 query、aliases 和 path 获取 file-detail；未指定库时先 kb_list。',
   whenToUse: '用户询问已导入知识库中的事实、条款、纪要，要求查找原文，或要求导入本机 md/markdown/txt/csv。',
   source: 'runtime' as const,
   content: SKILL_BODY,

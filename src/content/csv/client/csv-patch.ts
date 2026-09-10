@@ -1,4 +1,4 @@
-import type { TableCellChange, TablePatch } from '../../../model/content-contract.ts'
+import type { TableCellChange, TablePatch } from '../../../model/request/entry-request.ts'
 
 export type CsvActiveEdit = {
   row: number

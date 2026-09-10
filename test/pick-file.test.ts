@@ -7,7 +7,7 @@ import {
   pickSource,
   winArgs,
 } from '../src/service/kb/pick-file.ts'
-import { KbError } from '../src/model/types.ts'
+import { KbError } from '../src/model/error/kb-error.ts'
 
 test('normalizePickedPath 去换行和尾斜杠', () => {
   assert.equal(normalizePickedPath('/tmp/合同.md\n'), '/tmp/合同.md')

@@ -1,15 +1,15 @@
-import type { JobStatus } from '../model/types.ts'
+import type { JobStatusResponse } from '../model/response/job-response.ts'
 
 export type JobRunner = {
   enqueue<T>(op: string, work: () => Promise<T>): Promise<T>
-  status(): JobStatus
+  status(): JobStatusResponse
 }
 
 export function createJobRunner(): JobRunner {
   let chain = Promise.resolve()
   let running = false
   let currentOp: string | undefined
-  const failed: JobStatus['failed'] = []
+  const failed: JobStatusResponse['failed'] = []
 
   return {
     enqueue(op, work) {

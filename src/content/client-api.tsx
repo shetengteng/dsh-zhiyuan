@@ -1,10 +1,10 @@
 import type { ReactNode, RefObject } from 'react'
 import { EntryContentKind } from '../model/content-contract.ts'
-import type { EntryWriteChange, TableEditorPage } from '../model/content-contract.ts'
+import type { EntryWriteChange } from '../model/request/entry-request.ts'
 import { CsvPreview } from './csv/client/CsvPreview.tsx'
 import { CsvTextPreview } from './csv/client/CsvTextPreview.tsx'
 import { MarkdownPreview, type MarkdownPreviewProps } from './markdown/client/MarkdownPreview.tsx'
-import type { ReadEntryResult, TableEntryPreview } from '../model/types.ts'
+import type { ReadEntryResponse, TableEditorPage, TableEntryPreview } from '../model/response/entry-response.ts'
 
 /** 面向 Client 的编辑器句柄；具体编辑器仍由格式模块私有。 */
 export type EntryEditorHandle = {
@@ -12,7 +12,7 @@ export type EntryEditorHandle = {
 }
 
 export type EntryPreviewContentProps = {
-  preview: ReadEntryResult
+  preview: ReadEntryResponse
   mode: 'read' | 'edit'
   editorRef?: RefObject<EntryEditorHandle>
   highlightText?: string
@@ -23,7 +23,7 @@ export type EntryPreviewContentProps = {
 type PreviewRenderer = (props: EntryPreviewContentProps) => ReactNode
 
 /** 按交互形态分发渲染组件；CSV 表格降级时保留其格式并展示原始文本。 */
-const CONTENT_RENDERERS: Record<ReadEntryResult['kind'], PreviewRenderer> = {
+const CONTENT_RENDERERS: Record<ReadEntryResponse['kind'], PreviewRenderer> = {
   [EntryContentKind.Text]: (props) => props.preview.format === 'csv'
     ? <CsvTextPreview text={props.preview.text} />
     : <MarkdownPreview {...toMarkdownPreviewProps(props)} />,

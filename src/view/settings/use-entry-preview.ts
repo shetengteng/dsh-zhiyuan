@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReadEntryResult, SearchHit } from '../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../types.ts'
 import { parseReadEntry } from '../payload/read-entry.ts'
 import { createPreviewRequestManager } from './preview/preview-request.ts'
 
@@ -12,16 +12,16 @@ type EntryPreviewOptions = {
 
 /** 条目预览 hook：从树或搜索命中打开预览，管理请求取消与过期结果丢弃。 */
 export function useEntryPreview(options: EntryPreviewOptions) {
-  const [preview, setPreview] = useState<ReadEntryResult | null>(null)
+  const [preview, setPreview] = useState<ReadEntryResponse | null>(null)
   const [previewFallback, setPreviewFallback] = useState('')
   const [previewOrigin, setPreviewOrigin] = useState('tree' as 'tree' | 'search')
   const previewRequests = useRef(createPreviewRequestManager())
 
   useEffect(() => () => previewRequests.current.cancel(), [])
 
-  const openTreeEntry = (baseId: string, entryPath: string) => {
+  const openTreeEntry = (kbId: string, entryPath: string) => {
     const request = previewRequests.current.start()
-    void options.call({ op: 'read', id: baseId, path: entryPath, view: 'tree', readMode: 'edit' }, request.signal).then((value) => {
+    void options.call({ op: 'read', id: kbId, path: entryPath, view: 'tree', readMode: 'edit' }, request.signal).then((value) => {
       if (!previewRequests.current.isCurrent(request.id)) return
       setPreview(parseReadEntry(value))
       setPreviewFallback('')
@@ -34,11 +34,11 @@ export function useEntryPreview(options: EntryPreviewOptions) {
     })
   }
 
-  const openSearchHit = (baseId: string, hit: SearchHit) => {
+  const openSearchHit = (kbId: string, hit: SearchHit) => {
     const request = previewRequests.current.start()
     void options.call({
       op: 'read',
-      id: baseId,
+      id: kbId,
       path: hit.path,
       view: 'search-hit',
       matchLine: hit.matchLine,
@@ -46,7 +46,7 @@ export function useEntryPreview(options: EntryPreviewOptions) {
       sourceFingerprint: hit.sourceFingerprint,
     }, request.signal).then((value) => {
       if (!previewRequests.current.isCurrent(request.id)) return
-      setPreview(parseReadEntry(value, { view: 'search-hit', matchLine: hit.matchLine }))
+      setPreview(parseReadEntry(value))
       setPreviewFallback(hit.excerpt)
       setPreviewOrigin('search')
       options.onOpened()

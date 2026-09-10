@@ -47,7 +47,7 @@ export function appendSearchPageHistory(history: SearchPageHistory, next: Search
 }
 
 function assertSearchPageScope(previous: SearchResult, next: SearchResult): void {
-  if (previous.kind !== next.kind || previous.scope !== next.scope || previous.baseId !== next.baseId) {
+  if (previous.kind !== next.kind || previous.scope !== next.scope || previous.kbId !== next.kbId) {
     throw new Error('搜索分页作用域不一致')
   }
   if (previous.kind === 'file-detail' && next.kind === 'file-detail' && previous.path !== next.path) {

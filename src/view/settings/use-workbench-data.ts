@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
-import type { BaseSummary, JobStatus, Prefs, TreeNode } from '../types.ts'
+import { parseKbList, parseKbTree } from '../payload/kb-result.ts'
+import { parseCatalogPrefs, parseJobStatusResponse } from '../payload/settings-response.ts'
+import type { KbSummaryResponse, JobStatusResponse, CatalogPrefs, KbTreeNodeResponse } from '../types.ts'
 
-const DEFAULT_PREFS: Prefs = { defaultBaseId: '', maxFileBytes: 5_242_880, maxBaseBytes: 10_737_418_240 }
+const DEFAULT_PREFS: CatalogPrefs = { defaultKbId: '', maxFileBytes: 5_242_880, maxKbBytes: 10_737_418_240 }
 
 export type WorkbenchNotice = {
   tone: 'success' | 'warning' | 'error'
@@ -15,18 +17,18 @@ export function splitAliases(text: string): string[] {
 }
 
 /** 刷新后仍选当前库；该库已不在列表中（例如刚删除）则回退到上次使用或第一项。 */
-export function pickWorkbenchBaseId(list: BaseSummary[], preferredId: string): string {
+export function pickWorkbenchKbId(list: KbSummaryResponse[], preferredId: string): string {
   if (preferredId && list.some((item) => item.id === preferredId)) return preferredId
   return list.find((item) => item.lastUsed)?.id || list[0]?.id || ''
 }
 
 /** 工作台数据 hook：库列表、当前库、目录树、偏好与任务状态；Host 是唯一真相。 */
 export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
-  const [bases, setBases] = useState([] as BaseSummary[])
-  const [currentBaseId, setCurrentBaseId] = useState('')
-  const [tree, setTree] = useState([] as TreeNode[])
+  const [kbs, setKbs] = useState([] as KbSummaryResponse[])
+  const [currentKbId, setCurrentKbId] = useState('')
+  const [tree, setTree] = useState([] as KbTreeNodeResponse[])
   const [prefs, setPrefs] = useState(DEFAULT_PREFS)
-  const [job, setJob] = useState(undefined as JobStatus | undefined)
+  const [job, setJob] = useState(undefined as JobStatusResponse | undefined)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState<WorkbenchNotice | null>(null)
@@ -41,26 +43,29 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
 
   const call = (payload: Record<string, unknown>, signal?: AbortSignal) => callKnowledgeHost(connection, payload, signal)
 
-  const refresh = async (baseId?: string) => {
+  const refresh = async (selectedKbId?: string) => {
     setPending(true)
     setNotice(null)
     try {
-      const list = await call({ op: 'list' }) as BaseSummary[]
+      const list = parseKbList(await call({ op: 'list' }))
       if (!mountedRef.current) return
-      setBases(list)
-      const nextBaseId = pickWorkbenchBaseId(list, baseId || currentBaseId)
-      setCurrentBaseId(nextBaseId)
-      const nextTree = nextBaseId ? await call({ op: 'tree', id: nextBaseId }) as TreeNode[] : []
+      setKbs(list)
+      const nextKbId = pickWorkbenchKbId(list, selectedKbId || currentKbId)
+      setCurrentKbId(nextKbId)
+      const nextTree = nextKbId ? parseKbTree(await call({ op: 'tree', id: nextKbId })) : []
       if (!mountedRef.current) return
       setTree(nextTree)
-      const nextPrefs = await call({ op: 'prefs' }) as Prefs
+      const nextPrefs = parseCatalogPrefs(await call({ op: 'prefs' }))
       if (!mountedRef.current) return
       setPrefs(nextPrefs)
-      const nextJob = await getKnowledgeJobStatus(connection) as JobStatus
+      const nextJob = parseJobStatusResponse(await getKnowledgeJobStatus(connection))
       if (!mountedRef.current) return
       setJob(nextJob)
     } catch (err) {
-      if (mountedRef.current) setNotice({ tone: 'error', text: err instanceof Error ? err.message : String(err) })
+      if (mountedRef.current) {
+        setTree([])
+        setNotice({ tone: 'error', text: err instanceof Error ? err.message : String(err) })
+      }
     } finally {
       if (mountedRef.current) setPending(false)
     }
@@ -73,7 +78,7 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
       const value = await work()
       if (!mountedRef.current) return
       options?.onSuccess?.()
-      await refresh(currentBaseId)
+      await refresh(currentKbId)
       if (!mountedRef.current) return
       options?.after?.(value)
     } catch (err) {
@@ -83,5 +88,5 @@ export function useWorkbenchData(connection?: KnowledgePrivateConnection) {
     }
   }
 
-  return { bases, currentBaseId, setCurrentBaseId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run }
+  return { kbs, currentKbId, setCurrentKbId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run }
 }

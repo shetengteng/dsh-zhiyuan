@@ -74,27 +74,6 @@ test('text preview 不得携带表格数据', () => {
   assert.throws(() => parseReadEntry(payload), /预览数据无效/)
 })
 
-test('旧 Host 的 Markdown read 响应仍能打开预览', () => {
-  const preview = parseReadEntry({ path: 'notes/a.md', text: '# 标题\n正文' }, {
-    view: 'search-hit',
-    matchLine: 2,
-  })
-
-  assert.deepEqual(preview, {
-    path: 'notes/a.md',
-    kind: 'text',
-    text: '# 标题\n正文',
-    format: 'markdown',
-    view: 'search-hit',
-    windowStartLine: 1,
-    windowEndLine: 2,
-    focusLine: 2,
-    truncation: 'none',
-    totalChars: 7,
-    previewStatus: 'ready',
-  })
-})
-
 test('不完整的 preview payload 不会被当成 Markdown 正文', () => {
   assert.throws(() => parseReadEntry({ path: 'notes/a.md' }), /预览数据无效/)
 })

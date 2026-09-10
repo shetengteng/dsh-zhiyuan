@@ -22,7 +22,7 @@ function isNonNegativeInteger(value: unknown): value is number {
 
 export function parseSearchResult(value: unknown): SearchResult {
   const result = asRecord(value)
-  if (!result || typeof result.baseId !== 'string' || !isSearchQuery(result.query) || !isSearchScan(result.scan)) {
+  if (!result || typeof result.kbId !== 'string' || !isSearchQuery(result.query) || !isSearchScan(result.scan)) {
     throw new Error('Host 返回的搜索结果无效')
   }
   if (result.kind === 'overview' && result.scope === 'files' && isSearchOverviewPage(result.page)

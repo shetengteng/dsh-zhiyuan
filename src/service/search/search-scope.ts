@@ -2,12 +2,12 @@ import { existsSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { contentRegistry } from '../../content/host-api.ts'
 import type { EntryFormat } from '../../model/content-contract.ts'
-import { baseDir, assertInside, assertNoSymlinkEscape, resolveDest } from '../../platform/paths.ts'
-import { KbError } from '../../model/types.ts'
-import type { SearchQuery } from '../../model/search-result.ts'
+import { kbDir, assertInside, assertNoSymlinkEscape, resolveDest } from '../../platform/paths.ts'
+import { KbError } from '../../model/error/kb-error.ts'
+import type { SearchQuery } from '../../model/response/search-response.ts'
 
 export type ResolvedSearchScope = {
-  baseId: string
+  kbId: string
   rootDir: string
   query: SearchQuery
   category?: string
@@ -18,16 +18,16 @@ export type ResolvedSearchScope = {
 
 export async function resolveSearchScope(
   dataRoot: string,
-  input: { baseId: string; query: SearchQuery; category?: string; path?: string },
+  input: { kbId: string; query: SearchQuery; category?: string; path?: string },
 ): Promise<ResolvedSearchScope> {
-  const rootDir = baseDir(dataRoot, input.baseId)
-  const category = resolveCategory(rootDir, dataRoot, input.baseId, input.category)
-  const categoryRoot = category ? resolveDest(dataRoot, input.baseId, category).absolute : rootDir
+  const rootDir = kbDir(dataRoot, input.kbId)
+  const category = resolveCategory(rootDir, dataRoot, input.kbId, input.category)
+  const categoryRoot = category ? resolveDest(dataRoot, input.kbId, category).absolute : rootDir
   const path = input.path === undefined ? undefined : resolveKnowledgePath(rootDir, categoryRoot, input.path)
   const format = path ? contentRegistry.entryFormatForPath(path) : undefined
   if (path && !format) throw new KbError('ext_denied', 'path 不是知识库支持的文件格式')
   return {
-    baseId: input.baseId,
+    kbId: input.kbId,
     rootDir,
     query: input.query,
     ...(category ? { category } : {}),
@@ -37,9 +37,9 @@ export async function resolveSearchScope(
   }
 }
 
-function resolveCategory(rootDir: string, dataRoot: string, baseId: string, category: string | undefined): string | undefined {
+function resolveCategory(rootDir: string, dataRoot: string, kbId: string, category: string | undefined): string | undefined {
   if (!category) return undefined
-  const destination = resolveDest(dataRoot, baseId, category)
+  const destination = resolveDest(dataRoot, kbId, category)
   assertNoSymlinkEscape(rootDir, destination.absolute)
   if (!existsSync(destination.absolute) || !statSync(destination.absolute).isDirectory()) {
     throw new KbError('not_found', `类目不存在：${destination.relative || category}`)

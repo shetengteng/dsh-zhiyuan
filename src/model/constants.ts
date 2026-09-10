@@ -12,19 +12,20 @@ export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'
 
 /** 展示层标题附加版本，不写回知识库卡片的持久化 title。 */
-export function formatBaseDisplayTitle(title: string, fallback = ''): string {
+export function formatKbDisplayTitle(title: string, fallback = ''): string {
   const displayTitle = title.trim() || fallback.trim() || '未命名知识库'
   return `${displayTitle} · ${SECTION_LABEL} ${VERSION_LABEL}`
 }
 
 export const DEFAULT_MAX_FILE_BYTES = 5_242_880
-export const DEFAULT_MAX_BASE_BYTES = 10_737_418_240
+export const DEFAULT_MAX_KB_BYTES = 10_737_418_240
 export const MAX_ALIASES = 8
 export const SEARCH_CONTEXT = 8
 export const SEARCH_DEFAULT_LIMIT = 20
 export const SEARCH_MAX_LIMIT = 100
 export const SEARCH_MAX_PATTERN_LENGTH = 512
 export const SEARCH_MAX_PATTERN_TOTAL_LENGTH = 4096
+export const SEARCH_UNSUPPORTED_PATTERN_MESSAGE = 'query 或 aliases 使用了 ripgrep 不支持的正则语法；请改用正向匹配或转义特殊字符'
 export const SEARCH_CURSOR_MAX_LENGTH = 4096
 /** 列表档命中半径：MD 命中行 ±2 行；CSV 命中记录 + 相邻记录数 */
 export const SEARCH_LIST_CONTEXT = 2

@@ -3,11 +3,15 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, test } from 'node:test'
-import { createBase } from '../src/service/kb/bases.ts'
+import { registerKbTools } from '../src/controller/tool/kb-tool-controller.ts'
+import { VERSION_LABEL } from '../src/model/constants.ts'
 import { type JobRunner } from '../src/platform/jobs.ts'
 import { setDataRootForTest } from '../src/platform/paths.ts'
-import { VERSION_LABEL } from '../src/model/constants.ts'
-import { registerKbTools } from '../src/controller/tools.ts'
+import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
+import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
+
+const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())
+const { createKb } = knowledgeServices
 
 type ToolDef = {
   name: string
@@ -42,7 +46,7 @@ function capture(jobs: JobRunner = instantJobs()): Map<string, ToolDef> {
         return () => {}
       },
     },
-  }, jobs)
+  }, jobs, knowledgeServices)
   return tools
 }
 
@@ -60,26 +64,26 @@ async function withRoot(fn: (root: string, tools: Map<string, ToolDef>) => Promi
 describe('kb tools', { concurrency: false }, () => {
   test('注册三件套：list / import / search', () => {
     const tools = capture()
-    assert.deepEqual([...tools.keys()].sort(), ['kb_import', 'kb_list_bases', 'kb_search'])
-    assert.equal(tools.get('kb_list_bases')?.isConcurrencySafe?.(), true)
-    assert.deepEqual(tools.get('kb_import')?.parameters?.required, ['baseId', 'sourcePath'])
+    assert.deepEqual([...tools.keys()].sort(), ['kb_import', 'kb_list', 'kb_search'])
+    assert.equal(tools.get('kb_list')?.isConcurrencySafe?.(), true)
+    assert.deepEqual(tools.get('kb_import')?.parameters?.required, ['kbId', 'sourcePath'])
     const searchParameters = tools.get('kb_search')?.parameters
-    assert.deepEqual(searchParameters?.oneOf?.map((item) => item.required), [['baseId', 'query'], ['cursor']])
+    assert.deepEqual(searchParameters?.oneOf?.map((item) => item.required), [['kbId', 'query'], ['cursor']])
   })
 
-  test('kb_list_bases：空库文案与有库卡片', async () => {
+  test('kb_list：空库文案与有库卡片', async () => {
     await withRoot(async (root, tools) => {
-      const list = tools.get('kb_list_bases')
+      const list = tools.get('kb_list')
       if (!list) throw new Error('missing')
       const empty = await list.execute()
-      assert.deepEqual(empty, { bases: [] })
+      assert.deepEqual(empty, { kbs: [] })
       assert.equal(list.output.render({}, empty)[0].text, '还没有知识库')
-      const base = await createBase(root, { title: '工作库', description: '描述' })
-      const filled = await list.execute() as { bases: Array<{ id: string; title: string }> }
-      assert.equal(filled.bases[0].id, base.id)
-      assert.equal(filled.bases[0].title, '工作库')
-      assert.equal(Object.prototype.hasOwnProperty.call(filled.bases[0], 'lastDestCategory'), false)
-      assert.equal(list.output.render({}, filled)[0].text, `${base.id} 工作库 · 知源 ${VERSION_LABEL}`)
+      const kb = await createKb(root, { title: '工作库', description: '描述' })
+      const filled = await list.execute() as { kbs: Array<{ id: string; title: string }> }
+      assert.equal(filled.kbs[0].id, kb.id)
+      assert.equal(filled.kbs[0].title, '工作库')
+      assert.equal(Object.prototype.hasOwnProperty.call(filled.kbs[0], 'lastDestCategory'), false)
+      assert.equal(list.output.render({}, filled)[0].text, `${kb.id} 工作库 · 知源 ${VERSION_LABEL}`)
     })
   })
 
@@ -87,15 +91,15 @@ describe('kb tools', { concurrency: false }, () => {
     await withRoot(async (root, tools) => {
       const importTool = tools.get('kb_import')
       if (!importTool) throw new Error('missing')
-      await assert.rejects(() => importTool.execute({}), /baseId 必填/)
-      await assert.rejects(() => importTool.execute({ baseId: '  ', sourcePath: '/tmp/a.md' }), /baseId 必填/)
-      await assert.rejects(() => importTool.execute({ baseId: 'work' }), /sourcePath 必填/)
-      await assert.rejects(() => importTool.execute({ baseId: 'life', sourcePath: join(root, 'a.md') }), /先建库/)
-      const base = await createBase(root, { title: '工作库', description: '描述' })
+      await assert.rejects(() => importTool.execute({}), /kbId 必填/)
+      await assert.rejects(() => importTool.execute({ kbId: '  ', sourcePath: '/tmp/a.md' }), /kbId 必填/)
+      await assert.rejects(() => importTool.execute({ kbId: 'work' }), /sourcePath 必填/)
+      await assert.rejects(() => importTool.execute({ kbId: 'life', sourcePath: join(root, 'a.md') }), /先建库/)
+      const kb = await createKb(root, { title: '工作库', description: '描述' })
       const src = join(root, 'a.md')
       await writeFile(src, 'hello')
       const result = await importTool.execute({
-        baseId: base.id,
+        kbId: kb.id,
         sourcePath: src,
         destCategory: '合同/2024',
       }) as { copied: string[]; skipped: number; failed: number }
@@ -109,11 +113,11 @@ describe('kb tools', { concurrency: false }, () => {
     await withRoot(async (root, tools) => {
       const search = tools.get('kb_search')
       if (!search) throw new Error('missing')
-      await assert.rejects(() => search.execute({ query: '违约' }), /baseId 必填/)
-      await assert.rejects(() => search.execute(null), /baseId 必填/)
-      await assert.rejects(() => search.execute({ baseId: 'work' }), /query 必填/)
-      const base = await createBase(root, { title: '工作库', description: '描述' })
-      const empty = await search.execute({ baseId: base.id, query: '违约' }) as {
+      await assert.rejects(() => search.execute({ query: '违约' }), /kbId 必填/)
+      await assert.rejects(() => search.execute(null), /kbId 必填/)
+      await assert.rejects(() => search.execute({ kbId: 'work' }), /query 必填/)
+      const kb = await createKb(root, { title: '工作库', description: '描述' })
+      const empty = await search.execute({ kbId: kb.id, query: '违约' }) as {
         kind: string
         scope: string
         files: unknown[]
@@ -127,7 +131,7 @@ describe('kb tools', { concurrency: false }, () => {
       const overview = {
         kind: 'overview' as const,
         scope: 'files' as const,
-        baseId: base.id,
+        kbId: kb.id,
         query: { terms: ['违约'], aliases: [] },
         files: [{ path: 'a.md', format: 'markdown' as const, totalHits: 1 }],
         totalFiles: 1,
@@ -141,6 +145,8 @@ describe('kb tools', { concurrency: false }, () => {
       assert.match(renderedOverview, /a\.md（1 条）/)
       assert.doesNotMatch(renderedOverview, /命中的正文/)
       assert.match(renderedOverview, /仍有更多文件/)
+      assert.match(renderedOverview, /下一页 cursor.*`cursor`/)
+      await assert.rejects(() => search.execute({ cursor: 'cursor', kbId: kb.id }), /续页请求只能包含 cursor 和 limit/)
       const incompleteRendered = search.output.render({}, {
         ...overview,
         scan: { complete: false, warnings: ['检索结果过多，已截断'], stopReason: 'stdout-limit' },
@@ -151,7 +157,7 @@ describe('kb tools', { concurrency: false }, () => {
       const detail = {
         kind: 'file-detail' as const,
         scope: 'hits' as const,
-        baseId: base.id,
+        kbId: kb.id,
         query: { terms: ['违约'], aliases: [] },
         path: 'a.md',
         format: 'markdown' as const,
@@ -165,6 +171,11 @@ describe('kb tools', { concurrency: false }, () => {
       assert.match(renderedDetail, /`1` a\.md:1–3（命中行 2）/)
       assert.match(renderedDetail, /命中的正文/)
       assert.match(renderedDetail, /【文件详情】a\.md · 1 条命中 · 本页 1 条/)
+      const pagedDetail = search.output.render({}, {
+        ...detail,
+        page: { scope: 'hits' as const, returnedHits: 1, hasMore: true, nextCursor: 'detail-cursor' },
+      })[0].text
+      assert.match(pagedDetail, /下一页 cursor.*`detail-cursor`/)
       assert.deepEqual(search.output.presentationMeta?.({}, overview), overview)
       assert.deepEqual(search.output.presentationMeta?.({}, detail), detail)
       assert.deepEqual(search.presentCall?.(), { card: 'generic', title: '知识库检索' })
@@ -177,11 +188,11 @@ describe('kb tools', { concurrency: false }, () => {
     await withRoot(async (root, tools) => {
       const importTool = tools.get('kb_import')
       if (!importTool) throw new Error('missing')
-      const base = await createBase(root, { title: '工作库', description: '描述' })
+      const kb = await createKb(root, { title: '工作库', description: '描述' })
       await assert.rejects(async () => {
         try {
           await importTool.execute({
-            baseId: base.id,
+            kbId: kb.id,
             sourcePath: srcMissing(root),
             destCategory: '../life',
           })

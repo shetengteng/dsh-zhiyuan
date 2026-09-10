@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ReadEntryResult, SearchHit } from '../../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../../types.ts'
 
 export type PreviewLayout = {
   openDetails: () => void
@@ -7,15 +7,15 @@ export type PreviewLayout = {
 }
 
 export type PreviewSelection = {
-  baseId: string
+  kbId: string
   hit: SearchHit
 }
 
-export type PreviewLoader = (selection: PreviewSelection, signal: AbortSignal) => Promise<ReadEntryResult>
+export type PreviewLoader = (selection: PreviewSelection, signal: AbortSignal) => Promise<ReadEntryResponse>
 
 export type PreviewState = {
   selected: SearchHit | null
-  preview: ReadEntryResult | null
+  preview: ReadEntryResponse | null
   status: 'idle' | 'loading' | 'ready' | 'error'
   error: string
 }
@@ -31,7 +31,7 @@ export type PreviewController = {
 
 export function createPreviewController(layout: PreviewLayout, loadPreview: PreviewLoader): PreviewController {
   let selected: SearchHit | null = null
-  let preview: ReadEntryResult | null = null
+  let preview: ReadEntryResponse | null = null
   let status: PreviewState['status'] = 'idle'
   let error = ''
   let trigger: HTMLElement | null = null

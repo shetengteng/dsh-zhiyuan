@@ -1,7 +1,14 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import { SEARCH_RG_MAX_COUNT_PER_FILE, SEARCH_RG_MAX_FILESIZE, SEARCH_RG_MAX_STDOUT_BYTES, SEARCH_RG_TIMEOUT_MS } from '../../../model/constants.ts'
+import {
+  SEARCH_RG_MAX_COUNT_PER_FILE,
+  SEARCH_RG_MAX_FILESIZE,
+  SEARCH_RG_MAX_STDOUT_BYTES,
+  SEARCH_RG_TIMEOUT_MS,
+  SEARCH_UNSUPPORTED_PATTERN_MESSAGE,
+} from '../../../model/constants.ts'
+import { KbError } from '../../../model/error/kb-error.ts'
 import { contentRegistry } from '../../../content/host-api.ts'
 import type { ScannerInput, ScannerMatch, ScannerResult, SearchScanner } from './scanner-contract.ts'
 
@@ -93,10 +100,18 @@ function runRg(binaryPath: string, args: string[], workingDirectory: string): Pr
         resolve({ stdout, warnings: [], complete: true })
         return
       }
+      if (code === 2 && isRipgrepPatternError(stderr)) {
+        reject(new KbError('invalid_field', SEARCH_UNSUPPORTED_PATTERN_MESSAGE))
+        return
+      }
       const detail = stderr.trim()
       resolve({ stdout, warnings: [detail ? `检索失败：${detail}` : '检索失败'], complete: false, stopReason: 'io-error' })
     })
   })
+}
+
+function isRipgrepPatternError(stderr: string): boolean {
+  return /regex parse error|look-around|backreference|regular expression/iu.test(stderr)
 }
 
 function parseRg(stdout: string, rootDir: string): ScannerMatch[] {

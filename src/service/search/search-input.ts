@@ -1,40 +1,31 @@
-import { MAX_ALIASES, SEARCH_DEFAULT_LIMIT, SEARCH_MAX_LIMIT, SEARCH_MAX_PATTERN_LENGTH, SEARCH_MAX_PATTERN_TOTAL_LENGTH } from '../../model/constants.ts'
-import { KbError } from '../../model/types.ts'
-import type { SearchQuery } from '../../model/search-result.ts'
-import type { SearchCursorQuery } from './pagination.ts'
+import {
+  MAX_ALIASES,
+  SEARCH_DEFAULT_LIMIT,
+  SEARCH_MAX_LIMIT,
+  SEARCH_MAX_PATTERN_LENGTH,
+  SEARCH_MAX_PATTERN_TOTAL_LENGTH,
+  SEARCH_UNSUPPORTED_PATTERN_MESSAGE,
+} from '../../model/constants.ts'
+import type { SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
+import { KbError } from '../../model/error/kb-error.ts'
+import type {
+  ContinueSearchRequest,
+  InitialSearchRequest,
+  NormalizedContinueSearchRequest,
+  NormalizedInitialSearchRequest,
+  NormalizedSearchRequest,
+  SearchRequest,
+} from '../../model/request/search-request.ts'
+import type { SearchQuery } from '../../model/response/search-response.ts'
 
-export type InitialSearchRequest = {
-  baseId: string
-  query: string
-  aliases?: string[]
-  category?: string
-  path?: string
-  limit?: number
-}
-
-export type ContinueSearchRequest = {
-  cursor: string
-  limit?: number
-}
-
-export type SearchRequest = InitialSearchRequest | ContinueSearchRequest
-
-export type NormalizedInitialSearchRequest = {
-  mode: 'initial'
-  baseId: string
-  query: SearchQuery
-  category?: string
-  path?: string
-  limit: number
-}
-
-export type NormalizedContinueSearchRequest = {
-  mode: 'continue'
-  cursor: string
-  limit: number
-}
-
-export type NormalizedSearchRequest = NormalizedInitialSearchRequest | NormalizedContinueSearchRequest
+export type {
+  ContinueSearchRequest,
+  InitialSearchRequest,
+  NormalizedContinueSearchRequest,
+  NormalizedInitialSearchRequest,
+  NormalizedSearchRequest,
+  SearchRequest,
+} from '../../model/request/search-request.ts'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
@@ -51,9 +42,10 @@ function requiredString(record: Record<string, unknown>, key: string): string {
 }
 
 function optionalString(record: Record<string, unknown>, key: string): string | undefined {
-  if (!hasOwn(record, key) || record[key] === undefined) return undefined
-  if (typeof record[key] !== 'string') throw new KbError('invalid_field', `${key} 必须是字符串`)
-  return record[key] as string
+  const value = record[key]
+  if (!hasOwn(record, key) || value === undefined) return undefined
+  if (typeof value !== 'string') throw new KbError('invalid_field', `${key} 必须是字符串`)
+  return value
 }
 
 export function normalizeSearchLimit(value: unknown): number {
@@ -117,14 +109,14 @@ export function normalizeSearchRequest(input: SearchRequest): NormalizedSearchRe
   const cursorValue = record.cursor
   if (cursorValue !== undefined) {
     if (typeof cursorValue !== 'string' || !cursorValue.trim()) throw new KbError('invalid_field', 'cursor 必须是非空字符串')
-    if (['baseId', 'query', 'aliases', 'category', 'path'].some((key) => hasOwn(record, key))) {
+    if (['kbId', 'query', 'aliases', 'category', 'path'].some((key) => hasOwn(record, key))) {
       throw new KbError('invalid_field', '续页请求只能包含 cursor 和 limit')
     }
     return { mode: 'continue', cursor: cursorValue.trim(), limit: normalizeSearchLimit(record.limit) }
   }
   return {
     mode: 'initial',
-    baseId: requiredString(record, 'baseId'),
+    kbId: requiredString(record, 'kbId'),
     query: normalizeSearchPatterns(record.query, record.aliases),
     category: normalizeOptionalCategory(optionalString(record, 'category')),
     path: normalizeOptionalPath(optionalString(record, 'path')),
@@ -154,6 +146,6 @@ function validatePattern(pattern: string): void {
     throw new KbError('invalid_field', 'query 或 aliases 包含无效正则表达式')
   }
   if (/\(\?([=!]|<[=!])|\\\d/u.test(pattern)) {
-    throw new KbError('invalid_field', 'query 或 aliases 使用了 ripgrep 不支持的正则语法')
+    throw new KbError('invalid_field', SEARCH_UNSUPPORTED_PATTERN_MESSAGE)
   }
 }

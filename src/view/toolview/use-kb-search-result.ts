@@ -98,7 +98,7 @@ export function useKbSearchResult(
     setOpeningError('')
     void callKnowledgeHost(connection, {
       op: 'search',
-      baseId: result.baseId,
+      kbId: result.kbId,
       query: result.query.terms[0] ?? '',
       aliases: result.query.aliases,
       ...(result.category ? { category: result.category } : {}),

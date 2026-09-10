@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { SearchFileDetailPage, SearchFileDetailResult, SearchFileSummary, SearchHit, SearchOverviewPage, SearchOverviewResult } from '../src/model/types.ts'
+import type { SearchFileDetailPage, SearchFileDetailResult, SearchFileSummary, SearchHit, SearchOverviewPage, SearchOverviewResult } from '../src/model/response/search-response.ts'
 import {
   appendSearchPage,
   appendSearchPageHistory,
@@ -20,7 +20,7 @@ function overview(files: SearchFileSummary[], page: SearchOverviewPage): SearchO
   return {
     kind: 'overview',
     scope: 'files',
-    baseId: 'base-1',
+    kbId: 'base-1',
     query,
     files,
     totalFiles: 3,
@@ -39,7 +39,7 @@ function detail(hits: SearchHit[], page: SearchFileDetailPage): SearchFileDetail
   return {
     kind: 'file-detail',
     scope: 'hits',
-    baseId: 'base-1',
+    kbId: 'base-1',
     query,
     path: '供应商.md',
     format: 'markdown',

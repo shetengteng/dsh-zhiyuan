@@ -24,20 +24,20 @@ export async function walkSource(source: string): Promise<string[]> {
 }
 
 /** 本次导入前的库内内容快照：digest → 库内相对路径，用于同指纹跳过。 */
-export async function existingHashes(baseRoot: string): Promise<Map<string, string>> {
+export async function existingHashes(kbRoot: string): Promise<Map<string, string>> {
   const map = new Map<string, string>()
-  const files = await walkSource(baseRoot).catch(() => [] as string[])
+  const files = await walkSource(kbRoot).catch(() => [] as string[])
   for (const file of files) {
     if (!isTextFile(file)) continue
-    map.set(await sha256File(file), relative(baseRoot, file).split(sep).join('/'))
+    map.set(await sha256File(file), relative(kbRoot, file).split(sep).join('/'))
   }
   return map
 }
 
 /** 统计库内可计入配额的文字字节数。 */
-export async function dirSize(baseRoot: string): Promise<number> {
+export async function dirSize(kbRoot: string): Promise<number> {
   let total = 0
-  const files = await walkSource(baseRoot).catch(() => [] as string[])
+  const files = await walkSource(kbRoot).catch(() => [] as string[])
   for (const file of files) {
     if (!isTextFile(file)) continue
     total += (await stat(file)).size

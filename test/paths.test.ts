@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { assertInside, assertNoSymlinkEscape, expandUserPath, resolveDest, resolveEntry, setDataRootForTest } from '../src/platform/paths.ts'
-import { KbError } from '../src/model/types.ts'
+import { KbError } from '../src/model/error/kb-error.ts'
 
 const root = '/tmp/zhiyuan-path-root'
 
@@ -32,9 +32,9 @@ test('拒绝 ..、绝对路径、盘符逃出', () => {
   assert.throws(() => resolveDest(root, 'work', 'work/../../life'), KbError)
 })
 
-test('解析后仍在 bases/<id>/ 下', () => {
+test('解析后仍在 kbs/<id>/ 下', () => {
   const dest = resolveDest(root, 'work', '合同/2024')
-  assert.ok(dest.absolute.includes(`${join('bases', 'work')}`))
+  assert.ok(dest.absolute.includes(`${join('kbs', 'work')}`))
   assert.ok(!dest.absolute.includes('life'))
 })
 
@@ -55,7 +55,7 @@ test('assertInside 拒绝逃出', () => {
 
 test('符号链接逃出被拒绝', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'zy-link-'))
-  const inside = join(dir, 'bases', 'work')
+  const inside = join(dir, 'kbs', 'work')
   const outside = join(dir, 'outside')
   await import('node:fs/promises').then((fs) => fs.mkdir(inside, { recursive: true }))
   await import('node:fs/promises').then((fs) => fs.mkdir(outside, { recursive: true }))

@@ -39,7 +39,7 @@ export function SearchFileDetailCard(props: SearchFileDetailCardProps) {
               key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`}
               hit={hit}
               selected={isSamePreviewHit(selectedHit, hit)}
-              onOpenHit={(nextHit, trigger) => props.preview.select({ baseId: result.baseId, hit: nextHit }, trigger)}
+              onOpenHit={(nextHit, trigger) => props.preview.select({ kbId: result.kbId, hit: nextHit }, trigger)}
             />
           ))}
         </div>

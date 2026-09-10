@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TableVirtuoso } from 'react-virtuoso'
-import type { EntryWriteChange, TableEditorPage, TableWindowData } from '../../../model/content-contract.ts'
-import type { TableEntryPreview } from '../../../model/types.ts'
+import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
+import type { TableEditorPage, TableEntryPreview, TableWindowData } from '../../../model/response/entry-response.ts'
 import {
   buildPatch,
   cellKey,
