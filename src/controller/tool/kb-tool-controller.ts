@@ -1,4 +1,3 @@
-import { formatKbDisplayTitle } from '../../model/display-formatters.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { JobRunner } from '../../platform/jobs.ts'
 import { resolveDataRoot } from '../../platform/paths.ts'
@@ -67,7 +66,8 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner, knowledgeServices
         schema: { type: 'object', properties: { kbs: { type: 'array' } } },
         render: (_args: unknown, value: unknown) => {
           const kbs = (value as { kbs?: Array<{ id: string; title: string }> })?.kbs ?? []
-          return [{ type: 'text' as const, text: kbs.map((item) => `${item.id} ${formatKbDisplayTitle(item.title, item.id)}`).join(' · ') || '还没有知识库' }]
+          // 工具输出只用干净标题，不附加版本号，避免模型把版本拼进标题或 kbId。
+          return [{ type: 'text' as const, text: kbs.map((item) => `${item.id} ${item.title.trim() || item.id}`).join(' · ') || '还没有知识库' }]
         },
       },
       isConcurrencySafe: () => true,

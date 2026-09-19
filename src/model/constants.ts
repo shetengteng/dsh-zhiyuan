@@ -11,12 +11,6 @@ export const TARGET_DSH_VERSION = packageJson.dsh.targetVersion
 export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'
 
-/** 展示层标题附加版本，不写回知识库卡片的持久化 title。 */
-export function formatKbDisplayTitle(title: string, fallback = ''): string {
-  const displayTitle = title.trim() || fallback.trim() || '未命名知识库'
-  return `${displayTitle} · ${SECTION_LABEL} ${VERSION_LABEL}`
-}
-
 export const DEFAULT_MAX_FILE_BYTES = 5_242_880
 export const DEFAULT_MAX_KB_BYTES = 10_737_418_240
 export const MAX_ALIASES = 8

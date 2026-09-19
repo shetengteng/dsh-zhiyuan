@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, test } from 'node:test'
 import { registerKbTools } from '../src/controller/tool/kb-tool-controller.ts'
-import { VERSION_LABEL } from '../src/model/constants.ts'
 import { type JobRunner } from '../src/platform/jobs.ts'
 import { setDataRootForTest } from '../src/platform/paths.ts'
 import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
@@ -83,7 +82,7 @@ describe('kb tools', { concurrency: false }, () => {
       assert.equal(filled.kbs[0].id, kb.id)
       assert.equal(filled.kbs[0].title, '工作库')
       assert.equal(Object.prototype.hasOwnProperty.call(filled.kbs[0], 'lastDestCategory'), false)
-      assert.equal(list.output.render({}, filled)[0].text, `${kb.id} 工作库 · 知源 ${VERSION_LABEL}`)
+      assert.equal(list.output.render({}, filled)[0].text, `${kb.id} 工作库`)
     })
   })
 
