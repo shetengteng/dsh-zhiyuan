@@ -10,7 +10,7 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 | 设置入口 | 知源          |
 | 包名     | `dsh-zhiyuan` |
 
-同一 npm 包、一次安装：Host（建库 / 导入 / 检索）+ Web 工作台。目标运行时 **DSH `0.1.2-rc.1`**。
+同一 npm 包、一次安装：Host（建库 / 导入 / 检索）+ Web 工作台。目标运行时 **DSH `0.1.5-rc.2`**。
 
 [English](./README.en.md)
 
@@ -43,7 +43,7 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 | 项       | 值                                                         |
 | -------- | ---------------------------------------------------------- |
 | 交付形态 | Host + Web UI 双面插件                                     |
-| 目标 DSH | `0.1.2-rc.1`                                               |
+| 目标 DSH | `0.1.5-rc.2`                                               |
 | 客户端   | `dsh.client.platform: "web"`，随 Web profile 自动加载      |
 | 许可证   | MIT                                                        |
 | 运行身份 | Cordis 行 `id: zhiyuan`，`name` 必须等于包名 `dsh-zhiyuan` |

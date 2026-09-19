@@ -1,7 +1,7 @@
 import { registerKbCommands } from './controller/command/index.ts'
 import { registerKnowledgePrivateRpc } from './controller/rpc/index.ts'
 import { registerKbTools } from './controller/tool/index.ts'
-import { PACKAGE_NAME } from './model/constants.ts'
+import { PACKAGE_NAME } from './model/package-info.ts'
 import { createJobRunner } from './platform/jobs.ts'
 import { clearDataRootCache, resolveDataRoot } from './platform/paths.ts'
 import { FileCatalogRepository } from './repository/kb/file-catalog-repository.ts'
@@ -18,8 +18,6 @@ type HostCtx = {
 
 type Off = () => void
 
-type AsyncOff = () => Promise<void>
-
 export function apply(ctx: HostCtx): void {
   const jobs = createJobRunner()
   const catalogRepository = new FileCatalogRepository({
@@ -28,10 +26,6 @@ export function apply(ctx: HostCtx): void {
   const knowledgeServices = createKnowledgeServices(catalogRepository)
   const disposers: Off[] = []
   let alive = true
-  const reportCleanupError = (error: unknown): void => {
-    const message = error instanceof Error ? error.message : String(error)
-    ctx.logger?.warn?.(`[zhiyuan] cleanup failed: ${message}`)
-  }
   const track = (off: Off | void): void => {
     if (typeof off !== 'function') return
     if (!alive) {
@@ -40,25 +34,14 @@ export function apply(ctx: HostCtx): void {
     }
     disposers.push(off)
   }
-  const trackAsync = (off: AsyncOff | void): void => {
-    if (typeof off !== 'function') return
-    const dispose = (): void => {
-      void Promise.resolve().then(off).catch(reportCleanupError)
-    }
-    if (!alive) {
-      dispose()
-      return
-    }
-    disposers.push(dispose)
-  }
 
   ctx.logger?.info('[zhiyuan] host loaded')
 
   ctx.inject(['commands'], (scoped) => {
     track(registerKbCommands(scoped as { commands: { register: (def: unknown) => () => void } }, jobs, knowledgeServices))
   })
-  ctx.inject(['connection'], (scoped) => {
-    trackAsync(registerKnowledgePrivateRpc(scoped as Parameters<typeof registerKnowledgePrivateRpc>[0], jobs, knowledgeServices))
+  ctx.inject(['connection', 'webServer'], (scoped) => {
+    track(registerKnowledgePrivateRpc(scoped as Parameters<typeof registerKnowledgePrivateRpc>[0], jobs, knowledgeServices))
   })
   ctx.inject(['tools'], (scoped) => {
     track(registerKbTools(scoped as { tools: { register: (def: unknown) => () => void } }, jobs, knowledgeServices))

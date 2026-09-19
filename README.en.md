@@ -10,7 +10,7 @@ Zhiyuan (DSH Knowledge Base): let the AI find answers in the documents you desig
 | Settings entry | Zhiyuan (知源) |
 | Package        | `dsh-zhiyuan`  |
 
-One npm package, one install: Host (create / import / search) + Web workbench. Target runtime **DSH `0.1.2-rc.1`**.
+One npm package, one install: Host (create / import / search) + Web workbench. Target runtime **DSH `0.1.5-rc.2`**.
 
 [中文](./README.md)
 
@@ -43,7 +43,7 @@ A later engine swap (FTS) must not change tool names, the “select a base first
 | Item             | Value                                                                      |
 | ---------------- | -------------------------------------------------------------------------- |
 | Delivery         | Dual-face Host + Web UI plugin                                             |
-| Target DSH       | `0.1.2-rc.1`                                                               |
+| Target DSH       | `0.1.5-rc.2`                                                               |
 | Client           | `dsh.client.platform: "web"`, loaded automatically by a Web profile        |
 | License          | MIT                                                                        |
 | Runtime identity | Cordis row `id: zhiyuan`; `name` must equal the package name `dsh-zhiyuan` |
