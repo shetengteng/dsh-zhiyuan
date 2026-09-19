@@ -30,7 +30,7 @@ type PreviewLoadState =
 
 /**
  * 预览 tab 的主体：命中随导航参数到达，内容只经 Host 读取。
- * 关闭按钮与 Escape 都交给 tab 自身的 actions，不碰右侧栏的私有 DOM。
+ * 面板不画关闭按钮，关闭交给 tab chip 自身与 Escape 的 actions，不碰右侧栏的私有 DOM。
  */
 export function createKbPreviewPanel(loadPreview: PreviewLoader, preview: PreviewController) {
   return function KbPreviewPanel(props: KbPreviewPanelProps) {
@@ -86,7 +86,6 @@ export function createKbPreviewPanel(loadPreview: PreviewLoader, preview: Previe
             <div className="zy-preview-title">{hit ? <PreviewTitle hit={hit} /> : '预览'}</div>
             {hit ? <PreviewLocation hit={hit} /> : null}
           </div>
-          <button className="zy-preview-close" type="button" aria-label="关闭预览" onClick={() => actions.close()}>×</button>
         </div>
         {hit ? <PreviewContent hit={hit} state={state} /> : <PreviewEmpty />}
       </aside>
