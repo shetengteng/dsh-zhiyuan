@@ -1,5 +1,5 @@
 export const PREVIEW_CSS = `
-.zy-preview-panel{box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
+.zy-preview-panel{box-sizing:border-box;flex:auto;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
 .zy-preview-head{display:flex;align-items:flex-start;gap:12px;height:76px;min-height:76px;box-sizing:border-box;padding:12px 16px 0;border-bottom:1px solid transparent;position:relative;flex:none;overflow:hidden}
 .zy-preview-head:after{content:"";z-index:0;background:var(--dsw-alias-border-l2);pointer-events:none;height:1px;position:absolute;bottom:0;left:0;right:0}
 .zy-preview-head-copy{min-width:0;flex:1}

@@ -1,5 +1,4 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import { VERSION_LABEL } from '../../model/package-info.ts'
 import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../types.ts'
 import { SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
 
@@ -39,7 +38,6 @@ export function KbPage(props: {
           <div key={kb.id} className={`zy-kb-row${props.currentKb?.id === kb.id ? ' is-on' : ''}`}>
             <button className="zy-kb-select" type="button" onClick={() => props.onSelectKb(kb.id)}>
               <span className="zy-kb-name">{kb.title || kb.id}</span>
-              <span className="zy-kb-version">{VERSION_LABEL}</span>
             </button>
             <button className="zy-del" type="button" aria-label={`删除 ${kb.title}`} onClick={() => props.onDeleteKb(kb)}>
               <TrashIcon />

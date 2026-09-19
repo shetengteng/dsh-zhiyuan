@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { MouseEvent, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import type { SearchHit } from '../types.ts'
 import { CitationTag } from '../CitationTag.tsx'
 import { matchedExcerptLine, parseLabeledFields, type LabeledField } from './hit-display.ts'
@@ -7,13 +7,13 @@ import { matchedExcerptLine, parseLabeledFields, type LabeledField } from './hit
 export type SearchHitCardProps = {
   hit: SearchHit
   selected?: boolean
-  onOpenHit: (hit: SearchHit, trigger: HTMLButtonElement) => void
+  onOpenHit: (hit: SearchHit) => void
 }
 
 export function SearchHitCard(props: SearchHitCardProps): ReactElement {
   const { hit } = props
-  const onOpenHit = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    props.onOpenHit(hit, event.currentTarget)
+  const onOpenHit = useCallback(() => {
+    props.onOpenHit(hit)
   }, [hit, props.onOpenHit])
   return (
     <article

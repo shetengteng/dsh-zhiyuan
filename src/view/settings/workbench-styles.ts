@@ -25,7 +25,6 @@ export const WORKBENCH_CSS = `
 .zy-kb-row.is-on,.zy-kb-row.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
 .zy-kb-select{display:flex;align-items:baseline;gap:4px;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-weight:500;overflow:hidden}
 .zy-kb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.zy-kb-version{flex:none;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:18px;font-variant-numeric:tabular-nums}
 .zy-del{width:22px;height:22px;border:none;background:transparent;border-radius:6px;padding:0;color:var(--dsw-alias-label-tertiary);display:inline-flex;align-items:center;justify-content:center;opacity:0;flex:none;cursor:pointer}
 .zy-kb-row .zy-del{position:absolute;right:6px;top:8px}
 .zy-kb-row:hover .zy-del,.zy-file:hover .zy-del,.zy-tree summary:hover .zy-del,.zy-del:focus{opacity:1}

@@ -1,143 +1,65 @@
 import { useEffect, useState } from 'react'
 import type { ReadEntryResponse, SearchHit } from '../../types.ts'
+import { isSamePreviewHit, type PreviewSelection } from './preview-selection.ts'
 
-export type PreviewLayout = {
-  openDetails: () => void
-  closeDetails: () => void
-}
-
-export type PreviewSelection = {
-  kbId: string
-  hit: SearchHit
-}
+/** 打开预览页类型；由右侧栏调用，页类型负责展开右栏。 */
+export type PreviewOpener = (selection: PreviewSelection) => void
 
 export type PreviewLoader = (selection: PreviewSelection, signal: AbortSignal) => Promise<ReadEntryResponse>
 
-export type PreviewState = {
-  selected: SearchHit | null
-  preview: ReadEntryResponse | null
-  status: 'idle' | 'loading' | 'ready' | 'error'
-  error: string
-}
-
+/**
+ * 预览的展示态：只记当前高亮的命中，内容由右侧栏的预览 tab 自己加载。
+ * Host 返回的数据仍是唯一真相，这里只保存短暂展示态。
+ */
 export type PreviewController = {
-  getState: () => PreviewState
+  getSelection: () => PreviewSelection | null
   subscribe: (listener: () => void) => () => void
-  select: (selection: PreviewSelection, trigger?: HTMLElement) => void
+  select: (selection: PreviewSelection) => void
   clear: () => void
-  activateSession: (sessionId?: string) => void
+  /** 预览 tab 卸载或改看别处时回收高亮；只清理与自己一致的选择。 */
+  release: (selection: PreviewSelection) => void
   dispose: () => void
 }
 
-export function createPreviewController(layout: PreviewLayout, loadPreview: PreviewLoader): PreviewController {
-  let selected: SearchHit | null = null
-  let preview: ReadEntryResponse | null = null
-  let status: PreviewState['status'] = 'idle'
-  let error = ''
-  let trigger: HTMLElement | null = null
-  let activeSessionId: string | undefined
-  let requestId = 0
-  let requestController: AbortController | undefined
+export function createPreviewController(openPreview: PreviewOpener): PreviewController {
+  let selection: PreviewSelection | null = null
   const listeners = new Set<() => void>()
 
-  const notify = () => {
+  const publish = (next: PreviewSelection | null) => {
+    selection = next
     for (const listener of listeners) listener()
   }
 
-  const getState = (): PreviewState => ({ selected, preview, status, error })
-
-  const cancelRequest = () => {
-    requestId += 1
-    requestController?.abort()
-    requestController = undefined
-  }
-
-  const reset = () => {
-    cancelRequest()
-    selected = null
-    preview = null
-    status = 'idle'
-    error = ''
-    trigger = null
-  }
-
   return {
-    getState,
+    getSelection: () => selection,
     subscribe: (listener) => {
       listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    select: (selection, nextTrigger) => {
-      cancelRequest()
-      const currentRequestId = requestId
-      selected = selection.hit
-      preview = null
-      status = 'loading'
-      error = ''
-      trigger = nextTrigger ?? null
-      notify()
-      layout.openDetails()
-      requestController = new AbortController()
-      void loadPreview(selection, requestController.signal).then((value) => {
-        if (currentRequestId !== requestId) return
-        preview = value
-        status = 'ready'
-        requestController = undefined
-        notify()
-      }).catch((reason: unknown) => {
-        if (currentRequestId !== requestId) return
-        requestController = undefined
-        if (isAbortReason(reason)) return
-        status = 'error'
-        error = reason instanceof Error ? reason.message : '预览加载失败'
-        notify()
-      })
-    },
-    clear: () => {
-      const lastTrigger = trigger
-      reset()
-      notify()
-      layout.closeDetails()
-      lastTrigger?.focus()
-    },
-    activateSession: (sessionId) => {
-      if (!sessionId || !activeSessionId || activeSessionId === sessionId) {
-        activeSessionId = sessionId ?? activeSessionId
-        return
+      return () => {
+        listeners.delete(listener)
       }
-      activeSessionId = sessionId
-      reset()
-      notify()
-      layout.closeDetails()
+    },
+    select: (next) => {
+      publish(next)
+      openPreview(next)
+    },
+    clear: () => publish(null),
+    release: (own) => {
+      const current = selection
+      if (current && current.kbId === own.kbId && isSamePreviewHit(current.hit, own.hit)) publish(null)
     },
     dispose: () => {
-      cancelRequest()
       listeners.clear()
-      trigger = null
+      selection = null
     },
   }
-}
-
-function isAbortReason(reason: unknown): boolean {
-  return Boolean(reason && typeof reason === 'object' && (reason as { name?: unknown }).name === 'AbortError')
 }
 
 export function usePreviewSelection(preview: PreviewController): SearchHit | null {
-  return usePreviewState(preview).selected
-}
+  const [selected, setSelected] = useState<SearchHit | null>(() => preview.getSelection()?.hit ?? null)
 
-export function usePreviewState(preview: PreviewController): PreviewState {
-  const [state, setState] = useState<PreviewState>(() => preview.getState())
+  useEffect(() => preview.subscribe(() => {
+    setSelected(preview.getSelection()?.hit ?? null)
+  }), [preview])
 
-  useEffect(() => preview.subscribe(() => setState(preview.getState())), [preview])
-
-  return state
-}
-
-export function isSamePreviewHit(left: SearchHit | null, right: SearchHit): boolean {
-  return left?.n === right.n
-    && left.path === right.path
-    && left.startLine === right.startLine
-    && left.endLine === right.endLine
-    && left.matchLine === right.matchLine
+  return selected
 }

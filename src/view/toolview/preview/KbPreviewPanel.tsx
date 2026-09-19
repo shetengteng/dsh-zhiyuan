@@ -1,61 +1,94 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReadEntryResponse, SearchHit } from '../../types.ts'
 import { CitationTag } from '../../CitationTag.tsx'
 import { matchedExcerptLine } from '../../search/hit-display.ts'
 import { ensureSettingsStyles } from '../../settings/styles.ts'
 import { EntryPreviewContent } from '../../../content/client-api.tsx'
-import type { PreviewController } from './preview-state.ts'
-import { usePreviewState } from './preview-state.ts'
+import { parsePreviewSelection } from './preview-selection.ts'
+import type { PreviewController, PreviewLoader } from './preview-state.ts'
 
-type DetailsPanelProps = {
-  closeDetails?: () => void
-  sessionId?: string
+/** 右侧栏 tab 的运行时信息；由 `sidebar.right.pane.tab` 座椅按 hooks.tabInfo 注入。 */
+export type PreviewTabInfo = {
+  tab: {
+    navigation: { params: unknown; revision: number }
+    signal: AbortSignal
+    actions: { close: () => void }
+  }
 }
 
-export function createKbPreviewPanel(preview: PreviewController) {
-  return function KbPreviewPanel(props: DetailsPanelProps) {
+export type UsePreviewTabInfo = () => PreviewTabInfo
+
+export type KbPreviewPanelProps = {
+  useTabInfo: UsePreviewTabInfo
+}
+
+type PreviewLoadState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; preview: ReadEntryResponse }
+  | { status: 'error'; error: string }
+
+/**
+ * 预览 tab 的主体：命中随导航参数到达，内容只经 Host 读取。
+ * 关闭按钮与 Escape 都交给 tab 自身的 actions，不碰右侧栏的私有 DOM。
+ */
+export function createKbPreviewPanel(loadPreview: PreviewLoader, preview: PreviewController) {
+  return function KbPreviewPanel(props: KbPreviewPanelProps) {
     ensureSettingsStyles()
-    const previewState = usePreviewState(preview)
-    const selectedHit = previewState.selected
+    const { tab } = props.useTabInfo()
+    const { navigation, signal, actions } = tab
+    const selection = useMemo(() => parsePreviewSelection(navigation.params), [navigation.params])
+    const [state, setState] = useState<PreviewLoadState>({ status: 'idle' })
 
     useEffect(() => {
-      preview.activateSession(props.sessionId)
-    }, [preview, props.sessionId])
+      if (!selection) {
+        setState({ status: 'idle' })
+        return
+      }
+      const controller = new AbortController()
+      const abort = () => controller.abort()
+      if (signal.aborted) controller.abort()
+      else signal.addEventListener('abort', abort)
+      setState({ status: 'loading' })
+      void loadPreview(selection, controller.signal).then((value) => {
+        if (controller.signal.aborted) return
+        setState({ status: 'ready', preview: value })
+      }).catch((reason: unknown) => {
+        if (controller.signal.aborted || isAbortReason(reason)) return
+        setState({ status: 'error', error: reason instanceof Error ? reason.message : '预览加载失败' })
+      })
+      return () => {
+        signal.removeEventListener('abort', abort)
+        controller.abort()
+      }
+    }, [loadPreview, signal, navigation, selection])
+
+    useEffect(() => {
+      if (!selection) return
+      return () => preview.release(selection)
+    }, [preview, selection])
 
     useEffect(() => {
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key !== 'Escape') return
         event.preventDefault()
-        preview.clear()
+        actions.close()
       }
       document.addEventListener('keydown', onKeyDown)
       return () => document.removeEventListener('keydown', onKeyDown)
-    }, [preview])
+    }, [actions])
 
-    const close = () => {
-      preview.clear()
-      props.closeDetails?.()
-    }
-
-    const title = selectedHit ? <PreviewTitle hit={selectedHit} /> : '选择引用'
-
+    const hit = selection?.hit
     return (
-      <aside className="zy-preview-panel" aria-label={selectedHit ? `${fileName(selectedHit.path)} 引用 ${selectedHit.n}` : '预览'}>
+      <aside className="zy-preview-panel" aria-label={hit ? `${fileName(hit.path)} 引用 ${hit.n}` : '预览'}>
         <div className="zy-preview-head">
           <div className="zy-preview-head-copy">
-            <div className="zy-preview-title">{title}</div>
-            {selectedHit ? <PreviewLocation hit={selectedHit} /> : null}
+            <div className="zy-preview-title">{hit ? <PreviewTitle hit={hit} /> : '预览'}</div>
+            {hit ? <PreviewLocation hit={hit} /> : null}
           </div>
-          <button className="zy-preview-close" type="button" aria-label="关闭预览" onClick={close}>×</button>
+          <button className="zy-preview-close" type="button" aria-label="关闭预览" onClick={() => actions.close()}>×</button>
         </div>
-        {selectedHit ? (
-          <PreviewContent
-            hit={selectedHit}
-            preview={previewState.preview}
-            status={previewState.status}
-            error={previewState.error}
-          />
-        ) : <PreviewEmpty />}
+        {hit ? <PreviewContent hit={hit} state={state} /> : <PreviewEmpty />}
       </aside>
     )
   }
@@ -74,20 +107,20 @@ function PreviewTitle(props: { hit: SearchHit }) {
   )
 }
 
-function PreviewContent(props: { hit: SearchHit; preview: ReadEntryResponse | null; status: 'idle' | 'loading' | 'ready' | 'error'; error: string }) {
-  const { hit } = props
-  if (props.status === 'loading') {
+function PreviewContent(props: { hit: SearchHit; state: PreviewLoadState }) {
+  const { hit, state } = props
+  if (state.status === 'loading' || state.status === 'idle') {
     return <FallbackPreview hit={hit} status="正在加载命中附近…" />
   }
-  if (props.status === 'error' || !props.preview) {
-    return <FallbackPreview hit={hit} status={props.error || '预览加载失败，显示命中片段'} />
+  if (state.status === 'error') {
+    return <FallbackPreview hit={hit} status={state.error} />
   }
-  if (props.preview.previewStatus !== 'ready') {
-    return <FallbackPreview hit={hit} status={props.preview.previewStatus === 'stale' ? '文件已变化，显示命中片段' : '命中位置已失效，显示命中片段'} />
+  if (state.preview.previewStatus !== 'ready') {
+    return <FallbackPreview hit={hit} status={state.preview.previewStatus === 'stale' ? '文件已变化，显示命中片段' : '命中位置已失效，显示命中片段'} />
   }
   return (
     <div className="zy-preview-body">
-      <EntryPreviewContent preview={props.preview} mode="read" highlightText={matchedExcerptLine(hit)} />
+      <EntryPreviewContent preview={state.preview} mode="read" highlightText={matchedExcerptLine(hit)} />
     </div>
   )
 }
@@ -104,8 +137,8 @@ function FallbackPreview(props: { hit: SearchHit; status: string }) {
 function PreviewEmpty() {
   return (
     <div className="zy-preview-empty">
-      <div className="zy-preview-empty-title">选择一条命中结果</div>
-      <p>点击对话中的引用卡片，在这里查看命中附近的原文。</p>
+      <div className="zy-preview-empty-title">没有可预览的命中</div>
+      <p>请点击对话中的引用卡片重新打开预览。</p>
     </div>
   )
 }
@@ -113,4 +146,8 @@ function PreviewEmpty() {
 function fileName(path: string): string {
   const normalized = path.replaceAll('\\', '/')
   return normalized.split('/').at(-1) || path
+}
+
+function isAbortReason(reason: unknown): boolean {
+  return Boolean(reason && typeof reason === 'object' && (reason as { name?: unknown }).name === 'AbortError')
 }

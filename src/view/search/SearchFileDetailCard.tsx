@@ -1,7 +1,8 @@
 import type { SearchFileDetailResult } from '../types.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
 import type { PreviewController } from '../toolview/preview/preview-state.ts'
-import { isSamePreviewHit, usePreviewSelection } from '../toolview/preview/preview-state.ts'
+import { isSamePreviewHit } from '../toolview/preview/preview-selection.ts'
+import { usePreviewSelection } from '../toolview/preview/preview-state.ts'
 import { SearchHitCard } from './SearchHitCard.tsx'
 import { SearchPagination, type SearchPaginationProps } from './SearchPagination.tsx'
 import { getSearchNextCursor } from './search-pages.ts'
@@ -39,7 +40,7 @@ export function SearchFileDetailCard(props: SearchFileDetailCardProps) {
               key={`${hit.n}-${hit.path}-${hit.startLine}-${hit.matchLine}`}
               hit={hit}
               selected={isSamePreviewHit(selectedHit, hit)}
-              onOpenHit={(nextHit, trigger) => props.preview.select({ kbId: result.kbId, hit: nextHit }, trigger)}
+              onOpenHit={(nextHit) => props.preview.select({ kbId: result.kbId, hit: nextHit })}
             />
           ))}
         </div>
