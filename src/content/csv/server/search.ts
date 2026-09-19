@@ -1,4 +1,4 @@
-import { CSV_PREVIEW_MAX_BYTES } from '../../../model/constants.ts'
+import { CSV_PREVIEW_MAX_BYTES } from '../../../model/csv-limits.ts'
 import { createCsvSearchDocument } from './search-excerpt.ts'
 import type { SearchDocument } from '../../shared/search-document.ts'
 import { stripUtf8Bom } from '../../shared/utf8.ts'

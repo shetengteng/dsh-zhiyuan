@@ -7,7 +7,7 @@ export const VERSION_LABEL = `v${PACKAGE_VERSION}`
 export const SECTION_LABEL = '知源'
 export const FOOTER_ACTION_ID = 'zhiyuan'
 export const FOOTER_ACTION_ORDER = 50
-export const TARGET_DSH_VERSION = '0.1.2-rc.1'
+export const TARGET_DSH_VERSION = packageJson.dsh.targetVersion
 export const DATA_DIR_NAME = 'dsh-zhiyuan'
 export const COMMAND_NAME = 'kb'
 

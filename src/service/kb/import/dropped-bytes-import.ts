@@ -1,11 +1,11 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { KbError } from '../../model/error/kb-error.ts'
-import { createImportFromPathRequest, type ImportDroppedBytesRequest } from '../../model/request/import-request.ts'
-import type { ImportResponse } from '../../model/response/import-response.ts'
-import type { CatalogRepository } from '../../repository/kb/catalog-repository.ts'
-import { importFiles } from './import.ts'
+import { KbError } from '../../../model/error/kb-error.ts'
+import { createImportFromPathRequest, type ImportDroppedBytesRequest } from '../../../model/request/import-request.ts'
+import type { ImportResponse } from '../../../model/response/import-response.ts'
+import type { CatalogRepository } from '../../../repository/kb/catalog-repository.ts'
+import { importFiles } from './import-service.ts'
 
 export function sanitizeDroppedFileName(name: string): string {
   const base = name.trim().split(/[\\/]/).pop() ?? ''

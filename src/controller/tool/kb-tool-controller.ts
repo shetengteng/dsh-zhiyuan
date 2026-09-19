@@ -1,4 +1,4 @@
-import { formatKbDisplayTitle } from '../../model/constants.ts'
+import { formatKbDisplayTitle } from '../../model/display-formatters.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { JobRunner } from '../../platform/jobs.ts'
 import { resolveDataRoot } from '../../platform/paths.ts'

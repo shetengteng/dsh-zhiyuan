@@ -1,4 +1,4 @@
-import { DEFAULT_MAX_KB_BYTES, DEFAULT_MAX_FILE_BYTES } from '../../model/constants.ts'
+import { DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_KB_BYTES } from '../../model/constants.ts'
 import type { KbCard, Catalog } from '../../model/entity/catalog.ts'
 import type { CatalogPrefs } from '../../model/value/catalog-prefs.ts'
 

@@ -7,7 +7,7 @@ import {
   SEARCH_RG_MAX_STDOUT_BYTES,
   SEARCH_RG_TIMEOUT_MS,
   SEARCH_UNSUPPORTED_PATTERN_MESSAGE,
-} from '../../../model/constants.ts'
+} from '../../../model/search-limits.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
 import { contentRegistry } from '../../../content/host-api.ts'
 import type { ScannerInput, ScannerMatch, ScannerResult, SearchScanner } from './scanner-contract.ts'

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { CSV_MAX_IMPORT_BYTES } from '../../../model/constants.ts'
+import { CSV_MAX_IMPORT_BYTES } from '../../../model/csv-limits.ts'
 import { EntryFormat } from '../../../model/content-contract.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
 import { readNormalizedImportCsv } from './encoding.ts'

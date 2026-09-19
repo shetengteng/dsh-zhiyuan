@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
-import type { ImportFileResponse } from '../../model/response/import-response.ts'
+import type { ImportFileResponse } from '../../../model/response/import-response.ts'
 
 // 查：唯一命名、目标路径规则、来源缺失文案与错误码映射。
 

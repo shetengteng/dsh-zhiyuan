@@ -1,4 +1,4 @@
-import { SEARCH_CONTEXT, SEARCH_LIST_CONTEXT, SEARCH_PAGE_MAX_CHARS } from '../../model/constants.ts'
+import { SEARCH_CONTEXT, SEARCH_LIST_CONTEXT, SEARCH_PAGE_MAX_CHARS } from '../../model/search-limits.ts'
 import { contentRegistry } from '../../content/host-api.ts'
 import type { SearchDocument } from '../../content/shared/search-document.ts'
 import type { SearchFileDetailResult, SearchHit } from '../../model/response/search-response.ts'

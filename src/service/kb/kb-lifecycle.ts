@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readdir, rm, stat } from 'node:fs/promises'
-import { MARK_USED_THROTTLE_MS } from '../../model/constants.ts'
+import { MARK_USED_THROTTLE_MS } from '../../model/package-info.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { KbCard, Catalog } from '../../model/entity/catalog.ts'
 import type { CreateKbRequest, UpdateKbRequest } from '../../model/request/kb-request.ts'

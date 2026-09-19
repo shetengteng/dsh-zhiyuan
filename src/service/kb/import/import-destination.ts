@@ -1,5 +1,5 @@
-import { KbError } from '../../model/error/kb-error.ts'
-import type { CatalogRepository } from '../../repository/kb/catalog-repository.ts'
+import { KbError } from '../../../model/error/kb-error.ts'
+import type { CatalogRepository } from '../../../repository/kb/catalog-repository.ts'
 
 export async function getLastDestinationCategory(
   catalogRepository: CatalogRepository,

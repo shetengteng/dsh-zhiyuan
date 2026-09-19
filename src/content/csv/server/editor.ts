@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { CSV_MAX_IMPORT_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
+import { CSV_MAX_IMPORT_BYTES } from '../../../model/csv-limits.ts'
+import { TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
 import { stripUtf8Bom } from '../../shared/utf8.ts'
 import type { TableEditorPage } from '../../../model/response/entry-response.ts'
 import type { EntryPageContext } from '../../host-contract.ts'

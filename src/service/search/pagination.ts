@@ -1,9 +1,9 @@
-import { SEARCH_CURSOR_MAX_LENGTH } from '../../model/constants.ts'
-import type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
+import { SEARCH_CURSOR_MAX_LENGTH } from '../../model/search-limits.ts'
+import type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-cursor.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { SearchQuery } from '../../model/response/search-response.ts'
 
-export type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
+export type { SearchCursorPayload, SearchCursorQuery } from '../../model/context/search-cursor.ts'
 
 export function encodeSearchCursor(payload: SearchCursorPayload): string {
   if (!isValidPayload(payload)) throw new KbError('invalid_field', '搜索游标位置无效')

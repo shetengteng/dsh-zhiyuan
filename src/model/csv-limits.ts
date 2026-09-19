@@ -1,0 +1,7 @@
+/** CSV 导入、预览与补丁限制。 */
+export const CSV_MAX_PHYSICAL_LINE_BYTES = 64 * 1024
+export const CSV_MAX_IMPORT_BYTES = 20 * 1024 * 1024
+export const CSV_PREVIEW_MAX_CHARS = 200_000
+export const CSV_PREVIEW_MAX_BYTES = CSV_MAX_IMPORT_BYTES
+export const CSV_PREVIEW_MAX_ROWS = 500
+export const CSV_MAX_PATCH_CHANGES = 10_000

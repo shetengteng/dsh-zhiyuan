@@ -1,4 +1,4 @@
-import { COMMAND_NAME } from '../../model/constants.ts'
+import { COMMAND_NAME } from '../../model/package-info.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import { createImportFromPathRequest } from '../../model/request/import-request.ts'
 import type { SearchRequest } from '../../model/request/search-request.ts'

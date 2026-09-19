@@ -1,4 +1,4 @@
-import { CSV_MAX_PATCH_CHANGES, CSV_MAX_PHYSICAL_LINE_BYTES } from '../../model/constants.ts'
+import { CSV_MAX_PATCH_CHANGES, CSV_MAX_PHYSICAL_LINE_BYTES } from '../../model/csv-limits.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { EntryWriteChange, TableCellChange, TableHeaderChange, TablePatch } from '../../model/request/entry-request.ts'
 

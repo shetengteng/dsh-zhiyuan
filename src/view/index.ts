@@ -1,7 +1,7 @@
 import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
 import { createPreviewController, type PreviewSelection } from './toolview/preview/preview-state.ts'
-import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL } from '../model/constants.ts'
+import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL } from '../model/package-info.ts'
 import { createFooterAction } from './FooterAction.tsx'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './payload/read-entry.ts'

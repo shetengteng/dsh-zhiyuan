@@ -1,5 +1,5 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import { VERSION_LABEL } from '../../model/constants.ts'
+import { VERSION_LABEL } from '../../model/package-info.ts'
 import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../types.ts'
 import { SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
 

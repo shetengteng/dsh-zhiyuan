@@ -9,7 +9,7 @@ import type { Catalog } from '../src/model/entity/catalog.ts'
 import { emptyCatalog, parseCatalog } from '../src/repository/kb/catalog-codec.ts'
 import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
 import { cleanAliases, removeKb, upsertKb } from '../src/service/kb/catalog-mutation.ts'
-import { getLastDestinationCategory, rememberLastDestinationCategory } from '../src/service/kb/import-destination.ts'
+import { getLastDestinationCategory, rememberLastDestinationCategory } from '../src/service/kb/import/import-destination.ts'
 
 const catalogRepository = new FileCatalogRepository()
 const readCatalog = (dataRoot: string): Promise<Catalog> => catalogRepository.read(dataRoot)

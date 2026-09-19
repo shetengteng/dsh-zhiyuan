@@ -1,5 +1,6 @@
 import Papa from 'papaparse'
-import { CSV_PREVIEW_MAX_CHARS, CSV_PREVIEW_MAX_ROWS, SEARCH_CONTEXT } from '../../../model/constants.ts'
+import { CSV_PREVIEW_MAX_CHARS, CSV_PREVIEW_MAX_ROWS } from '../../../model/csv-limits.ts'
+import { SEARCH_CONTEXT } from '../../../model/search-limits.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
 import type { PreviewTruncation, TableEditorPage, TableWindowData } from '../../../model/response/entry-response.ts'
 

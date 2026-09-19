@@ -6,7 +6,7 @@ import { KbError } from '../model/error/kb-error.ts'
 import { DATA_DIR_NAME } from '../model/constants.ts'
 import { importDsh } from './import-dsh.ts'
 
-export type { DestinationResolution } from '../model/context/kb-context.ts'
+export type { DestinationResolution } from '../model/context/import-context.ts'
 
 let cachedDataRoot: string | undefined
 

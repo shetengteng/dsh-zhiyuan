@@ -1,7 +1,7 @@
 import { readdir, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import { contentRegistry } from '../../content/host-api.ts'
-import { sha256File } from '../../content/shared/file-hash.ts'
+import { contentRegistry } from '../../../content/host-api.ts'
+import { sha256File } from '../../../content/shared/file-hash.ts'
 
 // 读：来源遍历 + 库内已有内容盘点（hash 去重快照、库大小统计）。
 

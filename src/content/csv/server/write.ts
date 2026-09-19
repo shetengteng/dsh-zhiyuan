@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
-import { CSV_MAX_IMPORT_BYTES } from '../../../model/constants.ts'
+import { CSV_MAX_IMPORT_BYTES } from '../../../model/csv-limits.ts'
 import { encodeUtf8CsvWithBom, stripUtf8Bom } from '../../shared/utf8.ts'
 import { assertTablePatchShape } from '../../shared/table-patch.ts'
 import type { EntryWriteContext } from '../../host-contract.ts'

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { KbError } from '../src/model/error/kb-error.ts'
 import { FileCatalogRepository } from '../src/repository/kb/file-catalog-repository.ts'
-import { sanitizeDroppedFileName } from '../src/service/kb/import-drop.ts'
+import { sanitizeDroppedFileName } from '../src/service/kb/import/dropped-bytes-import.ts'
 import { createKnowledgeServices } from '../src/service/kb/knowledge-services.ts'
 
 const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())

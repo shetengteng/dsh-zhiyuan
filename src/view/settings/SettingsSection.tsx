@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { SECTION_LABEL, VERSION_LABEL } from '../../model/constants.ts'
+import { SECTION_LABEL, VERSION_LABEL } from '../../model/package-info.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
 import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult } from '../types.ts'
 import { parseImportResponse } from '../payload/import-result.ts'

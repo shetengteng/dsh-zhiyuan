@@ -5,8 +5,8 @@ import {
   SEARCH_MAX_PATTERN_LENGTH,
   SEARCH_MAX_PATTERN_TOTAL_LENGTH,
   SEARCH_UNSUPPORTED_PATTERN_MESSAGE,
-} from '../../model/constants.ts'
-import type { SearchCursorQuery } from '../../model/context/search-pagination-context.ts'
+} from '../../model/search-limits.ts'
+import type { SearchCursorQuery } from '../../model/context/search-cursor.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type {
   ContinueSearchRequest,
