@@ -1,6 +1,6 @@
 import { extname } from 'node:path'
-import { csvContentFormat } from './csv/index.ts'
-import { markdownContentFormat } from './markdown/index.ts'
+import { csvContentFormat } from './csv/csv-format.ts'
+import { markdownContentFormat } from './markdown/markdown-format.ts'
 import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPathContext, EntryReadContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
 import type { SourceFormat, EntryFormat as EntryFormatValue } from '../model/content-contract.ts'
 import type { PreparedEntry } from './shared/ingest-output.ts'

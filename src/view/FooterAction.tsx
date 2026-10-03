@@ -3,7 +3,7 @@ import { SECTION_LABEL } from '../model/package-info.ts'
 import type { KnowledgePrivateConnection } from './bridge.ts'
 import { CloseIcon, SectionIcon } from './settings/Icons.tsx'
 import { createSettingsSection } from './settings/SettingsSection.tsx'
-import { ensureSettingsStyles } from './settings/styles.ts'
+import { ensureSettingsStyles } from './settings/style-entry.ts'
 
 export type FooterActionProps = {
   wide: boolean

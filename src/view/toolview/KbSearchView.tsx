@@ -1,4 +1,4 @@
-import { ensureSettingsStyles } from '../settings/styles.ts'
+import { ensureSettingsStyles } from '../settings/style-entry.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
 import { SearchFileDetailCard } from '../search/SearchFileDetailCard.tsx'
 import { SearchOverviewCard } from '../search/SearchOverviewCard.tsx'

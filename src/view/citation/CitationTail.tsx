@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { ReactElement } from 'react'
-import { ensureSettingsStyles } from '../settings/styles.ts'
+import { ensureSettingsStyles } from '../settings/style-entry.ts'
 import type { PreviewController } from '../toolview/preview/preview-state.ts'
 import { isSearchHit } from '../toolview/preview/preview-selection.ts'
 import { MAX_TAIL_CITATIONS, TURN_DATA_KEY, type TailCitation, type ZhiyuanTurnCitations } from './turn-citations.ts'

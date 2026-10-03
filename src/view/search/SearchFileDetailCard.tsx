@@ -1,5 +1,5 @@
 import type { SearchFileDetailResult } from '../view-models.ts'
-import { ensureSettingsStyles } from '../settings/styles.ts'
+import { ensureSettingsStyles } from '../settings/style-entry.ts'
 import type { PreviewController } from '../toolview/preview/preview-state.ts'
 import { isSamePreviewHit } from '../toolview/preview/preview-selection.ts'
 import { usePreviewSelection } from '../toolview/preview/preview-state.ts'

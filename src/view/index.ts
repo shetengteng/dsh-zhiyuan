@@ -8,7 +8,7 @@ import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL, TUR
 import { createFooterAction } from './FooterAction.tsx'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './payload/read-entry.ts'
-import { disposeSettingsStyles } from './settings/styles.ts'
+import { disposeSettingsStyles } from './settings/style-entry.ts'
 
 export const name = PACKAGE_NAME
 export const inject = ['slots', 'connection', 'sidebarRight', 'sidebarRightTabs', 'uiConversation']

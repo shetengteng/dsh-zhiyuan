@@ -26,7 +26,7 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node scripts/build.mjs",
     "prepare": "node scripts/build.mjs",
-    "test": "node --test --experimental-strip-types test/*.test.ts"
+    "test": "node --test --experimental-strip-types test/**/*.test.ts"
   },
   "keywords": [
     "dsh",
