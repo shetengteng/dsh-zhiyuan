@@ -19,23 +19,16 @@ export const PREVIEW_CSS = `
 .zy-csv-preview{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;height:100%}
 .zy-csv-page-tools{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;padding-top:10px}
 .zy-csv-page-status{grid-column:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}
-.zy-csv-page-actions{grid-column:2;display:flex;align-items:center;gap:20px}
+.zy-csv-page-actions{grid-column:3;justify-self:end;display:flex;align-items:center;gap:20px}
 .zy-csv-page-button{appearance:none;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-state-business-primary);padding:4px 8px;font:inherit;font-size:13px;line-height:20px;cursor:pointer}
 .zy-csv-page-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
 .zy-csv-page-button:disabled{color:var(--dsw-alias-label-tertiary);cursor:not-allowed;opacity:.65}
 .zy-csv-page-error{margin-top:8px;color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px}
 .zy-csv-grid{box-sizing:border-box;width:100%;max-width:100%;min-width:0;height:min(72vh,720px);min-height:280px;margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
-.zy-csv-table{height:100%;width:100%;min-width:0;overflow:auto}
-.zy-csv-table table{width:max-content;min-width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;line-height:20px}
-.zy-csv-table th,.zy-csv-table td{box-sizing:border-box;width:132px;min-width:132px;padding:6px 10px;border-bottom:1px solid var(--dsw-alias-border-l2);border-right:1px solid var(--dsw-alias-border-l2);vertical-align:top;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
-.zy-csv-table thead th{position:relative;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-primary);font-weight:600}
-.zy-csv-table .zy-csv-row-number{width:48px;min-width:48px;color:var(--dsw-alias-label-tertiary);text-align:right;font-variant-numeric:tabular-nums}
-.zy-csv-table .zy-csv-row-focus{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 18%,var(--dsw-alias-bg-layer-1))}
-.zy-csv-cell-text{display:block;min-height:20px;color:var(--dsw-alias-label-primary)}
-.zy-csv-cell-button{display:block;width:100%;min-height:20px;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;line-height:inherit;text-align:inherit;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text}
-.zy-csv-cell-button:focus-visible,.zy-csv-cell-input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.zy-csv-cell-input{box-sizing:border-box;display:block;width:100%;height:20px;padding:0;resize:none;border:0;border-radius:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;line-height:20px;outline:none;appearance:none}
-textarea.zy-csv-cell-input{overflow-y:auto}
+.zy-rdg-cell-editor{box-sizing:border-box;position:absolute;inset:0;width:100%;padding:0 6px;resize:none;border:2px solid var(--dsw-alias-state-business-primary);border-radius:0;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:calc(var(--rdg-row-height) - 5px);outline:none;appearance:none;white-space:nowrap;overflow-wrap:normal;overflow:auto;scrollbar-width:none;vertical-align:top}
+.zy-rdg-cell-editor::-webkit-scrollbar{display:none}
+.zy-rdg-header-input{box-sizing:border-box;width:100%;height:24px;padding:0 4px;border:1px solid var(--dsw-alias-state-business-primary);border-radius:4px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:20px;outline:none}
+.zy-rdg-header-button{display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:600;line-height:inherit;text-align:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text}
 .zy-csv-body{flex:1;min-height:280px;max-height:min(72vh,720px);overflow:auto;margin:10px 0 0;padding:14px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);font-family:var(--ds-font-family-code);font-size:13px;line-height:22px;white-space:pre;tab-size:4}
 .zy-preview-empty{margin:auto;max-width:28ch;padding:24px 20px;text-align:center;color:var(--dsw-alias-label-tertiary)}
 .zy-preview-empty-title{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500;line-height:20px}

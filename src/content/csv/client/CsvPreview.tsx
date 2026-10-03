@@ -1,16 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { TableVirtuoso } from 'react-virtuoso'
+import type { RowsChangeData } from 'react-data-grid'
 import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
 import type { TableEditorPage, TableEntryPreview, TableWindowData } from '../../../model/response/entry-response.ts'
-import {
-  buildPatch,
-  cellKey,
-  emptyCsvChanges,
-  storeEdit,
-  withActiveEdit,
-  type CsvActiveEdit,
-  type CsvChanges,
-} from './csv-patch.ts'
+import { buildPatch, emptyCsvChanges, storeEdit, type CsvChanges } from './csv-patch.ts'
+import type { CsvHeaderEdit } from './csv-grid-cells.tsx'
+import { cellField, type CsvGridRow } from './csv-grid-rows.ts'
+import { CsvGrid } from './CsvGrid.tsx'
 
 export type CsvEditorHandle = {
   getChange: () => EntryWriteChange | undefined
@@ -23,23 +18,22 @@ export type CsvPreviewProps = {
   onLoadPage?: (startRow: number) => Promise<TableEditorPage>
 }
 
-/** 轻量 CSV 查看与单元格编辑用的虚拟原生表格。 */
+/** 轻量 CSV 查看与单元格编辑用的 react-data-grid 表格。 */
 export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function CsvPreview(props, ref) {
   const table = props.preview.table
   const [page, setPage] = useState<TableEditorPage | undefined>(() => editorPage(table))
   const [changes, setChanges] = useState<CsvChanges>(emptyCsvChanges)
-  const [activeEdit, setActiveEdit] = useState<CsvActiveEdit | null>(null)
+  const [headerEdit, setHeaderEdit] = useState<CsvHeaderEdit | null>(null)
   const [pageBusy, setPageBusy] = useState(false)
   const [pageError, setPageError] = useState('')
   const requestId = useRef(0)
-  const cancelledEdit = useRef<CsvActiveEdit | null>(null)
   const editable = props.mode === 'edit' && Boolean(page?.revision)
 
   useEffect(() => {
     requestId.current += 1
     setPage(editorPage(table))
     setChanges(emptyCsvChanges())
-    setActiveEdit(null)
+    setHeaderEdit(null)
     setPageBusy(false)
     setPageError('')
   }, [props.preview.path, table?.revision])
@@ -49,48 +43,54 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
   useImperativeHandle(ref, () => ({
     getChange: () => {
       if (!page?.revision) return undefined
-      const patch = buildPatch(page.revision, withActiveEdit(changes, activeEdit))
+      const patch = buildPatch(page.revision, changes)
       return patch ? { kind: 'table-patch' as const, patch } : undefined
     },
-  }), [activeEdit, changes, page?.revision])
+  }), [changes, page?.revision])
 
   if (!table || !page) return <RawCsvFallback preview={props.preview} showPreviewStatus={props.showPreviewStatus} />
 
-  const currentValue = (row: number, column: number, source: string, isHeader: boolean): string => {
-    if (isHeader) return changes.headers.get(column) ?? source
-    return changes.cells.get(cellKey(row, column))?.value ?? source
+  const startRow = page.windowStartRow || 1
+  const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
+  const nextStartRow = page.windowEndRow + 1
+
+  const commitCellChange = (row: number, column: number, originalValue: string, value: string) => {
+    setChanges((current) => storeEdit(current, { row, column, originalValue, value, isHeader: false }))
+  }
+  const commitHeaderChange = (column: number, originalValue: string, value: string) => {
+    setChanges((current) => storeEdit(current, { row: 0, column, originalValue, value, isHeader: true }))
   }
 
-  const persistEdit = (edit: CsvActiveEdit) => setChanges((current) => storeEdit(current, edit))
-  const beginEdit = (edit: CsvActiveEdit) => {
-    if (!editable) return
-    if (activeEdit) persistEdit(activeEdit)
-    setActiveEdit(edit)
-  }
-  const finishEdit = () => {
-    if (cancelledEdit.current === activeEdit) {
-      cancelledEdit.current = null
-      return
+  const onRowsChange = (rows: CsvGridRow[], data: RowsChangeData<CsvGridRow>) => {
+    for (const index of data.indexes) {
+      const row = rows[index]
+      const original = page.rows[index]
+      if (!row || !original) continue
+      for (let column = 0; column < page.headers.length; column += 1) {
+        const value = String(row[cellField(column)] ?? '')
+        const originalValue = original[column] ?? ''
+        if (value !== originalValue) commitCellChange(startRow + index, column, originalValue, value)
+      }
     }
-    if (activeEdit) persistEdit(activeEdit)
-    setActiveEdit(null)
-  }
-  const cancelEdit = () => {
-    cancelledEdit.current = activeEdit
-    setActiveEdit(null)
   }
 
-  const loadPage = async (startRow: number): Promise<void> => {
+  const commitHeaderEdit = () => {
+    if (!headerEdit) return
+    const originalValue = page.headers[headerEdit.column] ?? ''
+    if (headerEdit.value !== originalValue) commitHeaderChange(headerEdit.column, originalValue, headerEdit.value)
+    setHeaderEdit(null)
+  }
+
+  const loadPage = async (target: number): Promise<void> => {
     if (!props.onLoadPage || pageBusy) return
     const nextRequest = requestId.current + 1
     requestId.current = nextRequest
     setPageBusy(true)
     setPageError('')
     try {
-      const nextPage = await props.onLoadPage(startRow)
+      const nextPage = await props.onLoadPage(target)
       if (requestId.current === nextRequest) {
-        if (activeEdit) persistEdit(activeEdit)
-        setActiveEdit(null)
+        setHeaderEdit(null)
         if (nextPage.revision !== page.revision) {
           setChanges(emptyCsvChanges())
           setPageError('文件已变化，未保存的表格修改已清除')
@@ -104,9 +104,6 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
     }
   }
 
-  const startRow = page.windowStartRow || 1
-  const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
-  const nextStartRow = page.windowEndRow + 1
   return (
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
@@ -120,67 +117,20 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
         </div>
       ) : null}
       {pageError ? <div className="zy-csv-page-error" role="alert">{pageError}</div> : null}
-      <div className="zy-csv-grid" aria-label={editable ? 'CSV 表格编辑器' : 'CSV 表格预览'}>
-        <TableVirtuoso
-          className="zy-csv-table"
-          style={{ width: '100%' }}
-          data={page.rows}
-          computeItemKey={(index) => startRow + index}
-          fixedHeaderContent={() => (
-            <tr>
-              <th className="zy-csv-row-number" scope="col">行</th>
-              {page.headers.map((header, column) => {
-                const value = currentValue(0, column, header, true)
-                return <th key={`header-${column}`} scope="col">{renderCell(value, 0, column, true)}</th>
-              })}
-            </tr>
-          )}
-          itemContent={(index, row) => {
-            const rowNumber = startRow + index
-            return (
-              <>
-                <th className={rowNumber === table.focusedRow ? 'zy-csv-row-number zy-csv-row-focus' : 'zy-csv-row-number'} scope="row">{rowNumber}</th>
-                {page.headers.map((_header, column) => (
-                  <td key={`${rowNumber}-${column}`} className={rowNumber === table.focusedRow ? 'zy-csv-row-focus' : undefined}>
-                    {renderCell(currentValue(rowNumber, column, row[column] ?? '', false), rowNumber, column, false)}
-                  </td>
-                ))}
-              </>
-            )
-          }}
-        />
-      </div>
+      <CsvGrid
+        page={page}
+        startRow={startRow}
+        editable={editable}
+        focusedRow={table.focusedRow}
+        headerEdit={headerEdit}
+        onHeaderEditStart={setHeaderEdit}
+        onHeaderEditChange={(value: string) => setHeaderEdit((current) => (current ? { ...current, value } : current))}
+        onHeaderEditCommit={commitHeaderEdit}
+        onHeaderEditCancel={() => setHeaderEdit(null)}
+        onRowsChange={onRowsChange}
+      />
     </div>
   )
-
-  function renderCell(value: string, row: number, column: number, isHeader: boolean) {
-    const isActive = activeEdit?.row === row && activeEdit.column === column && activeEdit.isHeader === isHeader
-    if (isActive) {
-      const commonProps = {
-        value: activeEdit.value,
-        autoFocus: true,
-        'aria-label': isHeader ? `编辑第 ${column + 1} 列表头` : `编辑第 ${row} 行第 ${column + 1} 列`,
-        onChange: (event: { currentTarget: { value: string } }) => setActiveEdit((current) => current ? { ...current, value: event.currentTarget.value } : current),
-        onBlur: finishEdit,
-        onKeyDown: (event: { key: string; shiftKey: boolean; preventDefault: () => void }) => {
-          if (event.key === 'Escape') cancelEdit()
-          if (event.key === 'Enter' && (isHeader || !event.shiftKey)) {
-            event.preventDefault()
-            finishEdit()
-          }
-        },
-      }
-      return isHeader ? <input className="zy-csv-cell-input" {...commonProps} /> : <textarea className="zy-csv-cell-input" rows={1} {...commonProps} />
-    }
-    if (!editable) return <span className="zy-csv-cell-text">{value}</span>
-    return (
-      <button
-        className="zy-csv-cell-button"
-        type="button"
-        onClick={() => beginEdit({ row, column, originalValue: value, value, isHeader })}
-      >{value || ' '}</button>
-    )
-  }
 })
 
 function editorPage(table: TableWindowData | undefined): TableEditorPage | undefined {

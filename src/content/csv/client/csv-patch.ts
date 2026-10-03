@@ -1,6 +1,6 @@
 import type { TableCellChange, TablePatch } from '../../../model/request/entry-request.ts'
 
-export type CsvActiveEdit = {
+export type CsvEdit = {
   row: number
   column: number
   originalValue: string
@@ -21,7 +21,7 @@ export function cellKey(row: number, column: number): string {
   return `${row}:${column}`
 }
 
-export function storeEdit(changes: CsvChanges, edit: CsvActiveEdit): CsvChanges {
+export function storeEdit(changes: CsvChanges, edit: CsvEdit): CsvChanges {
   const headers = new Map(changes.headers)
   const cells = new Map(changes.cells)
   if (edit.isHeader) {
@@ -33,10 +33,6 @@ export function storeEdit(changes: CsvChanges, edit: CsvActiveEdit): CsvChanges 
     else cells.set(key, { row: edit.row, column: edit.column, value: edit.value })
   }
   return { headers, cells }
-}
-
-export function withActiveEdit(changes: CsvChanges, activeEdit: CsvActiveEdit | null): CsvChanges {
-  return activeEdit ? storeEdit(changes, activeEdit) : changes
 }
 
 export function buildPatch(revision: string, changes: CsvChanges): TablePatch | undefined {
