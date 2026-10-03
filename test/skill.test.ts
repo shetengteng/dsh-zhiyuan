@@ -6,11 +6,11 @@ import {
   registerZhiyuanSkill,
   ZHIYUAN_PROMPT_SECTION,
   ZHIYUAN_SKILL,
-} from '../src/skills/zhiyuan-kb/index.ts'
+} from '../skills/zhiyuan-kb/index.ts'
 
 test('skill 正文锁住检索流程、边界、出处和导入规则', () => {
   const body = ZHIYUAN_SKILL.content
-  const source = readFileSync(new URL('../src/skills/zhiyuan-kb/SKILL.md', import.meta.url), 'utf8')
+  const source = readFileSync(new URL('../skills/zhiyuan-kb/SKILL.md', import.meta.url), 'utf8')
   assert.equal(body, source)
   assert.equal(ZHIYUAN_SKILL.name, 'zhiyuan-kb')
   assert.match(ZHIYUAN_SKILL.description, /overview/)

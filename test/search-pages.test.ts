@@ -67,8 +67,8 @@ test('overview 续页追加文件并沿用 Host 的末页元数据', () => {
     { path: 'c.md', format: 'markdown', totalHits: 2 },
   ], { scope: 'files', returnedFiles: 1, hasMore: false })
   const merged = appendSearchPage(first, second)
-
-  assert.deepEqual(merged.kind === 'overview' ? merged.files.map((file) => file.path) : [], ['a.md', 'b.md', 'c.md'])
+  if (merged.kind !== 'overview') throw new Error('合并结果应为 overview')
+  assert.deepEqual(merged.files.map((file) => file.path), ['a.md', 'b.md', 'c.md'])
   assert.equal(merged.page.returnedFiles, 3)
   assert.equal(merged.totalFiles, second.totalFiles)
   assert.equal(getSearchNextCursor(merged), undefined)
@@ -78,8 +78,8 @@ test('file-detail 续页追加命中，并拒绝不同文件的分页结果', ()
   const first = detail([hit(1)], { scope: 'hits', returnedHits: 1, hasMore: true, nextCursor: 'next' })
   const second = detail([hit(2)], { scope: 'hits', returnedHits: 1, hasMore: false })
   const merged = appendSearchPage(first, second)
-
-  assert.deepEqual(merged.kind === 'file-detail' ? merged.hits.map((item) => item.n) : [], [1, 2])
+  if (merged.kind !== 'file-detail') throw new Error('合并结果应为 file-detail')
+  assert.deepEqual(merged.hits.map((item) => item.n), [1, 2])
   assert.equal(merged.page.returnedHits, 2)
   assert.throws(() => appendSearchPage(first, { ...second, path: '其他.md' }), /搜索分页目标文件不一致/)
 })

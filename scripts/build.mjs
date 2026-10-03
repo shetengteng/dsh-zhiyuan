@@ -22,7 +22,7 @@ const external = [
 
 await mkdir(lib, { recursive: true })
 
-const skillSource = join(root, 'src/skills/zhiyuan-kb/SKILL.md')
+const skillSource = join(root, 'skills/zhiyuan-kb/SKILL.md')
 const skillOutput = join(lib, 'skills/zhiyuan-kb/SKILL.md')
 await mkdir(dirname(skillOutput), { recursive: true })
 await copyFile(skillSource, skillOutput)
