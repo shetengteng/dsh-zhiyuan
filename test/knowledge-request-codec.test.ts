@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { asRecord, hasField, optionalBoolean, optionalPositiveInteger, optionalString, optionalStringArray, requireString } from '../src/platform/field-reader.ts'
 import { decodeImportOperation, decodeKnowledgeOperation, readPreviewOptions } from '../src/controller/rpc/knowledge-request-codec.ts'
-import { TABLE_EDITOR_PAGE_SIZE } from '../src/model/constants.ts'
+import { TABLE_EDITOR_PAGE_SIZE } from '../src/model/csv-limits.ts'
 import { KbError } from '../src/model/error/kb-error.ts'
 
 /** 断言抛出指定错误码的 KbError。 */

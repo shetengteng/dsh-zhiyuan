@@ -1,4 +1,4 @@
-import { TABLE_EDITOR_PAGE_SIZE } from '../../model/constants.ts'
+import { TABLE_EDITOR_PAGE_SIZE } from '../../model/csv-limits.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { KnowledgeOperationResponse } from '../../model/wire/knowledge-operation.ts'
 import type { JobRunner } from '../../platform/jobs.ts'

@@ -1,5 +1,4 @@
-import { CSV_PREVIEW_MAX_BYTES } from '../../../model/csv-limits.ts'
-import { TABLE_EDITOR_PAGE_SIZE } from '../../../model/constants.ts'
+import { CSV_PREVIEW_MAX_BYTES, TABLE_EDITOR_PAGE_SIZE } from '../../../model/csv-limits.ts'
 import { EntryContentKind, EntryFormat, EntryPreviewView, EntryReadMode } from '../../../model/content-contract.ts'
 import { splitPhysicalLines } from '../../shared/line-window.ts'
 import { resolvePreviewFocus } from '../../shared/preview-focus.ts'
