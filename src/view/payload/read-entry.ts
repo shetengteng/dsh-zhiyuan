@@ -1,4 +1,4 @@
-import type { ReadEntryResponse } from '../types.ts'
+import type { ReadEntryResponse } from '../view-models.ts'
 import type { TableWindowData } from '../../model/response/entry-response.ts'
 import { isEntryContentKind, isEntryFormat, isEntryPreviewView } from '../../model/content-contract.ts'
 

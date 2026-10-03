@@ -1,4 +1,4 @@
-import type { KbSummaryResponse, KbTreeNodeResponse } from '../types.ts'
+import type { KbSummaryResponse, KbTreeNodeResponse } from '../view-models.ts'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null

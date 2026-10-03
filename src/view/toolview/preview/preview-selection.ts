@@ -1,4 +1,4 @@
-import type { SearchHit } from '../../types.ts'
+import type { SearchHit } from '../../view-models.ts'
 
 /** 一次预览请求：命中所属的知识库与命中本身。 */
 export type PreviewSelection = {

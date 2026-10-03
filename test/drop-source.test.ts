@@ -1,13 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import {
-  claimFileDrag,
-  droppedSourcePath,
-  isFileDrag,
-  resolveDroppedSource,
-  sourceDisplayName,
-} from '../src/view/settings/drop-source-path.ts'
+import { droppedSourcePath, resolveDroppedSource, sourceDisplayName } from '../src/view/settings/drop-source.ts'
 
+/** 构造模拟 DataTransfer，用于落点来源解析测试。 */
 function transfer(input: {
   path?: string
   name?: string
@@ -51,22 +46,6 @@ test('droppedSourcePath 能从 file URI 还原本机路径', () => {
   assert.equal(droppedSourcePath(transfer({ uriList: 'file:///C:/notes/a.csv' })), 'C:/notes/a.csv')
 })
 
-test('claimFileDrag 拦截只暴露 file URI 类型的拖放', () => {
-  const dataTransfer = transfer({ uriList: 'file:///tmp/a.csv', types: ['text/uri-list'] })
-  let prevented = false
-  let stopped = false
-  const claimed = claimFileDrag({
-    preventDefault() { prevented = true },
-    stopPropagation() { stopped = true },
-    dataTransfer,
-  }, 'copy')
-  assert.equal(claimed, true)
-  assert.equal(prevented, true)
-  assert.equal(stopped, true)
-  assert.equal(dataTransfer.dropEffect, 'copy')
-  assert.equal(isFileDrag(dataTransfer), true)
-})
-
 test('droppedSourcePath 接受绝对路径形式的 text/plain', () => {
   assert.equal(droppedSourcePath(transfer({ plain: '/Users/me/a.csv' })), '/Users/me/a.csv')
   assert.equal(droppedSourcePath(transfer({ plain: 'C:\\notes\\a.csv' })), 'C:\\notes\\a.csv')
@@ -80,36 +59,4 @@ test('resolveDroppedSource 没有路径时改用 File 本身', () => {
   const dropped = resolveDroppedSource(transfer({ name: '供应商台账.csv' }))
   assert.equal(dropped.kind, 'file')
   if (dropped.kind === 'file') assert.equal(dropped.file.name, '供应商台账.csv')
-})
-
-test('claimFileDrag 拦截 Files 拖放并设置 dropEffect', () => {
-  const dataTransfer = transfer({ path: '/tmp/a.csv' })
-  let stopped = false
-  const claimed = claimFileDrag({
-    preventDefault() {},
-    stopPropagation() { stopped = true },
-    dataTransfer,
-  }, 'copy')
-  assert.equal(claimed, true)
-  assert.equal(stopped, true)
-  assert.equal(dataTransfer.dropEffect, 'copy')
-  assert.equal(isFileDrag(dataTransfer), true)
-})
-
-test('claimFileDrag 在 types 尚未填 Files 时仍拦截', () => {
-  const dataTransfer = transfer({ types: [] })
-  assert.equal(claimFileDrag({
-    preventDefault() {},
-    stopPropagation() {},
-    dataTransfer,
-  }, 'copy'), true)
-})
-
-test('claimFileDrag 不拦截普通文本拖放', () => {
-  const dataTransfer = transfer({ plain: 'hello', types: ['text/plain'] })
-  assert.equal(claimFileDrag({
-    preventDefault() {},
-    stopPropagation() {},
-    dataTransfer,
-  }, 'copy'), false)
 })

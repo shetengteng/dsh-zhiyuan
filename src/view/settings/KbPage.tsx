@@ -1,5 +1,5 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../types.ts'
+import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../view-models.ts'
 import { SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
 
 export function KbPage(props: {

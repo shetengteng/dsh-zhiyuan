@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReadEntryResponse, SearchHit } from '../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../view-models.ts'
 import { parseReadEntry } from '../payload/read-entry.ts'
 import { createPreviewRequestManager } from './preview/preview-request.ts'
 

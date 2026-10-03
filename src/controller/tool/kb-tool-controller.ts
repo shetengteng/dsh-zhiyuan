@@ -2,8 +2,9 @@ import { KbError } from '../../model/error/kb-error.ts'
 import type { JobRunner } from '../../platform/jobs.ts'
 import { resolveDataRoot } from '../../platform/paths.ts'
 import type { KnowledgeServices } from '../../service/kb/knowledge-services.ts'
-import { renderSearchResult, searchPresentationMeta } from '../../service/search/result/templates/index.ts'
-import { asToolRecord, buildToolImportInput, buildToolSearchRequest } from './kb-tool-request-mapper.ts'
+import { renderSearchResult, searchPresentationMeta } from '../../service/search/result/search-result-renderer.ts'
+import { asLooseRecord } from '../../platform/field-reader.ts'
+import { buildToolImportInput, buildToolSearchRequest } from './kb-tool-request-mapper.ts'
 import { renderImportResult } from './kb-tool-response-renderer.ts'
 
 type ToolCtx = {
@@ -110,7 +111,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner, knowledgeServices
         render: (_args: unknown, value: unknown) => renderImportResult(value),
       },
       execute: async (args: unknown) => {
-        const input = asToolRecord(args)
+        const input = asLooseRecord(args)
         try {
           const dataRoot = await resolveDataRoot()
           return await jobs.enqueue('import', () => knowledgeServices.importFiles(dataRoot, buildToolImportInput(input)))
@@ -148,7 +149,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner, knowledgeServices
         result.isError ? { card: 'generic', title: '检索失败' } : { card: 'generic', title: '知识库检索结果' }
       ),
       execute: async (args: unknown) => {
-        const input = asToolRecord(args)
+        const input = asLooseRecord(args)
         try {
           const dataRoot = await resolveDataRoot()
           return await knowledgeServices.searchKb(dataRoot, buildToolSearchRequest(input))

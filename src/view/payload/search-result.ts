@@ -5,7 +5,7 @@ import type {
   SearchOverviewResult,
   SearchQuery,
   SearchResult,
-} from '../types.ts'
+} from '../view-models.ts'
 import { isEntryFormat } from '../../model/content-contract.ts'
 
 function asRecord(value: unknown): Record<string, unknown> | null {

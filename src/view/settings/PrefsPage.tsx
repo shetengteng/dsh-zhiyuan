@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Menu, IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { KbSummaryResponse, CatalogPrefs } from '../types.ts'
-import { Note } from './dialogs/KbDialogs.tsx'
+import type { KbSummaryResponse, CatalogPrefs } from '../view-models.ts'
+import { Note } from './dialogs/DialogField.tsx'
 
 const MIB = 1024 * 1024
 const GIB = 1024 * 1024 * 1024

@@ -2,59 +2,11 @@ import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, p
 import { TABLE_EDITOR_PAGE_SIZE } from "../../model/constants.ts"
 import { KbError } from '../../model/error/kb-error.ts'
 import type { KnowledgeOperationRequest } from '../../model/wire/knowledge-operation.ts'
-
-export type JsonRecord = Record<string, unknown>
+import type { JsonRecord } from '../../platform/field-reader.ts'
+import { asRecord, hasField, optionalBoolean, optionalPositiveInteger, optionalString, optionalStringArray, requireString } from '../../platform/field-reader.ts'
 
 type KnowledgeImportOperation = Extract<KnowledgeOperationRequest, { op: 'import' }>
 type KnowledgeSearchOperation = Extract<KnowledgeOperationRequest, { op: 'search' }>
-
-export function asRecord(value: unknown): JsonRecord {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new KbError('invalid_field', '请求参数必须是对象')
-  }
-  return value as JsonRecord
-}
-
-export function hasField(data: JsonRecord, field: string): boolean {
-  return Object.prototype.hasOwnProperty.call(data, field)
-}
-
-export function requireString(data: JsonRecord, field: string): string {
-  const value = data[field]
-  if (value === undefined) throw new KbError('missing_field', `${field} 必填`)
-  if (typeof value !== 'string') throw new KbError('invalid_field', `${field} 必须是字符串`)
-  return value
-}
-
-export function optionalString(data: JsonRecord, field: string): string | undefined {
-  if (!hasField(data, field)) return undefined
-  return requireString(data, field)
-}
-
-export function optionalStringArray(data: JsonRecord, field: string): string[] | undefined {
-  if (!hasField(data, field)) return undefined
-  const value = data[field]
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new KbError('invalid_field', `${field} 必须是字符串数组`)
-  }
-  return value
-}
-
-export function optionalBoolean(data: JsonRecord, field: string, fallback: boolean): boolean {
-  if (!hasField(data, field)) return fallback
-  const value = data[field]
-  if (typeof value !== 'boolean') throw new KbError('invalid_field', `${field} 必须是布尔值`)
-  return value
-}
-
-export function optionalPositiveInteger(data: JsonRecord, field: string): number | undefined {
-  if (!hasField(data, field)) return undefined
-  const value = data[field]
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) {
-    throw new KbError('invalid_field', `${field} 必须是正整数`)
-  }
-  return value
-}
 
 export function readPreviewOptions(data: JsonRecord): EntryPreviewOptions {
   const readMode = hasField(data, 'readMode') ? data.readMode : EntryReadMode.Preview

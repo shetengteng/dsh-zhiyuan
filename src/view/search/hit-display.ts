@@ -1,4 +1,4 @@
-import type { SearchHit } from '../types.ts'
+import type { SearchHit } from '../view-models.ts'
 
 export type LabeledField = {
   label: string

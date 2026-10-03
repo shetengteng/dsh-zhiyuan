@@ -1,5 +1,5 @@
 import { parseSearchResult } from '../payload/search-result.ts'
-import type { SearchHit } from '../types.ts'
+import type { SearchHit } from '../view-models.ts'
 
 /** turn data 的键；与折叠定义的 kind 一致，客户端经 turn.data.get('zhiyuan') 读取。 */
 export const TURN_DATA_KEY = 'zhiyuan'

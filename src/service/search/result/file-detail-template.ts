@@ -1,4 +1,4 @@
-import type { SearchFileDetailResult } from '../../../../model/response/search-response.ts'
+import type { SearchFileDetailResult } from '../../../model/response/search-response.ts'
 
 type TextBlock = { type: 'text'; text: string }
 

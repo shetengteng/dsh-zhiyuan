@@ -1,4 +1,4 @@
-import type { SearchOverviewResult } from '../types.ts'
+import type { SearchOverviewResult } from '../view-models.ts'
 import { getSearchNextCursor } from './search-pages.ts'
 
 export type SearchOverviewCardProps = {

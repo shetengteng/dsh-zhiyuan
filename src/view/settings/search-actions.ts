@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { SearchOverviewResult, SearchResult } from '../types.ts'
+import type { SearchOverviewResult, SearchResult } from '../view-models.ts'
 import { parseSearchResult } from '../payload/search-result.ts'
 import {
   appendSearchPage,

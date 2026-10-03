@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import type { SearchHit, SearchResult } from '../../types.ts'
+import type { SearchHit, SearchResult } from '../../view-models.ts'
 import { SearchHitCard } from '../../search/SearchHitCard.tsx'
 import { SearchPagination } from '../../search/SearchPagination.tsx'
 import { getSearchNextCursor } from '../../search/search-pages.ts'
-import { Note } from './KbDialogs.tsx'
+import { Note } from './DialogField.tsx'
 import { SearchIcon } from '../Icons.tsx'
 import { Modal } from './Modal.tsx'
 

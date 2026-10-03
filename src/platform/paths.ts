@@ -1,9 +1,9 @@
 import { existsSync, lstatSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
-import type { DestinationResolution } from '../model/context/kb-context.ts'
+import type { DestinationResolution } from '../model/context/import-context.ts'
 import { KbError } from '../model/error/kb-error.ts'
-import { DATA_DIR_NAME } from '../model/constants.ts'
+import { DATA_DIR_NAME } from '../model/package-info.ts'
 import { importDsh } from './import-dsh.ts'
 
 export type { DestinationResolution } from '../model/context/import-context.ts'

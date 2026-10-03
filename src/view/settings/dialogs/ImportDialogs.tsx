@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Modal } from './Modal.tsx'
-import { Field, Note } from './KbDialogs.tsx'
-import { claimFileDrag, fileToBase64, resolveDroppedSource, sourceDisplayName } from '../drop-source-path.ts'
+import { Field, Note } from './DialogField.tsx'
+import { claimFileDrag } from '../drag-utils.ts'
+import { fileToBase64, resolveDroppedSource, sourceDisplayName } from '../drop-source.ts'
 
 /** 设置工作台的导入弹框。 */
 

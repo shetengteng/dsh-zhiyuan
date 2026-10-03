@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { SECTION_LABEL } from '../model/package-info.ts'
 import type { KnowledgePrivateConnection } from './bridge.ts'
-import { CloseIcon } from './settings/Icons.tsx'
+import { CloseIcon, SectionIcon } from './settings/Icons.tsx'
 import { createSettingsSection } from './settings/SettingsSection.tsx'
-import { SectionIcon } from './settings/SectionIcon.tsx'
 import { ensureSettingsStyles } from './settings/styles.ts'
 
 export type FooterActionProps = {

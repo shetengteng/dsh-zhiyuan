@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SearchOverviewResult, SearchResult } from '../types.ts'
+import type { SearchOverviewResult, SearchResult } from '../view-models.ts'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from '../bridge.ts'
 import { parseSearchResult } from '../payload/search-result.ts'
 import {

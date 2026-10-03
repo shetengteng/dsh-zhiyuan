@@ -1,4 +1,4 @@
-import type { SearchResult } from '../types.ts'
+import type { SearchResult } from '../view-models.ts'
 
 export const SEARCH_PAGE_SIZE = 5
 

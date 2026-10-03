@@ -1,4 +1,4 @@
-import type { SearchFileDetailResult } from '../types.ts'
+import type { SearchFileDetailResult } from '../view-models.ts'
 import { ensureSettingsStyles } from '../settings/styles.ts'
 import type { PreviewController } from '../toolview/preview/preview-state.ts'
 import { isSamePreviewHit } from '../toolview/preview/preview-selection.ts'

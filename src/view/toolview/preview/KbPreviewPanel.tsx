@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReadEntryResponse, SearchHit } from '../../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../../view-models.ts'
 import { CitationTag } from '../../CitationTag.tsx'
 import { matchedExcerptLine } from '../../search/hit-display.ts'
 import { ensureSettingsStyles } from '../../settings/styles.ts'

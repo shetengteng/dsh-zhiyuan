@@ -5,8 +5,9 @@ import type { JobRunner } from '../../platform/jobs.ts'
 import { resolveDataRoot } from '../../platform/paths.ts'
 import type { KnowledgeServices } from '../../service/kb/knowledge-services.ts'
 import { pickSource } from '../../service/kb/pick-file.ts'
+import { asRecord, optionalString, requireString } from '../../platform/field-reader.ts'
 import { mapImportOperationToRequest, mapSearchOperationToRequest, mapSetPrefsOperationToRequest } from './knowledge-operation-request-mapper.ts'
-import { asRecord, decodeImportOperation, decodeKnowledgeOperation, optionalString, requireString } from './knowledge-request-codec.ts'
+import { decodeImportOperation, decodeKnowledgeOperation } from './knowledge-request-codec.ts'
 
 /**
  * 执行设置工作台与条目预览白名单操作。调用方不可信；

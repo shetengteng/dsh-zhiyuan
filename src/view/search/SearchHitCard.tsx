@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { ReactElement } from 'react'
-import type { SearchHit } from '../types.ts'
+import type { SearchHit } from '../view-models.ts'
 import { CitationTag } from '../CitationTag.tsx'
 import { matchedExcerptLine, parseLabeledFields, type LabeledField } from './hit-display.ts'
 

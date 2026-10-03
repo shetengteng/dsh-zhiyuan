@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL, VERSION_LABEL } from '../../model/package-info.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
-import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult } from '../types.ts'
+import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult } from '../view-models.ts'
 import { parseImportResponse } from '../payload/import-result.ts'
 import { parseCatalogPrefs, parseOperationAck, parsePickSourceResult } from '../payload/settings-response.ts'
 import { parseTableEditorPage } from '../payload/table-page.ts'
@@ -11,13 +11,15 @@ import { useEntryPreview } from './use-entry-preview.ts'
 import { createSearchActions } from './search-actions.ts'
 import { AboutPage } from './AboutPage.tsx'
 import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { ConfirmDialog, CreateDialog, EditDialog } from './dialogs/KbDialogs.tsx'
+import { ConfirmDialog } from './dialogs/ConfirmDialog.tsx'
+import { CreateKbDialog } from './dialogs/CreateKbDialog.tsx'
+import { EditKbDialog } from './dialogs/EditKbDialog.tsx'
 import { KbPage } from './KbPage.tsx'
 import { ImportDialog } from './dialogs/ImportDialogs.tsx'
 import { SearchDialog } from './dialogs/SearchDialog.tsx'
 import { PreviewDialog } from './preview/PreviewDialog.tsx'
 import { PrefsPage } from './PrefsPage.tsx'
-import { SectionIcon } from './SectionIcon.tsx'
+import { SectionIcon } from './Icons.tsx'
 import { ensureSettingsStyles } from './styles.ts'
 
 type SettingsTab = 'kbs' | 'prefs' | 'about'
@@ -131,9 +133,9 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
           {tab === 'about' ? <AboutPage /> : null}
         </div>
 
-        {dialog === 'create' ? <CreateDialog error={error} busy={pending} onClose={() => setDialog(null)} onSubmit={(input) => void run(() => call({ op: 'create', ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))} /> : null}
+        {dialog === 'create' ? <CreateKbDialog error={error} busy={pending} onClose={() => setDialog(null)} onSubmit={(input) => void run(() => call({ op: 'create', ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))} /> : null}
         {dialog === 'edit' && currentKb ? (
-          <EditDialog
+          <EditKbDialog
             kb={currentKb}
             error={error}
             busy={pending}

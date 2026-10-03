@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ReadEntryResponse, SearchHit } from '../../types.ts'
+import type { ReadEntryResponse, SearchHit } from '../../view-models.ts'
 import { isSamePreviewHit, type PreviewSelection } from './preview-selection.ts'
 
 /** 打开预览页类型；由右侧栏调用，页类型负责展开右栏。 */

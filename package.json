@@ -23,7 +23,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node scripts/build.mjs",
     "prepare": "node scripts/build.mjs",
     "test": "node --test --experimental-strip-types test/*.test.ts"
   },
@@ -68,7 +69,8 @@
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/papaparse": "5.5.2",
-    "@types/react": "^18.3.0"
+    "@types/react": "^18.3.0",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",

@@ -4,7 +4,7 @@ import { KbError } from '../../model/error/kb-error.ts'
 import type { ReadEntryResponse } from '../../model/response/entry-response.ts'
 import { assertInside, assertNoSymlinkEscape, kbDir, resolveDest } from '../../platform/paths.ts'
 import type { CatalogRepository } from '../../repository/kb/catalog-repository.ts'
-import { textDocumentBytes } from './kb-tree.ts'
+import { textDocumentBytes } from './kb-queries.ts'
 import { requireKb } from './kb-lifecycle.ts'
 
 // 条目读、写、删与分页：路径安全检查和格式路由均在 Host 侧完成。

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { callKnowledgeHost, getKnowledgeJobStatus, type KnowledgePrivateConnection } from '../bridge.ts'
 import { parseKbList, parseKbTree } from '../payload/kb-result.ts'
 import { parseCatalogPrefs, parseJobStatusResponse } from '../payload/settings-response.ts'
-import type { KbSummaryResponse, JobStatusResponse, CatalogPrefs, KbTreeNodeResponse } from '../types.ts'
+import type { KbSummaryResponse, JobStatusResponse, CatalogPrefs, KbTreeNodeResponse } from '../view-models.ts'
 
 const DEFAULT_PREFS: CatalogPrefs = { defaultKbId: '', maxFileBytes: 5_242_880, maxKbBytes: 10_737_418_240 }
 
