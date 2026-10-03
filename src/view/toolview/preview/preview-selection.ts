@@ -18,7 +18,8 @@ function isOptionalString(value: unknown): boolean {
   return value === undefined || typeof value === 'string'
 }
 
-function isSearchHit(value: unknown): value is SearchHit {
+/** 收窄一个 unknown 值为完整命中；预览参数与引用条共用。 */
+export function isSearchHit(value: unknown): value is SearchHit {
   const hit = asRecord(value)
   if (!hit) return false
   return isInteger(hit.n)

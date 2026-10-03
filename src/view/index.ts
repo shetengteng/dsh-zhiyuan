@@ -2,14 +2,16 @@ import { createKbPreviewPanel } from './toolview/preview/KbPreviewPanel.tsx'
 import { createKbSearchView } from './toolview/KbSearchView.tsx'
 import { createPreviewController, type PreviewLoader } from './toolview/preview/preview-state.ts'
 import { createPreviewTabDefinition, PREVIEW_TAB_KIND, type PreviewTabDefinition } from './toolview/preview/preview-tab.ts'
-import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL } from '../model/package-info.ts'
+import { createCitationTail } from './citation/CitationTail.tsx'
+import { createZhiyuanCitationsDefinition } from './citation/turn-citations.ts'
+import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL, TURN_TAIL_ID } from '../model/package-info.ts'
 import { createFooterAction } from './FooterAction.tsx'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './payload/read-entry.ts'
 import { disposeSettingsStyles } from './settings/styles.ts'
 
 export const name = PACKAGE_NAME
-export const inject = ['slots', 'connection', 'sidebarRight', 'sidebarRightTabs']
+export const inject = ['slots', 'connection', 'sidebarRight', 'sidebarRightTabs', 'uiConversation']
 
 /** 右侧栏页类型的注册表；只用到注册这一个面。 */
 type SidebarRightTabRegistry = {
@@ -28,6 +30,11 @@ export function apply(ctx: {
   }
   sidebarRight: SidebarRightActions
   sidebarRightTabs: SidebarRightTabRegistry
+  uiConversation?: {
+    events?: {
+      register: (definition: unknown) => (() => void) | void
+    }
+  }
   effect?: (setup: () => (() => void) | void) => void
   connection?: KnowledgePrivateConnection
 }): void {
@@ -49,9 +56,15 @@ export function apply(ctx: {
   const KbSearchView = createKbSearchView(preview, ctx.connection)
   const KbPreviewPanel = createKbPreviewPanel(loadPreview, preview)
   const FooterAction = createFooterAction(ctx.connection)
+  const CitationTail = createCitationTail(preview)
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => ctx.sidebarRightTabs.register(createPreviewTabDefinition()))
+  }
+
+  // 会话事件折叠：把 kb_search 的结果挂到轮次业务值上，引用条经 turn.data.get 读取。
+  if (typeof ctx.effect === 'function' && typeof ctx.uiConversation?.events?.register === 'function') {
+    ctx.effect(() => ctx.uiConversation?.events?.register(createZhiyuanCitationsDefinition()))
   }
 
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
@@ -74,6 +87,13 @@ export function apply(ctx: {
     key: PACKAGE_NAME,
     registrant: PACKAGE_NAME,
   }, KbPreviewPanel))
+
+  // 答案下方的知源引用条：list 槽位里追加一个条目，不影响其他功能产物。
+  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+    name: 'conversation.chat.turnTail',
+    id: TURN_TAIL_ID,
+    registrant: PACKAGE_NAME,
+  }, CitationTail))
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => {
