@@ -52,5 +52,6 @@ export function isImportFailureCode(code: string): code is NonNullable<ImportFil
     || code === 'csv_control_character'
     || code === 'csv_line_too_long'
     || code === 'encoding_unsupported'
+    || code === 'xlsx_invalid'
     || code === 'io_failed'
 }

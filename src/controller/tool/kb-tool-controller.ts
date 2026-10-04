@@ -83,7 +83,7 @@ export function registerKbTools(ctx: ToolCtx, jobs: JobRunner, knowledgeServices
     }),
     ctx.tools.register({
       name: 'kb_import',
-      description: '把本机 md/txt/csv 导入已有知识库的指定类目。CSV 会转成 UTF-8 后入库，可在知源中表格编辑。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
+      description: '把本机 md/txt/csv/xlsx 导入已有知识库的指定类目。CSV 会转成 UTF-8 后入库，可在知源中表格编辑；XLSX 每个 sheet 转成一个 CSV，同样可表格编辑（含未保存计算结果公式的工作簿会导入失败）。库必须已存在。不要猜测新库。destCategory 为空表示库根。',
       parameters: {
         type: 'object',
         required: ['kbId', 'sourcePath'],

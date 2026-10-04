@@ -3,7 +3,7 @@ export type ImportFileResponse = {
   sourceRelPath: string
   destinationPath?: string
   status: 'copied' | 'skipped' | 'renamed' | 'failed'
-  code?: 'ext_denied' | 'file_too_large' | 'quota' | 'path_escape' | 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'encoding_unsupported' | 'io_failed'
+  code?: 'ext_denied' | 'file_too_large' | 'quota' | 'path_escape' | 'csv_encoding_invalid' | 'csv_control_character' | 'csv_line_too_long' | 'encoding_unsupported' | 'xlsx_invalid' | 'io_failed'
   reason?: string
   writtenBytes?: number
   warnings?: string[]

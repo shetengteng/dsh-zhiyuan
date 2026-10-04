@@ -9,7 +9,7 @@ import { writeCsvContent } from './server/write.ts'
 const csvSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Csv,
   sourceExtensions: ['.csv'],
-  prepareImport: async (context) => [await prepareCsvImport(context)],
+  prepareImport: async (context) => ({ kind: 'entries', entries: [await prepareCsvImport(context)] }),
 }
 
 const csvEntryHandler: EntryFormatHandler = {

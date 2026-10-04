@@ -55,6 +55,21 @@ await esbuild.build({
   logLevel: 'info',
 })
 
+// XLSX 转换子进程独立产物：@e965/xlsx 只进这个 bundle，不进 lib/index.js。
+await esbuild.build({
+  absWorkingDir: root,
+  entryPoints: ['src/formats/xlsx/worker.ts'],
+  outfile: 'lib/convert-xlsx-worker.js',
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  banner: {
+    js: "import { createRequire as __zyCreateRequire } from 'node:module';\nvar require = __zyCreateRequire(import.meta.url);",
+  },
+  logLevel: 'info',
+})
+
 const innerPath = join(lib, '_client.cjs')
 await esbuild.build({
   absWorkingDir: root,

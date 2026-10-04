@@ -136,12 +136,33 @@ async function ingestOneUnsafe(
   if (!contentRegistry.sourceFormatForPath(name)) {
     return [failed('ext_denied', `只支持 ${contentRegistry.sourceExtensions().join(' / ')}`)]
   }
-  const preparedEntries = await contentRegistry.prepareImport({
+  const preparedImport = await contentRegistry.prepareImport({
     sourcePath: args.file,
     sourceName: name,
     maxFileBytes: args.maxFileBytes,
   })
+  if (preparedImport.kind === 'skipped') {
+    return [{
+      relPath: sourceRelativePath,
+      sourceRelPath: sourceRelativePath,
+      status: 'skipped',
+      reason: preparedImport.reason,
+      warnings: preparedImport.warnings,
+    }]
+  }
+  const preparedEntries = preparedImport.entries
   if (!preparedEntries.length) return [failed('io_failed', '没有可导入的内容')]
+  // 多产物事务预检：先算总字节再写。任一产物超单文件上限或合计超库配额，整份源失败、不落盘。
+  let totalNewBytes = 0
+  for (const prepared of preparedEntries) {
+    if (prepared.byteLength > args.maxFileBytes) {
+      return [failed('file_too_large', `单文件超过 ${args.maxFileBytes} 字节`)]
+    }
+    if (!args.hashes.has(prepared.digest)) totalNewBytes += prepared.byteLength
+  }
+  if (args.currentBytes + totalNewBytes > args.maxKbBytes) {
+    return [failed('quota', '本批导入将超过单库文字上限')]
+  }
   const results: ImportFileResponse[] = []
   let extraBytes = 0
   for (const prepared of preparedEntries) {

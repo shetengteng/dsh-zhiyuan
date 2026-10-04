@@ -24,7 +24,7 @@ export type ConvertDoneFrame = { type: 'done' }
 export type ConvertWorkerFrame = ConvertDiagnosticFrame | ConvertOutputFrame | ConvertFailureFrame | ConvertDoneFrame
 
 /** 父进程允许子进程回传的错误码白名单；其余一律按 io_failed 处理。 */
-export const CONVERT_FAILURE_CODES: readonly string[] = ['file_too_large', 'io_failed']
+export const CONVERT_FAILURE_CODES: readonly string[] = ['file_too_large', 'io_failed', 'xlsx_invalid']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

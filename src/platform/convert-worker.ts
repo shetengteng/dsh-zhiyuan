@@ -1,7 +1,7 @@
 import { fork, type Serializable } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { KbError } from '../model/error/kb-error.ts'
+import { KbError, type KbErrorCode } from '../model/error/kb-error.ts'
 import {
   CONVERT_FAILURE_CODES,
   isConvertWorkerFrame,
@@ -41,7 +41,7 @@ function resolveWorkerEntry(spec: ConvertWorkerSpec): { entryPath: string; execA
 
 function failureError(code: string, message: string): KbError {
   const safeCode = CONVERT_FAILURE_CODES.includes(code) ? code : 'io_failed'
-  return new KbError(safeCode as 'file_too_large' | 'io_failed', message)
+  return new KbError(safeCode as KbErrorCode, message)
 }
 
 /**
@@ -106,10 +106,7 @@ export function runIsolatedConversion(
         finish(failureError(raw.code, raw.message))
         return
       }
-      if (!outputs.length) {
-        finish(new KbError('io_failed', 'DOCX 转换没有产出'))
-        return
-      }
+      // done 帧允许零产出：是否视为跳过由调用方按格式语义决定（如全部 sheet 被隐藏）
       finish(undefined, { outputs, warnings })
     }
 

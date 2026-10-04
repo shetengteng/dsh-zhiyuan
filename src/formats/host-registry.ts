@@ -2,9 +2,10 @@ import { extname } from 'node:path'
 import { csvContentFormat } from './csv/csv-format.ts'
 import { docxContentFormat } from './docx/docx-format.ts'
 import { markdownContentFormat } from './markdown/markdown-format.ts'
+import { xlsxContentFormat } from './xlsx/xlsx-format.ts'
 import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPathContext, EntryReadContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
 import type { SourceFormat, EntryFormat as EntryFormatValue } from '../model/content-contract.ts'
-import type { PreparedEntry } from './shared/ingest-output.ts'
+import type { PreparedImport } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 import type { ReadEntryResponse, TableEditorPage } from '../model/response/entry-response.ts'
 import { KbError } from '../model/error/kb-error.ts'
@@ -40,7 +41,7 @@ function registerEntryHandlers(handlers: readonly EntryFormatHandler[]): Map<str
   return routes
 }
 
-const CONTENT_FORMAT_MODULES: readonly ContentFormatModule[] = [markdownContentFormat, csvContentFormat, docxContentFormat]
+const CONTENT_FORMAT_MODULES: readonly ContentFormatModule[] = [markdownContentFormat, csvContentFormat, docxContentFormat, xlsxContentFormat]
 const SOURCE_HANDLERS = CONTENT_FORMAT_MODULES.flatMap((module) => module.sourceHandlers)
 const ENTRY_HANDLERS = CONTENT_FORMAT_MODULES.flatMap((module) => module.entryHandlers)
 const SOURCE_ROUTES = registerSourceHandlers(SOURCE_HANDLERS)
@@ -68,7 +69,7 @@ export const contentRegistry = {
   sourceFormatForPath: (sourcePath: string): SourceFormat | undefined => SOURCE_ROUTES.get(extensionOf(sourcePath))?.format,
   entryFormatForPath: (relativePath: string): EntryFormatValue | undefined => ENTRY_ROUTES.get(extensionOf(relativePath))?.format,
   isStoredEntryPath: (relativePath: string): boolean => ENTRY_ROUTES.has(extensionOf(relativePath)),
-  prepareImport: (context: PrepareImportContext): Promise<PreparedEntry[]> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
+  prepareImport: (context: PrepareImportContext): Promise<PreparedImport> => sourceHandlerForPath(context.sourcePath).prepareImport(context),
   readContent: (context: EntryReadContext): Promise<ReadEntryResponse> => entryHandlerForPath(context.relativePath).readContent(context),
   readPage: (context: EntryPageContext): Promise<TableEditorPage> => entryHandlerForPath(context.relativePath).readPage(context),
   writeContent: (context: EntryWriteContext): Promise<void> => entryHandlerForPath(context.relativePath).writeContent(context),

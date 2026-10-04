@@ -80,6 +80,7 @@ export function PrefsPage(props: {
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>Markdown / txt</span></div>
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>CSV（导入后转 UTF-8，可表格编辑）</span></div>
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>DOCX（Word 转 Markdown，图片不保留）</span></div>
+      <div className="zy-parser"><input type="checkbox" checked disabled /><span>XLSX（转 CSV，可表格编辑；公式需先在 Excel 中计算并保存）</span></div>
       <div className="zy-parser is-off"><input type="checkbox" disabled /><span>PDF</span></div>
       <div className="zy-parser is-off"><input type="checkbox" disabled /><span>自定义命令</span></div>
       <Note text={props.error} />

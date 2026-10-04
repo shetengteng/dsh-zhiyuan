@@ -1,8 +1,8 @@
 import {
   IconChevronRightOutlineRegular,
   IconCloseOutlineRegular,
-  IconDownloadOutlineRegular,
   IconEditOutlineRegular,
+  IconProjectAddOutlineRegular,
   IconSearchOutlineRegular,
   IconTrashOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -28,9 +28,9 @@ export function EditIcon() {
   return <IconEditOutlineRegular />
 }
 
-/** 导入：箭头落入托盘的官方 Download 造型。 */
+/** 导入：画板加号，与壳内「添加工作区」同款，表达往库里加内容。 */
 export function ImportIcon() {
-  return <IconDownloadOutlineRegular />
+  return <IconProjectAddOutlineRegular />
 }
 
 /** 树节点展开箭头；开合旋转由 `.zy-twist` 的 details[open] 规则处理。 */

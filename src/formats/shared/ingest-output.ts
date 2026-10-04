@@ -16,6 +16,11 @@ export type PreparedEntry = {
   warnings?: string[]
 }
 
+/** 源级导入准备结果：entries 为待写入条目；skipped 表示按设计无产物（如全部 sheet 被隐藏）。 */
+export type PreparedImport =
+  | { kind: 'entries'; entries: PreparedEntry[] }
+  | { kind: 'skipped'; reason: string; warnings?: string[] }
+
 export async function writePreparedEntry(destinationPath: string, entry: PreparedEntry): Promise<number> {
   const temporaryPath = `${destinationPath}.${randomUUID()}.tmp`
   try {

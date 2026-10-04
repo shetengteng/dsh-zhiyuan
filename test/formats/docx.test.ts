@@ -109,7 +109,9 @@ async function convertToMarkdown(bytes: Buffer): Promise<string> {
   const dir = await sandbox()
   try {
     const source = await writeDocx(dir, '样张.docx', bytes)
-    const entries = await prepareDocxImport({ sourcePath: source, sourceName: '样张.docx', maxFileBytes: 5 * 1024 * 1024 })
+    const prepared = await prepareDocxImport({ sourcePath: source, sourceName: '样张.docx', maxFileBytes: 5 * 1024 * 1024 })
+    assert.equal(prepared.kind, 'entries')
+    const entries = prepared.kind === 'entries' ? prepared.entries : []
     assert.equal(entries.length, 1)
     const entry = entries[0]!
     assert.equal(entry.format, 'markdown')

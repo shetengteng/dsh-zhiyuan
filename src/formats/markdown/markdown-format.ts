@@ -8,13 +8,13 @@ import { readMarkdownPage, writeMarkdownContent } from './server/write.ts'
 const markdownSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.Markdown,
   sourceExtensions: ['.md', '.markdown'],
-  prepareImport: async (context) => [await prepareMarkdownImport(context)],
+  prepareImport: async (context) => ({ kind: 'entries', entries: [await prepareMarkdownImport(context)] }),
 }
 
 const plainTextSourceHandler: SourceFormatHandler = {
   sourceFormat: SourceFormat.PlainText,
   sourceExtensions: ['.txt'],
-  prepareImport: async (context) => [await prepareMarkdownImport(context)],
+  prepareImport: async (context) => ({ kind: 'entries', entries: [await prepareMarkdownImport(context)] }),
 }
 
 const markdownEntryHandler: EntryFormatHandler = {

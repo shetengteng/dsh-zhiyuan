@@ -1,7 +1,7 @@
 import type { EntryFormat, SourceFormat } from '../model/content-contract.ts'
 import type { EntryPreviewOptions, EntryWriteChange } from '../model/request/entry-request.ts'
 import type { ReadEntryResponse, TableEditorPage } from '../model/response/entry-response.ts'
-import type { PreparedEntry } from './shared/ingest-output.ts'
+import type { PreparedImport } from './shared/ingest-output.ts'
 import type { SearchDocument } from './shared/search-document.ts'
 
 export type PrepareImportContext = {
@@ -34,7 +34,7 @@ export type EntryWriteContext = EntryPathContext & {
 export type SourceFormatHandler = {
   sourceFormat: SourceFormat
   sourceExtensions: readonly string[]
-  prepareImport: (context: PrepareImportContext) => Promise<PreparedEntry[]>
+  prepareImport: (context: PrepareImportContext) => Promise<PreparedImport>
 }
 
 /**

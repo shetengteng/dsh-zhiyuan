@@ -174,7 +174,7 @@ category = overview.category（如果 overview 返回了 category）
 
 - `kb_import` 只能导入已有知识库，不会自动建库；库不存在时提示用户先建库。
 - 导入是写操作。用户未明确目标知识库、源路径或期望类目时先询问，不要猜测。
-- 当前支持 `.md`、`.markdown`、`.txt` 和 `.csv`。CSV 导入时会转成 UTF-8（包括 GBK、UTF-16），可在知源中进行表格编辑；XLSX 转换属于后续阶段。
+- 当前支持 `.md`、`.markdown`、`.txt`、`.csv` 和 `.xlsx`。CSV 导入时会转成 UTF-8（包括 GBK、UTF-16），可在知源中进行表格编辑；XLSX 的每个 sheet 会转成一个 CSV（隐藏 sheet 与空 sheet 跳过，带未保存计算结果公式的工作簿会整份失败），转出的表格同样可编辑。
 - `sourcePath` 可以是本机文件或文件夹路径。不要把知识库内的 `path` 当成本机导入源路径。
 
 ### 9.2 destCategory
