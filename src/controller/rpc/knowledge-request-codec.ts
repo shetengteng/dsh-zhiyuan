@@ -1,4 +1,4 @@
-import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, parseEntryWriteChange, type EntryPreviewOptions } from '../../content/host-api.ts'
+import { EntryPreviewView, EntryReadMode, isEntryPreviewView, isEntryReadMode, parseEntryWriteChange, type EntryPreviewOptions } from '../../formats/host-api.ts'
 import { TABLE_EDITOR_PAGE_SIZE } from "../../model/csv-limits.ts"
 import { KbError } from '../../model/error/kb-error.ts'
 import type { KnowledgeOperationRequest } from '../../model/wire/knowledge-operation.ts'

@@ -1,5 +1,5 @@
 import { rm, stat } from 'node:fs/promises'
-import { contentRegistry, type EntryPreviewOptions, type EntryWriteChange, type TableEditorPage } from '../../content/host-api.ts'
+import { contentRegistry, type EntryPreviewOptions, type EntryWriteChange, type TableEditorPage } from '../../formats/host-api.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { ReadEntryResponse } from '../../model/response/entry-response.ts'
 import { assertInside, assertNoSymlinkEscape, kbDir, resolveDest } from '../../platform/paths.ts'

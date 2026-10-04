@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { basename, dirname, join, relative, sep } from 'node:path'
-import { writePreparedEntry, type PreparedEntry } from '../../../content/shared/ingest-output.ts'
+import { writePreparedEntry, type PreparedEntry } from '../../../formats/shared/ingest-output.ts'
 import { assertInside, assertNoSymlinkEscape } from '../../../platform/paths.ts'
 import type { ImportFileResponse } from '../../../model/response/import-response.ts'
 import { outputRelativePath, uniqueName } from './import-naming.ts'

@@ -3,7 +3,7 @@ import type { ReadEntryResponse, SearchHit } from '../../view-models.ts'
 import { CitationTag } from '../../CitationTag.tsx'
 import { matchedExcerptLine } from '../../search/hit-display.ts'
 import { ensureSettingsStyles } from '../../settings/style-entry.ts'
-import { EntryPreviewContent } from '../../../content/entry-renderers.tsx'
+import { EntryPreviewContent } from '../../../formats/entry-renderers.tsx'
 import { parsePreviewSelection } from './preview-selection.ts'
 import type { PreviewController, PreviewLoader } from './preview-state.ts'
 

@@ -1,6 +1,6 @@
 import { SEARCH_CONTEXT, SEARCH_LIST_CONTEXT, SEARCH_PAGE_MAX_CHARS } from '../../model/search-limits.ts'
-import { contentRegistry } from '../../content/host-api.ts'
-import type { SearchDocument } from '../../content/shared/search-document.ts'
+import { contentRegistry } from '../../formats/host-api.ts'
+import type { SearchDocument } from '../../formats/shared/search-document.ts'
 import type { SearchFileDetailResult, SearchHit } from '../../model/response/search-response.ts'
 import type { SearchScanner } from './scanner/scanner-contract.ts'
 import type { ResolvedSearchScope } from './search-scope.ts'

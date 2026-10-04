@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Modal } from '../dialogs/Modal.tsx'
 import type { ReadEntryResponse } from '../../view-models.ts'
-import { EntryPreviewContent, type EntryEditorHandle } from '../../../content/entry-renderers.tsx'
+import { EntryPreviewContent, type EntryEditorHandle } from '../../../formats/entry-renderers.tsx'
 import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
 import type { TableEditorPage } from '../../../model/response/entry-response.ts'
 import { Note } from '../dialogs/DialogField.tsx'

@@ -1,6 +1,6 @@
 import { existsSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative, sep } from 'node:path'
-import { contentRegistry } from '../../content/host-api.ts'
+import { contentRegistry } from '../../formats/host-api.ts'
 import type { EntryFormat } from '../../model/content-contract.ts'
 import { kbDir, assertInside, assertNoSymlinkEscape, resolveDest } from '../../platform/paths.ts'
 import { KbError } from '../../model/error/kb-error.ts'

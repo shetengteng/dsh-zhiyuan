@@ -9,7 +9,7 @@ import {
   SEARCH_UNSUPPORTED_PATTERN_MESSAGE,
 } from '../../../model/search-limits.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
-import { contentRegistry } from '../../../content/host-api.ts'
+import { contentRegistry } from '../../../formats/host-api.ts'
 import type { ScannerInput, ScannerMatch, ScannerResult, SearchScanner } from './scanner-contract.ts'
 
 export class RipgrepScanner implements SearchScanner {

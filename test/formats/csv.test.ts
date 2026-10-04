@@ -3,9 +3,9 @@ import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { readValidatedUtf8Csv } from '../../src/content/csv/server/encoding.ts'
-import { createCsvSearchDocument } from '../../src/content/csv/server/search-excerpt.ts'
-import { encodeUtf8CsvWithBom } from '../../src/content/shared/utf8.ts'
+import { readValidatedUtf8Csv } from '../../src/formats/csv/server/encoding.ts'
+import { createCsvSearchDocument } from '../../src/formats/csv/server/search-excerpt.ts'
+import { encodeUtf8CsvWithBom } from '../../src/formats/shared/utf8.ts'
 import { CSV_MAX_PHYSICAL_LINE_BYTES } from '../../src/model/csv-limits.ts'
 import { KbError } from '../../src/model/error/kb-error.ts'
 import type { Catalog } from '../../src/model/entity/catalog.ts'
@@ -15,7 +15,7 @@ import { FileCatalogRepository } from '../../src/repository/kb/file-catalog-repo
 import { createKnowledgeServices } from '../../src/service/kb/knowledge-services.ts'
 import type { SearchKbAccess } from '../../src/service/search/kb-access.ts'
 import { searchKb as searchKbWithAccess } from '../../src/service/search/search-kb.ts'
-import { decodeCsvBytes } from '../../src/content/csv/server/decode.ts'
+import { decodeCsvBytes } from '../../src/formats/csv/server/decode.ts'
 
 const catalogRepository = new FileCatalogRepository()
 const knowledgeServices = createKnowledgeServices(catalogRepository)

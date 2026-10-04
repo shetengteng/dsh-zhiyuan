@@ -1,7 +1,7 @@
 import type { Dirent } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
-import { contentRegistry } from '../../content/host-api.ts'
+import { contentRegistry } from '../../formats/host-api.ts'
 import type { KbCard } from '../../model/entity/catalog.ts'
 import type { KbSummaryResponse, KbTreeNodeResponse } from '../../model/response/kb-response.ts'
 import { kbDir } from '../../platform/paths.ts'

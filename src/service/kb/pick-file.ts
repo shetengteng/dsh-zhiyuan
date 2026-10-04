@@ -1,6 +1,6 @@
 import { execFile as execFileCb } from 'node:child_process'
 import { promisify } from 'node:util'
-import { contentRegistry } from '../../content/host-api.ts'
+import { contentRegistry } from '../../formats/host-api.ts'
 import { KbError } from '../../model/error/kb-error.ts'
 import type { PickSourceResponse } from '../../model/response/operation-response.ts'
 

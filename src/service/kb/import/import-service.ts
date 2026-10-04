@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, stat } from 'node:fs/promises'
 import { basename, dirname, sep } from 'node:path'
-import { contentRegistry } from '../../../content/host-api.ts'
+import { contentRegistry } from '../../../formats/host-api.ts'
 import { CATEGORY_WARN_DEPTH } from '../../../model/kb-limits.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
 import type { ImportFromPathRequest } from '../../../model/request/import-request.ts'

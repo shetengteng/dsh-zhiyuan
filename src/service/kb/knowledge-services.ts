@@ -1,4 +1,4 @@
-import type { EntryPreviewOptions, EntryWriteChange } from '../../content/host-api.ts'
+import type { EntryPreviewOptions, EntryWriteChange } from '../../formats/host-api.ts'
 import type { KbCard } from '../../model/entity/catalog.ts'
 import type { CreateKbRequest, UpdateKbRequest } from '../../model/request/kb-request.ts'
 import type { ImportDroppedBytesRequest, ImportFromPathRequest, ImportRequest } from '../../model/request/import-request.ts'

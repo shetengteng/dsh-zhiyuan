@@ -1,4 +1,4 @@
-import { contentRegistry } from '../../content/host-api.ts'
+import { contentRegistry } from '../../formats/host-api.ts'
 import type { SearchOverviewResult } from '../../model/response/search-response.ts'
 import type { SearchScanner } from './scanner/scanner-contract.ts'
 import type { ResolvedSearchScope } from './search-scope.ts'
