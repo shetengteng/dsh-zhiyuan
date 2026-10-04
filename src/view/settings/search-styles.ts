@@ -1,7 +1,6 @@
 export const SEARCH_CSS = `
 .zy-search-bar{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex:none}
 .zy-search-bar .zy-box{flex:1;height:32px;border-radius:16px;padding:0 12px}
-.zy-search-bar .zy-icon{margin-left:0}
 .zy-search-body{flex:1;min-height:0;display:flex;flex-direction:column}
 .zy-search-status{margin:0 0 8px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);flex:none}
 .zy-search-body > .zy-search-status:only-child{margin:auto}

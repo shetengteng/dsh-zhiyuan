@@ -52,6 +52,9 @@ export function KbPage(props: {
             <div className="zy-kb-head">
               <p className="zy-sub">{formatKbMeta(kb)}</p>
               <div className="zy-actions">
+                <button className="zy-icon" type="button" onClick={props.onSearch} aria-label="搜索" title="搜索">
+                  <SearchIcon />
+                </button>
                 <button className="zy-btn" type="button" onClick={props.onEdit}>编辑</button>
                 <button className="zy-btn zy-primary" type="button" onClick={props.onImport}>导入</button>
               </div>
@@ -61,13 +64,12 @@ export function KbPage(props: {
               {props.pending ? <p className="zy-help">加载中…</p> : null}
               {props.tree.map((node) => <KbTreeItem key={node.path} node={node} onOpenEntry={props.onOpenEntry} onDeleteEntry={props.onDeleteEntry} />)}
             </div>
-            <div className="zy-foot">
-              {jobDot(props.job)}
-              <span>{jobText(props.job)}</span>
-              <button className="zy-icon" type="button" onClick={props.onSearch} aria-label="搜索" title="搜索">
-                <SearchIcon />
-              </button>
-            </div>
+            {props.job?.running || props.job?.failed.length ? (
+              <div className="zy-foot">
+                {jobDot(props.job)}
+                <span>{jobText(props.job)}</span>
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -98,18 +100,17 @@ function KbDescription(props: { description: string; aliases: string[]; kbPath: 
   )
 }
 
+/** 底部任务行只在有活动或失败时渲染，空闲时不占位。 */
 function jobDot(job?: JobStatusResponse) {
   if (!job) return null
   if (job.running) return <StateDot state="ongoing" size={8} />
-  if (job.failed.length) return <StateDot state="error" size={8} />
-  return null
+  return <StateDot state="error" size={8} />
 }
 
 function jobText(job?: JobStatusResponse): string {
-  if (!job) return '任务 无'
+  if (!job) return ''
   if (job.running) return `任务进行中：${job.op ?? ''}`
-  const fail = job.failed.length
-  return fail ? `失败 ${fail}，断连后仍保留` : '任务 无'
+  return `失败 ${job.failed.length}，断连后仍保留`
 }
 
 function KbTreeItem(props: {

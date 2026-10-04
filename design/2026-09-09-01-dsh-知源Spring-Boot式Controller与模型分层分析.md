@@ -7,7 +7,9 @@
 - **目标**：用接近 Java Spring Boot 的心智模型明确“哪个入口由哪个 Controller 负责”“哪些对象是 Entity、Request、Response、Context/DTO”，在不改变 DSH 插件运行时契约的前提下减少类型混用
 - **非目标**：本文件不把插件改造成 HTTP/REST 服务；不修改 `kb_*` 工具名、`/zhiyuan` RPC channel、`op` 值、`destCategory`、`path`、`relPath` 等非知识库标识契约；知识库标识统一使用 `kbId`，不保留旧别名；不调整 View 的 slot 选择
 - **分析基线**：提交 `08c4829`；写入本文前工作区无未提交改动
-- **与既有方案的关系**：继承 [`2026-09-07-01-dsh-知源分层架构重构方案`](./2026-09-07-01-dsh-知源分层架构重构方案.md) 的 `view / controller / service / platform / model / content` 总体分层。本文件仅细化其中的 Controller 职责和 `model/` 内部分类；若既有方案与本文对 `model/` 目录的细分归属有冲突，以本文的细分方案为候选目标。
+- **与既有方案的关系**：继承 [`2026-09-07-01-dsh-知源分层架构重构方案`](./2026-09-07-01-dsh-知源分层架构重构方案.md) 的 `view / controller / service / platform / model / formats` 总体分层。本文件仅细化其中的 Controller 职责和 `model/` 内部分类；若既有方案与本文对 `model/` 目录的细分归属有冲突，以本文的细分方案为候选目标。
+
+> 结构修订：2026-10-04 — 格式能力层目录 `src/content/` 已更名为 `src/formats/`（测试同步为 `test/formats/`）。下文涉及该层路径的 `content/` 均指现 `formats/`；目录内 server/client/shared 分组与注册面不变。
 
 ## 1. 结论先行
 
@@ -31,7 +33,7 @@
                               ↓
                          Service 用例
                               ↓
-                 Repository / platform / content
+                 Repository / platform / formats
                               ↓
                       Response mapper / envelope
                               ↓
@@ -51,7 +53,7 @@
 | Response DTO       | Host 返回给 tool、command 或 View 的稳定结果   | `src/model/response/`                            | 表达客户端可消费的数据，不能泄漏文件系统实现或事务对象                |
 | Entity             | `catalog.json` 和库目录中的持久化领域对象      | `src/model/entity/`                              | 保存、更新、约束持久化状态                                            |
 | Value Object       | 格式、预览、配额等无独立身份的值               | `src/model/value/` 或所属格式模块                | 表示不可变语义，不承担 transport 路由                                 |
-| Context            | 一次事务、格式处理或路径解析的内部工作上下文   | `src/model/context/`、`content/host-contract.ts` | 只在 Host 内部传递，可能包含路径、锁、已加载实体等不可序列化信息      |
+| Context            | 一次事务、格式处理或路径解析的内部工作上下文   | `src/model/context/`、`formats/host-contract.ts` | 只在 Host 内部传递，可能包含路径、锁、已加载实体等不可序列化信息      |
 | Service            | 知识库、条目、导入、检索、偏好等用例           | `src/service/`                                   | 编排业务规则，不认识 DSH command、tool 或 View                        |
 | Repository         | catalog JSON / 库文件树的持久化访问边界        | 建议 `src/repository/kb/`，可分阶段抽取          | 把读写文件和实体映射从业务用例中隔离                                  |
 | Transport contract | RPC channel、endpoint、envelope、`op` 判别联合 | `src/model/wire/`                                | 仅定义跨 Host/View 的通讯形状和错误封装                               |
@@ -138,7 +140,7 @@ src/controller/rpc/
 | `src/view/payload/`                             | 它是 Response codec / UI adapter            | 运行时验证 Host 返回值，禁止直接 `as` 断言落盘成功                       |
 | [`src/service/kb/`](../src/service/kb/)         | 它包含业务用例与领域规则                    | 不认识 command、tool、slot 或 JSX                                        |
 | [`src/service/search/`](../src/service/search/) | 它是检索用例和 port                         | 保持通过 `SearchKbAccess` 间接访问知识库能力                             |
-| [`src/content/`](../src/content/)               | 它是按格式内聚的横切能力层                  | 保持 Host/Client 以及 server/client 结构，不强行塞入 Controller 或 model |
+| [`src/formats/`](../src/formats/)               | 它是按格式内聚的横切能力层                  | 保持 Host/Client 以及 server/client 结构，不强行塞入 Controller 或 model |
 | [`src/platform/`](../src/platform/)             | 它是基础设施                                | 路径 containment、symlink 检查、任务队列、DSH 宿主定位                   |
 
 ## 4. 目标目录与依赖方向
@@ -181,7 +183,7 @@ src/
 │   ├── wire/
 │   ├── error/
 │   └── constants.ts
-├── content/
+├── formats/
 └── view/
 ```
 
@@ -191,10 +193,10 @@ src/
 
 ```text
 view --RPC--> controller --> service --> repository --> platform
-                      │        └──────> content
+                      │        └──────> formats
                       └───────────────> platform
 
-model 是共享的低层类型；content 可依赖 model；view 仅运行时依赖 bridge 和 Client content，
+model 是共享的低层类型；formats 可依赖 model；view 仅运行时依赖 bridge 和 Client formats，
 不能运行时 import controller、service、repository 或 platform。
 ```
 
@@ -256,8 +258,8 @@ Host 发回来的值在 View 侧仍然是 `unknown`。`view/payload/` 应为每�
 | ----------------------------------------------------------- | ----------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
 | `CatalogTransactionContext`                                 | `CatalogTransactionContext`   | `model/context/kb-context.ts`                    | 持有 `dataRoot` 与已读 catalog，仅供 `withTransaction` 回调使用 |
 | `DestinationResolution`                                     | 导入路径解析 Context / Value  | `model/context/kb-context.ts`                    | 是导入流水线的中间产物，不是客户端数据                          |
-| `EntryReadContext`、`EntryWriteContext`、`EntryPageContext` | 内容 handler Context          | 保持在 `content/host-contract.ts` 或其同职责目录 | 既包含格式能力信息又只在 Host 使用，不应搬成通用 RPC DTO        |
-| `PrepareImportContext`                                      | 内容导入 Context              | 保持在 `content/host-contract.ts`                | 同上                                                            |
+| `EntryReadContext`、`EntryWriteContext`、`EntryPageContext` | 内容 handler Context          | 保持在 `formats/host-contract.ts` 或其同职责目录 | 既包含格式能力信息又只在 Host 使用，不应搬成通用 RPC DTO        |
+| `PrepareImportContext`                                      | 内容导入 Context              | 保持在 `formats/host-contract.ts`                | 同上                                                            |
 | `SearchKbAccess`                                            | Service port，不是 Context    | `service/search/kb-access.ts`                    | 表达 search 对 kb 的抽象依赖，不能被误称为 DTO                  |
 | `HostCtx`、`ToolCtx`、`PrivateRpcContext`                   | DSH framework context         | 保持 controller 内部                             | 是宿主注入对象，不属于领域 model                                |
 | `KnowledgePrivateConnection`                                | View transport client context | 保持 `view/bridge.ts`                            | 是浏览器 bridge 能力，不属于业务 Context                        |
@@ -268,7 +270,7 @@ Host 发回来的值在 View 侧仍然是 `unknown`。`view/payload/` 应为每�
 | --------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Wire      | `/zhiyuan` channel、`operation` / `status` endpoint、`KnowledgeOperationRequest`、`RpcEnvelope<T>`、错误 payload | `model/wire/knowledge-rpc-contract.ts`                            |
 | Error     | `KbError`、`KbErrorCode`、面向客户端的 `KnowledgeRpcError`                                                       | `model/error/kb-error.ts`、`model/wire/knowledge-rpc-contract.ts` |
-| Value     | `EntryFormat`、`EntryContentKind`、`EntryPreviewView`、预览状态与截断枚举                                        | `model/content-contract.ts` 或所属 `content/` contract            |
+| Value     | `EntryFormat`、`EntryContentKind`、`EntryPreviewView`、预览状态与截断枚举                                        | `model/content-contract.ts` 或所属 `formats/` contract            |
 | Constants | 包名、DSH 相关常量、配额和分页上限                                                                               | `model/constants.ts`                                              |
 
 不建议重新建立一个新的“总出口”模型模块作为长期 facade。它会再次把所有类别藏在一个名字里，也让调用方形成“随便 import types”的习惯。迁移应在同一提交更新 import 后删除旧总出口；若确实需要渐进迁移，临时 facade 必须有删除任务，不能成为第二个真实来源。
@@ -399,7 +401,7 @@ CatalogRepository                 # port：read / withTransaction / save
 4. Entity 不直接作为 Response；Context、Repository entity、DSH framework context 都不能跨 RPC。
 5. `Catalog` 原子写、进程内单写者、库根 containment 与 symlink 检查保持不变或得到等价证明。
 6. 每个 `src/` 源文件仍不超过 300 行；避免为每个 `op` 或 DTO 机械生成只有数行的碎片文件。
-7. `content/` 继续按格式内聚，不能因 DTO 分类把 CSV/Markdown 的 server/client 能力拆散。
+7. `formats/` 继续按格式内聚，不能因 DTO 分类把 CSV/Markdown 的 server/client 能力拆散。
 
 ## 10. 建议优先级
 
