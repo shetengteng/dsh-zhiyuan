@@ -29,7 +29,7 @@ export const WORKBENCH_CSS = `
 .zy-kb-select{display:flex;align-items:baseline;gap:4px;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-weight:500;overflow:hidden}
 .zy-kb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zy-del{width:22px;height:22px;border:none;background:transparent;border-radius:6px;padding:0;color:var(--dsw-alias-label-tertiary);display:inline-flex;align-items:center;justify-content:center;opacity:0;flex:none;cursor:pointer}
-.zy-kb-row .zy-del{position:absolute;right:6px;top:8px}
+.zy-kb-row .zy-del{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
 .zy-kb-row:hover .zy-del,.zy-file:hover .zy-del,.zy-tree summary:hover .zy-del,.zy-del:focus{opacity:1}
 .zy-del:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover-danger)}
 .zy-ghost{margin-top:auto;border:1px dashed var(--dsw-alias-border-l2);background:transparent;border-radius:12px;padding:8px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}

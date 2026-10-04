@@ -131,8 +131,24 @@ export function KbPage(props: {
 
 function formatKbMeta(kb: KbSummaryResponse): string {
   const parts = [`${kb.approxDocs} 篇`, `${kb.categories.length} 个类目`]
-  if (kb.lastUsed) parts.push('上次用')
+  if (kb.lastUsed) {
+    const when = formatRelativeTime(kb.lastUsedAt)
+    parts.push(when ? `上次用 ${when}` : '上次用')
+  }
   return parts.join(' · ')
+}
+
+/** 「上次用」的相对时间文案；时间为 0（目录扫描出的占位卡片）时返回空串。 */
+function formatRelativeTime(timestamp: number): string {
+  if (!timestamp) return ''
+  const elapsed = Date.now() - timestamp
+  if (elapsed < 60_000) return '刚刚'
+  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)} 分钟前`
+  if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)} 小时前`
+  if (elapsed < 7 * 86_400_000) return `${Math.floor(elapsed / 86_400_000)} 天前`
+  const date = new Date(timestamp)
+  const monthDay = `${date.getMonth() + 1} 月 ${date.getDate()} 日`
+  return date.getFullYear() === new Date().getFullYear() ? monthDay : `${date.getFullYear()} 年 ${monthDay}`
 }
 
 function KbDescription(props: { description: string; aliases: string[]; kbPath: string }) {
@@ -185,7 +201,7 @@ function KbTreeItem(props: {
           {deleteButton}
         </summary>
         {(props.node.children ?? []).map((child) => (
-          <KbTreeItem key={child.path} node={child} onOpenEntry={props.onOpenEntry} onDeleteEntry={props.onDeleteEntry} />
+          <KbTreeItem key={child.path} node={child} selectedEntryPath={props.selectedEntryPath} onOpenEntry={props.onOpenEntry} onDeleteEntry={props.onDeleteEntry} />
         ))}
       </details>
     )

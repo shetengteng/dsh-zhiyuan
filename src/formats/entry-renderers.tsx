@@ -18,6 +18,8 @@ export type EntryPreviewContentProps = {
   highlightText?: string
   showPreviewStatus?: boolean
   onLoadPage?: (startRow: number) => Promise<TableEditorPage>
+  /** 宿主页脚插槽：表格类格式的分页工具节点经此交给宿主渲染。 */
+  onPageTools?: (tools: ReactNode) => void
 }
 
 type PreviewRenderer = (props: EntryPreviewContentProps) => ReactNode
@@ -34,6 +36,7 @@ const CONTENT_RENDERERS: Record<ReadEntryResponse['kind'], PreviewRenderer> = {
       ref={props.editorRef}
       showPreviewStatus={props.showPreviewStatus}
       onLoadPage={props.onLoadPage}
+      pageToolsSlot={props.onPageTools}
     />
   ),
 }

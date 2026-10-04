@@ -17,7 +17,8 @@ export const PREVIEW_CSS = `
 .zy-preview-status{padding:10px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
 .zy-preview-form{width:100%;min-width:0}
 .zy-csv-preview{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;height:100%}
-.zy-csv-page-tools{display:flex;align-items:center;gap:16px;flex:none;padding:6px 16px 10px}
+.zy-csv-page-tools{display:flex;align-items:center;gap:16px;min-width:0}
+.zy-preview-foot .zy-csv-page-tools{flex:1;margin-right:auto}
 .zy-csv-page-status{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}
 .zy-csv-page-actions{display:flex;align-items:center;gap:20px;flex:none}
 .zy-csv-page-button{appearance:none;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-state-business-primary);padding:4px 8px;font:inherit;font-size:13px;line-height:20px;cursor:pointer}
@@ -39,7 +40,7 @@ export const PREVIEW_CSS = `
 .zy-preview-rail .zy-preview-form .zy-md{flex:1;min-height:0;border:0;border-radius:0}
 .zy-preview-rail .zy-preview-form .zy-md-body{flex:1;min-height:0;max-height:none;overflow:auto}
 .zy-preview-rail .zy-preview-form .zy-csv-preview{flex:1;min-height:0;height:auto}
-.zy-preview-rail .zy-preview-form .zy-csv-grid{flex:1;min-height:0;max-height:none;height:auto;margin-top:10px}
+.zy-preview-rail .zy-preview-form .zy-csv-grid{flex:1;min-height:0;max-height:none;height:auto;margin-top:0;margin-bottom:10px}
 .zy-preview-rail .zy-csv-grid,.zy-preview-rail .zy-csv-body{border:0;border-radius:0}
 .zy-preview-rail .zy-note{flex:none;padding:8px 16px 0}
 .zy-preview-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--dsw-alias-border-l2);flex:none}

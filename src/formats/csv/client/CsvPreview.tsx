@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { RowsChangeData } from 'react-data-grid'
 import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
 import type { TableEditorPage, TableEntryPreview, TableWindowData } from '../../../model/response/entry-response.ts'
@@ -16,6 +16,8 @@ export type CsvPreviewProps = {
   mode: 'read' | 'edit'
   showPreviewStatus?: boolean
   onLoadPage?: (startRow: number) => Promise<TableEditorPage>
+  /** 提供时把分页工具交给宿主渲染（例如面板页脚），不再在表格上方就地展示。 */
+  pageToolsSlot?: (tools: ReactNode) => void
 }
 
 /** 轻量 CSV 查看与单元格编辑用的 react-data-grid 表格。 */
@@ -48,11 +50,60 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
     },
   }), [changes, page?.revision])
 
+  async function loadPage(target: number): Promise<void> {
+    if (!page || !props.onLoadPage || pageBusy) return
+    const nextRequest = requestId.current + 1
+    requestId.current = nextRequest
+    setPageBusy(true)
+    setPageError('')
+    try {
+      const nextPage = await props.onLoadPage(target)
+      if (requestId.current === nextRequest) {
+        setHeaderEdit(null)
+        if (nextPage.revision !== page.revision) {
+          setChanges(emptyCsvChanges())
+          setPageError('文件已变化，未保存的表格修改已清除')
+        }
+        setPage(nextPage)
+      }
+    } catch (error) {
+      if (requestId.current === nextRequest) setPageError(error instanceof Error ? error.message : '读取表格分页失败')
+    } finally {
+      if (requestId.current === nextRequest) setPageBusy(false)
+    }
+  }
+
+  // 分页工具节点按页面状态缓存，供 slot 上交宿主或就地渲染；回调经 ref 取当次实现的 loadPage。
+  const loadPageRef = useRef<((target: number) => Promise<void>) | undefined>(undefined)
+  useEffect(() => {
+    loadPageRef.current = loadPage
+  })
+  const pageTools = useMemo(() => {
+    if (!page || !editable) return null
+    const currentPage = page
+    const previousStartRow = Math.max(1, (currentPage.windowStartRow || 1) - Math.max(1, currentPage.rows.length))
+    return (
+      <div className="zy-csv-page-tools" aria-label="表格分页工具" aria-busy={pageBusy || undefined}>
+        <span className="zy-csv-page-status" aria-live="polite">第 {currentPage.windowStartRow || 0}–{currentPage.windowEndRow || 0} 行，共 {currentPage.totalRows} 行</span>
+        <div className="zy-csv-page-actions">
+          <button className="zy-csv-page-button" type="button" disabled={pageBusy || currentPage.windowStartRow <= 1} onClick={() => void loadPageRef.current?.(previousStartRow)}>上一页</button>
+          <button className="zy-csv-page-button" type="button" disabled={pageBusy || currentPage.windowEndRow >= currentPage.totalRows} onClick={() => void loadPageRef.current?.(currentPage.windowEndRow + 1)}>下一页</button>
+        </div>
+      </div>
+    )
+  }, [editable, pageBusy, page])
+
+  // 宿主提供 slot 时上交工具节点；节点销毁或不可用时回交 null 清理页脚。
+  const pageToolsSlot = props.pageToolsSlot
+  useEffect(() => {
+    if (!pageToolsSlot || !pageTools) return
+    pageToolsSlot(pageTools)
+    return () => pageToolsSlot(null)
+  }, [pageToolsSlot, pageTools])
+
   if (!table || !page) return <RawCsvFallback preview={props.preview} showPreviewStatus={props.showPreviewStatus} />
 
   const startRow = page.windowStartRow || 1
-  const previousStartRow = Math.max(1, startRow - Math.max(1, page.rows.length))
-  const nextStartRow = page.windowEndRow + 1
 
   const commitCellChange = (row: number, column: number, originalValue: string, value: string) => {
     setChanges((current) => storeEdit(current, { row, column, originalValue, value, isHeader: false }))
@@ -81,29 +132,6 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
     setHeaderEdit(null)
   }
 
-  const loadPage = async (target: number): Promise<void> => {
-    if (!props.onLoadPage || pageBusy) return
-    const nextRequest = requestId.current + 1
-    requestId.current = nextRequest
-    setPageBusy(true)
-    setPageError('')
-    try {
-      const nextPage = await props.onLoadPage(target)
-      if (requestId.current === nextRequest) {
-        setHeaderEdit(null)
-        if (nextPage.revision !== page.revision) {
-          setChanges(emptyCsvChanges())
-          setPageError('文件已变化，未保存的表格修改已清除')
-        }
-        setPage(nextPage)
-      }
-    } catch (error) {
-      if (requestId.current === nextRequest) setPageError(error instanceof Error ? error.message : '读取表格分页失败')
-    } finally {
-      if (requestId.current === nextRequest) setPageBusy(false)
-    }
-  }
-
   return (
     <div className="zy-csv-preview">
       {props.showPreviewStatus ? <div className="zy-preview-status" role="status">{statusText(props.preview)}</div> : null}
@@ -120,15 +148,7 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
         onHeaderEditCancel={() => setHeaderEdit(null)}
         onRowsChange={onRowsChange}
       />
-      {editable ? (
-        <div className="zy-csv-page-tools" aria-label="表格分页工具" aria-busy={pageBusy || undefined}>
-          <span className="zy-csv-page-status" aria-live="polite">第 {page.windowStartRow || 0}–{page.windowEndRow || 0} 行，共 {page.totalRows} 行</span>
-          <div className="zy-csv-page-actions">
-            <button className="zy-csv-page-button" type="button" disabled={pageBusy || page.windowStartRow <= 1} onClick={() => void loadPage(previousStartRow)}>上一页</button>
-            <button className="zy-csv-page-button" type="button" disabled={pageBusy || page.windowEndRow >= page.totalRows} onClick={() => void loadPage(nextStartRow)}>下一页</button>
-          </div>
-        </div>
-      ) : null}
+      {pageToolsSlot ? null : pageTools}
     </div>
   )
 })
