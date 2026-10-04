@@ -205,7 +205,7 @@ test('工作簿结构与声明范围超过上限时整份失败', async () => {
 
     const tooManySheets = join(root, '超表.xlsx')
     await writeFile(tooManySheets, buildXlsxWorkbook(
-      Array.from({ length: 33 }, (_, index) => ({
+      Array.from({ length: 129 }, (_, index) => ({
         name: `S${index + 1}`,
         rows: [rowXml(1, inlineTextCell('A1', 'x'))],
       })),
