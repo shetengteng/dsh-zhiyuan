@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Menu, IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Menu, IconChevronDownOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { KbSummaryResponse, CatalogPrefs } from '../view-models.ts'
 import { Note } from './dialogs/DialogField.tsx'
 
@@ -55,7 +55,7 @@ export function PrefsPage(props: {
               onClick={() => setMenuOpen(!menuOpen)}
             >
               {label}
-              <IconChevronDownOutline14 className="zy-chevron" />
+              <IconChevronDownOutlineRegular className="zy-chevron" />
             </button>
           )}
         />

@@ -147,4 +147,4 @@ A Git install runs `prepare` (builds `lib/`). Every path in `main` / `exports` /
 
 Read the [DeepSeek Harness plugin contract](https://dsh.pub/develop-plugin.md) before changing plugin code. This repository’s rules take precedence.
 
-Product boundaries and milestones live in `design/` (especially the [implementation plan](./design/2026-08-31-06-dsh-知识库MVP实施计划.md) and the [checklist](./design/2026-08-31-07-dsh-知识库MVP待办.md)).
+Product boundaries and milestones live in `design/` (especially the [implementation plan](./design/plans/2026-08-31-06-dsh-知识库MVP实施计划.md) and the [checklist](./design/plans/2026-08-31-07-dsh-知识库MVP待办.md)).

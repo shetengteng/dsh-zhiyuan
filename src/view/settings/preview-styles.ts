@@ -34,4 +34,16 @@ export const PREVIEW_CSS = `
 .zy-preview-empty-title{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500;line-height:20px}
 .zy-preview-empty p{margin:6px 0 0;font-size:12px;line-height:18px}
 .zy-preview-panel :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+.zy-preview-rail{border:1px solid var(--dsw-alias-border-l2);border-left:none;border-radius:0 12px 12px 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
+.zy-preview-rail .zy-preview-head{padding:5px 12px}
+.zy-preview-rail .zy-preview-form{flex:1;min-height:0;display:flex;flex-direction:column}
+.zy-preview-rail .zy-preview-form .zy-md{flex:1;min-height:0;border:0;border-radius:0}
+.zy-preview-rail .zy-preview-form .zy-md-body{flex:1;min-height:0;max-height:none;overflow:auto}
+.zy-preview-rail .zy-preview-form .zy-csv-preview{flex:1;min-height:0;height:auto}
+.zy-preview-rail .zy-preview-form .zy-csv-grid{flex:1;min-height:0;max-height:none;height:auto;margin-top:10px}
+.zy-preview-rail .zy-note{flex:none;padding:8px 16px 0}
+.zy-preview-close{width:28px;height:28px;border:none;border-radius:14px;padding:0;background:transparent;color:var(--dsw-alias-label-primary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.zy-preview-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.zy-preview-close:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
+.zy-preview-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid var(--dsw-alias-border-l2);flex:none}
 `

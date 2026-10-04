@@ -1,6 +1,17 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useRef, useState, type ReactNode } from 'react'
 import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../view-models.ts'
-import { SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
+import { EditIcon, ImportIcon, SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
+import { KbResizer } from './KbResizer.tsx'
+
+// 三栏布局常量，与 workbench-styles 里 `.zy-kb-layout` 的默认列模板保持一致。
+// RESIZER_WIDTH 取 8px 并配合负边距骑线，对齐 DSH 壳侧栏手柄的热区手感。
+const KB_LIST_DEFAULT_WIDTH = 168
+const MIN_KB_LIST_WIDTH = 140
+const RESIZER_WIDTH = 8
+const MIN_TREE_WIDTH = 220
+const MIN_PREVIEW_WIDTH = 320
+const DEFAULT_PREVIEW_WIDTH = 600
 
 export function KbPage(props: {
   kbs: KbSummaryResponse[]
@@ -16,7 +27,19 @@ export function KbPage(props: {
   onDeleteKb: (kb: KbSummaryResponse) => void
   onOpenEntry: (entryPath: string) => void
   onDeleteEntry: (entryPath: string, kind: 'file' | 'dir') => void
+  previewPanel?: ReactNode
 }) {
+  const [kbListWidth, setKbListWidth] = useState(KB_LIST_DEFAULT_WIDTH)
+  const [previewWidth, setPreviewWidth] = useState(DEFAULT_PREVIEW_WIDTH)
+  const layoutRef = useRef<HTMLDivElement>(null)
+  const clampKbListWidth = (width: number): number => {
+    const container = layoutRef.current?.clientWidth ?? 1152
+    return Math.max(MIN_KB_LIST_WIDTH, Math.min(container - previewWidth - 2 * RESIZER_WIDTH - MIN_TREE_WIDTH, width))
+  }
+  const clampPreviewWidth = (width: number): number => {
+    const container = layoutRef.current?.clientWidth ?? 1152
+    return Math.max(MIN_PREVIEW_WIDTH, Math.min(container - kbListWidth - 2 * RESIZER_WIDTH - MIN_TREE_WIDTH, width))
+  }
   if (!props.kbs.length) {
     return (
       <div className="zy-kb-layout is-empty">
@@ -32,7 +55,11 @@ export function KbPage(props: {
   }
   const kb = props.currentKb
   return (
-    <div className="zy-kb-layout">
+    <div
+      ref={layoutRef}
+      className="zy-kb-layout"
+      style={{ gridTemplateColumns: `${kbListWidth}px ${RESIZER_WIDTH}px minmax(${MIN_TREE_WIDTH}px,1fr) ${RESIZER_WIDTH}px ${previewWidth}px` }}
+    >
       <div className="zy-kb-list">
         {props.kbs.map((kb) => (
           <div key={kb.id} className={`zy-kb-row${props.currentKb?.id === kb.id ? ' is-on' : ''}`}>
@@ -46,6 +73,7 @@ export function KbPage(props: {
         ))}
         <button className="zy-ghost" type="button" onClick={props.onCreate}>+ 新建知识库</button>
       </div>
+      <KbResizer side="left" width={kbListWidth} label="调整知识库列表宽度" onChange={(width) => setKbListWidth(clampKbListWidth(width))} />
       <div className="zy-kb-panel">
         {kb ? (
           <>
@@ -55,8 +83,12 @@ export function KbPage(props: {
                 <button className="zy-icon" type="button" onClick={props.onSearch} aria-label="搜索" title="搜索">
                   <SearchIcon />
                 </button>
-                <button className="zy-btn" type="button" onClick={props.onEdit}>编辑</button>
-                <button className="zy-btn zy-primary" type="button" onClick={props.onImport}>导入</button>
+                <button className="zy-icon" type="button" onClick={props.onEdit} aria-label="编辑" title="编辑">
+                  <EditIcon />
+                </button>
+                <button className="zy-icon" type="button" onClick={props.onImport} aria-label="导入" title="导入">
+                  <ImportIcon />
+                </button>
               </div>
             </div>
             <KbDescription description={kb.description} aliases={kb.aliases} kbPath={`kbs/${kb.id}/`} />
@@ -72,6 +104,15 @@ export function KbPage(props: {
             ) : null}
           </>
         ) : null}
+      </div>
+      <KbResizer side="right" width={previewWidth} label="调整预览栏宽度" onChange={(width) => setPreviewWidth(clampPreviewWidth(width))} />
+      <div className="zy-preview-rail">
+        {props.previewPanel ?? (
+          <div className="zy-preview-empty">
+            <div className="zy-preview-empty-title">未选择文件</div>
+            <p>在中间目录树里点一个文件，在这里预览和编辑。</p>
+          </div>
+        )}
       </div>
     </div>
   )

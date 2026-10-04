@@ -15,7 +15,7 @@ const FOOTER_ACTION_CSS = `
 .zy-footer-overlay{z-index:1000;position:fixed;inset:0;display:flex;align-items:center;justify-content:center;animation:zy-footer-in .15s var(--ds-ease-in-out,ease)}
 @keyframes zy-footer-in{0%{opacity:0}}
 .zy-footer-mask{position:absolute;inset:0;background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur)}
-.zy-footer-panel{z-index:1;position:relative;box-sizing:border-box;width:min(800px,calc(100vw - 48px));height:min(800px,calc(100vh - 48px));padding:20px 24px 24px;border-radius:24px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-shadow-lv3);display:flex;flex-direction:column;overflow:hidden}
+.zy-footer-panel{z-index:1;position:relative;box-sizing:border-box;width:min(1200px,calc(100vw - 48px));height:min(800px,calc(100vh - 48px));padding:20px 24px 24px;border-radius:24px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-shadow-lv3);display:flex;flex-direction:column;overflow:hidden}
 .zy-footer-close{z-index:2;position:absolute;top:14px;right:14px;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--dsw-alias-label-primary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .zy-footer-close:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-footer-close:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}

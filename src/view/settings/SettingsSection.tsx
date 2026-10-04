@@ -10,7 +10,7 @@ import { useWorkbenchData, splitAliases, type WorkbenchNotice } from './use-work
 import { useEntryPreview } from './use-entry-preview.ts'
 import { createSearchActions } from './search-actions.ts'
 import { AboutPage } from './AboutPage.tsx'
-import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ConfirmDialog } from './dialogs/ConfirmDialog.tsx'
 import { CreateKbDialog } from './dialogs/CreateKbDialog.tsx'
 import { EditKbDialog } from './dialogs/EditKbDialog.tsx'
@@ -18,6 +18,7 @@ import { KbPage } from './KbPage.tsx'
 import { ImportDialog } from './dialogs/ImportDialog.tsx'
 import { SearchDialog } from './dialogs/SearchDialog.tsx'
 import { PreviewDialog } from './preview/PreviewDialog.tsx'
+import { PreviewPanel } from './preview/PreviewPanel.tsx'
 import { PrefsPage } from './PrefsPage.tsx'
 import { SectionIcon } from './Icons.tsx'
 import { ensureSettingsStyles } from './style-entry.ts'
@@ -42,9 +43,9 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
 
     const { kbs, currentKbId, setCurrentKbId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
-    const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, cancelPreviews } = useEntryPreview({
+    const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, closePreview } = useEntryPreview({
       call,
-      onOpened: () => setDialog('preview'),
+      onOpened: (origin) => { if (origin === 'search') setDialog('preview') },
       onTreeError: (message) => setNotice({ tone: 'error', text: message }),
       onSearchError: (message) => setError(message),
     })
@@ -101,7 +102,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             ))}
           </div>
         </div>
-        {notice ? <p className={`zy-note is-${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.tone === 'success' ? null : <IconWarningOutline16 size={14} />}{notice.text}</p> : null}
+        {notice ? <p className={`zy-note is-${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.tone === 'success' ? null : <IconWarningOutlineRegular size={14} />}{notice.text}</p> : null}
         <div className={tab === 'kbs' ? 'zy-body' : 'zy-body is-doc'}>
           {tab === 'kbs' ? (
             <KbPage
@@ -110,23 +111,37 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
               tree={tree}
               job={job}
               pending={pending}
-              onSelectKb={(kbId) => { setCurrentKbId(kbId); void refresh(kbId) }}
+              onSelectKb={(kbId) => { closePreview(); setCurrentKbId(kbId); void refresh(kbId) }}
               onCreate={() => { setError(''); setDialog('create') }}
               onEdit={() => { setError(''); setDialog('edit') }}
               onImport={() => { setError(''); setNotice(null); setDialog('import') }}
               onSearch={() => { resetSearch(); setError(''); setDialog('search') }}
               onDeleteKb={(kb) => {
-                setConfirm({ message: `删除知识库「${kb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: kb.id, confirm: true }).then(parseOperationAck).then(() => undefined)) })
+                setConfirm({ message: `删除知识库「${kb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: kb.id, confirm: true }).then(parseOperationAck).then(() => undefined), () => closePreview()) })
                 setDialog('confirm')
               }}
               onOpenEntry={(entryPath) => openTreeEntry(currentKbId, entryPath)}
               onDeleteEntry={(entryPath, kind) => {
                 setConfirm({
                   message: kind === 'dir' ? `删除类目「${entryPath}」？` : `删除文件「${entryPath}」？`,
-                  run: () => run(() => call({ op: 'deleteEntry', id: currentKbId, path: entryPath, confirm: true }).then(parseOperationAck).then(() => undefined)),
+                  run: () => run(
+                    () => call({ op: 'deleteEntry', id: currentKbId, path: entryPath, confirm: true }).then(parseOperationAck).then(() => undefined),
+                    () => { if (previewOrigin === 'tree' && preview?.path === entryPath) closePreview() },
+                  ),
                 })
                 setDialog('confirm')
               }}
+              previewPanel={preview && previewOrigin === 'tree' ? (
+                <PreviewPanel
+                  preview={preview}
+                  error={error}
+                  busy={pending}
+                  fallbackText={previewFallback || undefined}
+                  onClose={closePreview}
+                  onSave={(change) => void run(() => call({ op: 'write', id: currentKbId, path: preview.path, change }).then(parseOperationAck).then(() => undefined))}
+                  onLoadPage={(startRow) => call({ op: 'readPage', id: currentKbId, path: preview.path, startRow }).then(parseTableEditorPage)}
+                />
+              ) : undefined}
             />
           ) : null}
           {tab === 'prefs' ? <PrefsPage prefs={prefs} kbs={kbs} busy={pending} error={error} onSave={(next) => void run(() => call({ op: 'setPrefs', ...next }).then(parseCatalogPrefs).then(() => undefined))} /> : null}
@@ -141,7 +156,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             busy={pending}
             onClose={() => setDialog(null)}
             onDelete={() => {
-              setConfirm({ message: `删除知识库「${currentKb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: currentKb.id, confirm: true }).then(parseOperationAck).then(() => undefined)) })
+              setConfirm({ message: `删除知识库「${currentKb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: currentKb.id, confirm: true }).then(parseOperationAck).then(() => undefined), () => closePreview()) })
               setDialog('confirm')
             }}
             onSubmit={(input) => void run(() => call({ op: 'update', id: currentKb.id, ...input, aliases: splitAliases(input.aliases) }).then(() => undefined))}
@@ -190,21 +205,12 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             onOpenHit={(hit) => openSearchHit(currentKb.id, hit)}
           />
         ) : null}
-        {dialog === 'preview' && preview ? (
+        {dialog === 'preview' && preview && previewOrigin === 'search' ? (
           <PreviewDialog
             preview={preview}
-            editable={previewOrigin === 'tree'}
-            deletable={previewOrigin === 'tree'}
             error={error}
-            busy={pending}
             fallbackText={previewFallback || undefined}
-            onClose={() => { cancelPreviews(); setDialog(previewOrigin === 'search' ? 'search' : null) }}
-            onSave={(change) => void run(() => call({ op: 'write', id: currentKbId, path: preview.path, change }).then(parseOperationAck).then(() => undefined))}
-            onLoadPage={(startRow) => call({ op: 'readPage', id: currentKbId, path: preview.path, startRow }).then(parseTableEditorPage)}
-            onDelete={() => {
-              setConfirm({ message: `删除文件「${preview.path}」？`, run: () => run(() => call({ op: 'deleteEntry', id: currentKbId, path: preview.path, confirm: true }).then(parseOperationAck).then(() => undefined)) })
-              setDialog('confirm')
-            }}
+            onClose={() => { closePreview(); setDialog('search') }}
           />
         ) : null}
         {dialog === 'confirm' ? <ConfirmDialog message={confirm.message} error={error} busy={pending} onClose={() => setDialog(null)} onConfirm={() => void confirm.run()} /> : null}

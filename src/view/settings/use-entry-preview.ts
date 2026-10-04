@@ -5,7 +5,7 @@ import { createPreviewRequestManager } from './preview/preview-request.ts'
 
 type EntryPreviewOptions = {
   call: (payload: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>
-  onOpened: () => void
+  onOpened: (origin: 'tree' | 'search') => void
   onTreeError: (message: string) => void
   onSearchError: (message: string) => void
 }
@@ -26,7 +26,7 @@ export function useEntryPreview(options: EntryPreviewOptions) {
       setPreview(parseReadEntry(value))
       setPreviewFallback('')
       setPreviewOrigin('tree')
-      options.onOpened()
+      options.onOpened('tree')
     }).catch((err) => {
       if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) options.onTreeError(err instanceof Error ? err.message : String(err))
     }).finally(() => {
@@ -49,7 +49,7 @@ export function useEntryPreview(options: EntryPreviewOptions) {
       setPreview(parseReadEntry(value))
       setPreviewFallback(hit.excerpt)
       setPreviewOrigin('search')
-      options.onOpened()
+      options.onOpened('search')
     }).catch((err) => {
       if (previewRequests.current.isCurrent(request.id) && !request.signal.aborted) options.onSearchError(err instanceof Error ? err.message : String(err))
     }).finally(() => {
@@ -57,7 +57,12 @@ export function useEntryPreview(options: EntryPreviewOptions) {
     })
   }
 
-  const cancelPreviews = () => previewRequests.current.cancel()
+  /** 关闭预览：取消在途请求并清空展示状态。 */
+  const closePreview = () => {
+    previewRequests.current.cancel()
+    setPreview(null)
+    setPreviewFallback('')
+  }
 
-  return { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, cancelPreviews }
+  return { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, closePreview }
 }

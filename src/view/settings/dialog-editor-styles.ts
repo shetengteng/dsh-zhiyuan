@@ -12,7 +12,6 @@ export const DIALOG_EDITOR_CSS = `
 .zy-dialog-inner>.zy-footbar{margin-top:16px;flex:none}
 .zy-modal-wide{width:min(960px,calc(100vw - 48px));max-width:960px;height:min(800px,calc(100vh - 48px));display:flex;flex-direction:column}
 .zy-modal-wide .zy-dialog-inner{flex:1;min-height:0;height:100%;display:flex;flex-direction:column}
-.zy-modal-wide .zy-preview-form{flex:1;min-height:0;display:flex;flex-direction:column}
 .zy-modal-wide .zy-md-body{flex:1;min-height:0;max-height:none}
 .zy-modal-wide .zy-csv-body{flex:1;min-height:0;max-height:none}
 .zy-modal-wide .zy-csv-grid{flex:1;min-height:0;max-height:none}

@@ -147,4 +147,4 @@ Git 安装会跑 `prepare`（构建 `lib/`）。`main` / `exports` / `files` / `
 
 改插件代码前阅读 [DeepSeek Harness plugin 契约](https://dsh.pub/develop-plugin.md)。本仓库规则优先。
 
-产品边界与里程碑见 `design/`（尤其 [实施计划](./design/2026-08-31-06-dsh-知识库MVP实施计划.md) 与 [待办](./design/2026-08-31-07-dsh-知识库MVP待办.md)）。
+产品边界与里程碑见 `design/`（尤其 [实施计划](./design/plans/2026-08-31-06-dsh-知识库MVP实施计划.md) 与 [待办](./design/plans/2026-08-31-07-dsh-知识库MVP待办.md)）。

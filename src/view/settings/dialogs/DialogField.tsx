@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /** 设置工作台共用的表单原语：字段容器、警示条与表单脚手架。 */
 
@@ -17,7 +17,7 @@ export function Note(props: { text: string }) {
   if (!props.text) return null
   return (
     <p className="zy-note">
-      <IconWarningOutline16 size={14} />
+      <IconWarningOutlineRegular size={14} />
       {props.text}
     </p>
   )

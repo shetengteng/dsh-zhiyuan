@@ -73,11 +73,15 @@ declare module '@deepseek-ai/dsh-client-ui-primitives' {
     size?: number
     className?: string
   }
-  export function IconChevronDownOutline14(props: IconProps): ReactElement
-  export function IconSearchOutline16(props: IconProps): ReactElement
-  export function IconFolderOpen16(props: IconProps): ReactElement
-  export function IconWarningOutline16(props: IconProps): ReactElement
-  export function IconQuestionOutline14(props: IconProps): ReactElement
+  // 与目标 DSH 0.2.0-rc.2 的 primitives 运行时对齐：统一 Icon{Name}OutlineRegular 命名。
+  export function IconChevronDownOutlineRegular(props: IconProps): ReactElement
+  export function IconChevronRightOutlineRegular(props: IconProps): ReactElement
+  export function IconCloseOutlineRegular(props: IconProps): ReactElement
+  export function IconDownloadOutlineRegular(props: IconProps): ReactElement
+  export function IconEditOutlineRegular(props: IconProps): ReactElement
+  export function IconSearchOutlineRegular(props: IconProps): ReactElement
+  export function IconTrashOutlineRegular(props: IconProps): ReactElement
+  export function IconWarningOutlineRegular(props: IconProps): ReactElement
 
   export function StateDot(props: {
     state: 'done' | 'warning' | 'ongoing' | 'error'

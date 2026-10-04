@@ -1,35 +1,46 @@
-/** 设置工作台共用的 SVG 图标。 */
+import {
+  IconChevronRightOutlineRegular,
+  IconCloseOutlineRegular,
+  IconDownloadOutlineRegular,
+  IconEditOutlineRegular,
+  IconSearchOutlineRegular,
+  IconTrashOutlineRegular,
+} from '@deepseek-ai/dsh-client-ui-primitives'
+
+/**
+ * 设置工作台共用图标：一律转发 DSH 官方 primitives 图标组件，
+ * 保证与壳内页面视觉一致；颜色走 currentColor，尺寸由调用处样式或 size 决定。
+ * 官方图标集中没有“书”造型，SectionIcon 为本插件的品牌图标，保留手绘实现。
+ */
+
+/** 删除：列表行与树节点的删除按钮使用。 */
 export function TrashIcon() {
-  return (
-    <svg className="zy-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-      <path d="M3.5 4.5h9M6.2 4.5V3.2h3.6v1.3M5.2 4.5l.6 8.2h4.4l.6-8.2M6.8 7v4M9.2 7v4" />
-    </svg>
-  )
+  return <IconTrashOutlineRegular size={14} />
 }
 
+/** 搜索。 */
 export function SearchIcon() {
-  return (
-    <svg className="zy-ico" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <circle cx="7" cy="7" r="4.2" />
-      <path d="M10.2 10.2L13 13" />
-    </svg>
-  )
+  return <IconSearchOutlineRegular />
 }
 
+/** 编辑。 */
+export function EditIcon() {
+  return <IconEditOutlineRegular />
+}
+
+/** 导入：箭头落入托盘的官方 Download 造型。 */
+export function ImportIcon() {
+  return <IconDownloadOutlineRegular />
+}
+
+/** 树节点展开箭头；开合旋转由 `.zy-twist` 的 details[open] 规则处理。 */
 export function TwistIcon() {
-  return (
-    <svg className="zy-twist" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M4.25 2.83v8.34c0 .49.59.74.94.39l4.17-4.17a.55.55 0 0 0 0-.78L5.19 2.44c-.35-.35-.94-.1-.94.39Z" fill="currentColor" />
-    </svg>
-  )
+  return <IconChevronRightOutlineRegular size={14} className="zy-twist" />
 }
 
+/** 关闭。 */
 export function CloseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
+  return <IconCloseOutlineRegular size={14} />
 }
 
 /** 合上的书加书签。视觉字重对齐 DSH 16px 图标。 */

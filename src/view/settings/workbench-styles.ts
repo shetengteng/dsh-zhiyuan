@@ -14,12 +14,17 @@ export const WORKBENCH_CSS = `
 .zy-note.is-success{color:var(--dsw-alias-state-business-primary)}
 .zy-note.is-warning{color:var(--dsw-alias-state-warn-primary)}
 .zy-note.is-error{color:var(--dsw-alias-state-error-primary)}
-.zy-kb-layout{flex:1;min-height:0;display:grid;grid-template-columns:168px minmax(0,1fr)}
+.zy-kb-layout{flex:1;min-height:0;display:grid;grid-template-columns:168px 8px minmax(220px,1fr) 8px minmax(320px,1fr)}
 .zy-kb-layout.is-empty{grid-template-columns:1fr}
 .zy-kb-list,.zy-kb-panel{border:1px solid var(--dsw-alias-border-l2);min-height:0}
 .zy-kb-list{border-radius:12px 0 0 12px;border-right:none;display:flex;flex-direction:column;padding:4px 4px 6px}
-.zy-kb-panel{border-radius:0 12px 12px 0;padding:0;display:flex;flex-direction:column}
-.zy-kb-layout.is-empty .zy-kb-panel{border-radius:12px;justify-content:center;align-items:center;border-left:1px solid var(--dsw-alias-border-l2)}
+.zy-kb-panel{border-radius:0;border-right:none;padding:0;display:flex;flex-direction:column}
+.zy-kb-layout.is-empty .zy-kb-panel{border-radius:12px;justify-content:center;align-items:center;border-left:1px solid var(--dsw-alias-border-l2);border-right:1px solid var(--dsw-alias-border-l2)}
+.zy-kb-resizer{position:relative;z-index:1;justify-self:start;width:8px;margin-left:-4px;cursor:col-resize;touch-action:none;background:transparent;transition:background .15s}
+.zy-kb-resizer:before{content:"";position:absolute;top:0;bottom:0;left:4px;width:1px;background:var(--dsw-alias-border-l2);transition:background .15s}
+.zy-kb-resizer:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.zy-kb-resizer:hover:before{background:var(--dsw-alias-state-business-primary)}
+.zy-kb-resizer:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:0}
 .zy-kb-row{position:relative;margin:2px 0;border-radius:12px}
 .zy-kb-row:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}
 .zy-kb-row.is-on,.zy-kb-row.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
