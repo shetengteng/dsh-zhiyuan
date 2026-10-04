@@ -137,11 +137,11 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
                   error={error}
                   busy={pending}
                   fallbackText={previewFallback || undefined}
-                  onClose={closePreview}
                   onSave={(change) => void run(() => call({ op: 'write', id: currentKbId, path: preview.path, change }).then(parseOperationAck).then(() => undefined))}
                   onLoadPage={(startRow) => call({ op: 'readPage', id: currentKbId, path: preview.path, startRow }).then(parseTableEditorPage)}
                 />
               ) : undefined}
+              selectedEntryPath={preview && previewOrigin === 'tree' ? preview.path : undefined}
             />
           ) : null}
           {tab === 'prefs' ? <PrefsPage prefs={prefs} kbs={kbs} busy={pending} error={error} onSave={(next) => void run(() => call({ op: 'setPrefs', ...next }).then(parseCatalogPrefs).then(() => undefined))} /> : null}

@@ -66,6 +66,7 @@ details[open]>summary>.zy-twist{transform:rotate(90deg)}
 .zy-tree summary>span{flex:1;min-width:0}
 .zy-file{display:grid;grid-template-columns:minmax(0,1fr) auto auto 22px;gap:12px;padding:3px 8px 3px 22px;border-radius:8px;font-size:13px;align-items:center}
 .zy-file:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.zy-file.is-on,.zy-file.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
 .zy-file .meta,.zy-file .when{color:var(--dsw-alias-label-tertiary)}
 .zy-file-open{border:0;background:transparent;text-align:left;color:inherit;font:inherit;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zy-foot{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:12px}

@@ -28,6 +28,8 @@ export function KbPage(props: {
   onDeleteKb: (kb: KbSummaryResponse) => void
   onOpenEntry: (entryPath: string) => void
   onDeleteEntry: (entryPath: string, kind: 'file' | 'dir') => void
+  /** 右侧预览栏正在展示的树内文件路径，用于给目录树里的选中行加背景。 */
+  selectedEntryPath?: string
   previewPanel?: ReactNode
 }) {
   const [kbListWidth, setKbListWidth] = useState(KB_LIST_DEFAULT_WIDTH)
@@ -95,7 +97,15 @@ export function KbPage(props: {
             <KbDescription description={kb.description} aliases={kb.aliases} kbPath={`kbs/${kb.id}/`} />
             <div className="zy-tree">
               {props.pending ? <p className="zy-help">加载中…</p> : null}
-              {props.tree.map((node) => <KbTreeItem key={node.path} node={node} onOpenEntry={props.onOpenEntry} onDeleteEntry={props.onDeleteEntry} />)}
+              {props.tree.map((node) => (
+                <KbTreeItem
+                  key={node.path}
+                  node={node}
+                  selectedEntryPath={props.selectedEntryPath}
+                  onOpenEntry={props.onOpenEntry}
+                  onDeleteEntry={props.onDeleteEntry}
+                />
+              ))}
             </div>
             {props.job?.running || props.job?.failed.length ? (
               <div className="zy-foot">
@@ -157,6 +167,7 @@ function jobText(job?: JobStatusResponse): string {
 
 function KbTreeItem(props: {
   node: KbTreeNodeResponse
+  selectedEntryPath?: string
   onOpenEntry: (entryPath: string) => void
   onDeleteEntry: (entryPath: string, kind: 'file' | 'dir') => void
 }) {
@@ -180,7 +191,7 @@ function KbTreeItem(props: {
     )
   }
   return (
-    <div className="zy-file">
+    <div className={`zy-file${props.node.path === props.selectedEntryPath ? ' is-on' : ''}`}>
       <button type="button" className="zy-file-open" onClick={() => props.onOpenEntry(props.node.path)}>{props.node.name}</button>
       <span className="meta">{formatSize(props.node.size)}</span>
       <span className="when">{formatWhen(props.node.mtime)}</span>

@@ -4,7 +4,6 @@ import { EntryPreviewContent, type EntryEditorHandle } from '../../../formats/en
 import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
 import type { TableEditorPage } from '../../../model/response/entry-response.ts'
 import { Note } from '../dialogs/DialogField.tsx'
-import { CloseIcon } from '../Icons.tsx'
 import { toTextFallback } from './preview-fallback.ts'
 
 export type PreviewPanelProps = {
@@ -12,7 +11,6 @@ export type PreviewPanelProps = {
   error: string
   busy: boolean
   fallbackText?: string
-  onClose: () => void
   onSave?: (change: EntryWriteChange) => void
   onLoadPage?: (startRow: number) => Promise<TableEditorPage>
 }
@@ -28,12 +26,6 @@ export function PreviewPanel(props: PreviewPanelProps) {
   const canEdit = displayPreview.format !== 'csv' || displayPreview.kind === 'table'
   return (
     <aside className="zy-preview-panel" aria-label={`预览 ${fileName}`}>
-      <div className="zy-preview-head">
-        <div className="zy-preview-head-copy">
-          <div className="zy-preview-title"><span className="zy-preview-filename" title={props.preview.path}>{fileName}</span></div>
-        </div>
-        <button className="zy-preview-close" type="button" aria-label="关闭预览" onClick={props.onClose}><CloseIcon /></button>
-      </div>
       {canEdit ? (
         <form
           ref={form}
