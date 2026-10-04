@@ -79,8 +79,8 @@ export function PrefsPage(props: {
       <p className="zy-set-title zy-prefs-h">解析器</p>
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>Markdown / txt</span></div>
       <div className="zy-parser"><input type="checkbox" checked disabled /><span>CSV（导入后转 UTF-8，可表格编辑）</span></div>
+      <div className="zy-parser"><input type="checkbox" checked disabled /><span>DOCX（Word 转 Markdown，图片不保留）</span></div>
       <div className="zy-parser is-off"><input type="checkbox" disabled /><span>PDF</span></div>
-      <div className="zy-parser is-off"><input type="checkbox" disabled /><span>DOCX</span></div>
       <div className="zy-parser is-off"><input type="checkbox" disabled /><span>自定义命令</span></div>
       <Note text={props.error} />
     </div>

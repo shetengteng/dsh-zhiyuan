@@ -1,5 +1,6 @@
 import { extname } from 'node:path'
 import { csvContentFormat } from './csv/csv-format.ts'
+import { docxContentFormat } from './docx/docx-format.ts'
 import { markdownContentFormat } from './markdown/markdown-format.ts'
 import type { ContentFormatModule, EntryFormatHandler, EntryPageContext, EntryPathContext, EntryReadContext, EntryWriteContext, PrepareImportContext, SourceFormatHandler } from './host-contract.ts'
 import type { SourceFormat, EntryFormat as EntryFormatValue } from '../model/content-contract.ts'
@@ -39,7 +40,7 @@ function registerEntryHandlers(handlers: readonly EntryFormatHandler[]): Map<str
   return routes
 }
 
-const CONTENT_FORMAT_MODULES: readonly ContentFormatModule[] = [markdownContentFormat, csvContentFormat]
+const CONTENT_FORMAT_MODULES: readonly ContentFormatModule[] = [markdownContentFormat, csvContentFormat, docxContentFormat]
 const SOURCE_HANDLERS = CONTENT_FORMAT_MODULES.flatMap((module) => module.sourceHandlers)
 const ENTRY_HANDLERS = CONTENT_FORMAT_MODULES.flatMap((module) => module.entryHandlers)
 const SOURCE_ROUTES = registerSourceHandlers(SOURCE_HANDLERS)

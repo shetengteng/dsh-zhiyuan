@@ -1,6 +1,6 @@
 {
   "name": "dsh-zhiyuan",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "A local-first, source-grounded knowledge base plugin for DSH.",
   "type": "module",
   "main": "./lib/index.js",
@@ -17,6 +17,7 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/convert-docx-worker.js",
     "lib/skills/zhiyuan-kb/SKILL.md",
     "cordis.patch.yml",
     "README.md",
@@ -56,6 +57,8 @@
     }
   },
   "dependencies": {
+    "@joplin/turndown": "4.0.86",
+    "@joplin/turndown-plugin-gfm": "1.0.68",
     "@tiptap/core": "^3.30.6",
     "@tiptap/extension-link": "^3.30.6",
     "@tiptap/markdown": "^3.30.6",
@@ -63,6 +66,7 @@
     "@tiptap/starter-kit": "^3.30.6",
     "@vscode/ripgrep": "^1.18.0",
     "esbuild": "^0.25.0",
+    "mammoth": "1.13.0",
     "papaparse": "5.7.0",
     "react-data-grid": "^7.0.0-beta.45"
   },

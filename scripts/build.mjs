@@ -39,6 +39,22 @@ await esbuild.build({
   logLevel: 'info',
 })
 
+// DOCX 转换子进程独立产物：mammoth / turndown 只进这个 bundle，不进 lib/index.js。
+// mammoth 内部会在 CJS 模块里动态 require node 内建模块，ESM 产物需要 createRequire 兜底。
+await esbuild.build({
+  absWorkingDir: root,
+  entryPoints: ['src/formats/docx/worker.ts'],
+  outfile: 'lib/convert-docx-worker.js',
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  banner: {
+    js: "import { createRequire as __zyCreateRequire } from 'node:module';\nvar require = __zyCreateRequire(import.meta.url);",
+  },
+  logLevel: 'info',
+})
+
 const innerPath = join(lib, '_client.cjs')
 await esbuild.build({
   absWorkingDir: root,

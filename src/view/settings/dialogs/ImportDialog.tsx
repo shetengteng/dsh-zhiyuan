@@ -185,7 +185,7 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="拖拽文件或文件夹，或点击下方按钮选择。支持 md / txt / markdown / csv（GBK、UTF-16 会转成 UTF-8）。"
+          help="拖拽文件或文件夹，或点击下方按钮选择。支持 md / txt / markdown / csv / docx（docx 转 Markdown，图片会丢弃；GBK、UTF-16 会转成 UTF-8）。"
         >
           {sourceDropzone}
           <Note text={sourceError} />

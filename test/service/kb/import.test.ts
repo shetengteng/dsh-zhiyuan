@@ -8,6 +8,19 @@ import { KbError } from '../../../src/model/error/kb-error.ts'
 import { FileCatalogRepository } from '../../../src/repository/kb/file-catalog-repository.ts'
 import { sanitizeDroppedFileName } from '../../../src/service/kb/import/dropped-bytes-import.ts'
 import { createKnowledgeServices } from '../../../src/service/kb/knowledge-services.ts'
+import {
+  CONTENT_TYPES_XML,
+  ROOT_RELS_XML,
+  buildDocxZip,
+  documentXml,
+  headingParagraph,
+  headingStyle,
+  hyperlinkParagraph,
+  relsXml,
+  stylesXml,
+  textParagraph,
+  type DocxPart,
+} from '../../formats/docx-fixtures.ts'
 
 const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())
 const {
@@ -159,4 +172,56 @@ test('拖入字节按文件名写入库内', async () => {
 test('拖入文件名拒绝路径段', () => {
   assert.equal(sanitizeDroppedFileName('a/../b.csv'), 'b.csv')
   assert.throws(() => sanitizeDroppedFileName('..'), KbError)
+})
+
+test('md 与 docx 混合批次：md 原样拷、docx 转 markdown，保留目录树', async () => {
+  const { root, kbId } = await ready()
+  const dir = join(root, 'batch', '子')
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, 'a.md'), '# 计划\n')
+  const docxParts: DocxPart[] = [
+    { name: '[Content_Types].xml', data: CONTENT_TYPES_XML },
+    { name: '_rels/.rels', data: ROOT_RELS_XML },
+    { name: 'word/document.xml', data: documentXml([headingParagraph('H1', '章节一'), textParagraph('正文内容')].join('')) },
+    { name: 'word/styles.xml', data: stylesXml(headingStyle('H1', '标题 1')) },
+  ]
+  await writeFile(join(dir, 'b.docx'), buildDocxZip(docxParts))
+  const result = await importFiles(root, { kbId, sourcePath: join(root, 'batch'), destCategory: '归档', preserveTree: true })
+  assert.equal(result.failed, 0)
+  assert.ok(result.copied.includes('归档/子/a.md'))
+  assert.ok(result.copied.includes('归档/子/b.md'))
+  const converted = await readFile(join(root, 'kbs', kbId, '归档', '子', 'b.md'), 'utf8')
+  assert.ok(converted.includes('# 章节一'))
+  assert.ok(converted.includes('正文内容'))
+  // 同指纹再导一次应跳过
+  const again = await importFiles(root, { kbId, sourcePath: join(root, 'batch'), destCategory: '归档', preserveTree: true })
+  assert.equal(again.skipped, 2)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('docx 带恶意链接导入后产物安全，警告可见', async () => {
+  const { root, kbId } = await ready()
+  const source = join(root, 'unsafe.docx')
+  await writeFile(source, buildDocxZip([
+    { name: '[Content_Types].xml', data: CONTENT_TYPES_XML },
+    { name: '_rels/.rels', data: ROOT_RELS_XML },
+    {
+      name: 'word/document.xml',
+      data: documentXml([
+        hyperlinkParagraph('rJs', '陷阱'),
+        textParagraph('正文'),
+      ].join('')),
+    },
+    {
+      name: 'word/_rels/document.xml.rels',
+      data: relsXml(`<Relationship Id="rJs" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="javascript:alert(1)" TargetMode="External"/>`),
+    },
+  ]))
+  const result = await importFiles(root, { kbId, sourcePath: source, destCategory: '' })
+  assert.equal(result.failed, 0)
+  const markdown = await readFile(join(root, 'kbs', kbId, 'unsafe.md'), 'utf8')
+  assert.ok(!markdown.includes('javascript:'))
+  assert.ok(markdown.includes('陷阱'))
+  assert.ok(result.warnings.some((item) => item.includes('链接')))
+  await rm(root, { recursive: true, force: true })
 })

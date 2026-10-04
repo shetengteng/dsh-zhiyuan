@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { basename, dirname, join, relative, sep } from 'node:path'
+import { contentRegistry } from '../../../formats/host-api.ts'
 import { writePreparedEntry, type PreparedEntry } from '../../../formats/shared/ingest-output.ts'
 import { assertInside, assertNoSymlinkEscape } from '../../../platform/paths.ts'
 import type { ImportFileResponse } from '../../../model/response/import-response.ts'
@@ -39,6 +40,10 @@ export async function ingestPrepared(
   }
   if (!prepared.outputName || basename(prepared.outputName) !== prepared.outputName) {
     return failed('io_failed', '转换产物名无效')
+  }
+  // 产物扩展名必须在库内可检索白名单内，防止转换实现把内容写进不可检索格式
+  if (!contentRegistry.isStoredEntryPath(prepared.outputName)) {
+    return failed('io_failed', '转换产物不在库内可检索白名单')
   }
   const intendedPath = join(args.destinationAbsolute, outputRelativePath(sourceRelativePath, name, prepared.outputName))
   assertInside(args.kbRoot, intendedPath)

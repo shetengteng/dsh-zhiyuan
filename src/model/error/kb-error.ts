@@ -10,6 +10,7 @@ export type KbErrorCode =
   | 'quota'
   | 'ext_denied'
   | 'file_too_large'
+  | 'io_failed'
   | 'read_only_format'
   | 'invalid_preview'
   | 'preview_too_large'
