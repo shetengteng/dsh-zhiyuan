@@ -66,8 +66,8 @@ async function convert(raw: unknown): Promise<void> {
     bytes,
   })
   send({ type: 'done' })
-  // 断开 IPC 触发 disconnect，由监听器退出，避免 process.exit 截断待发送帧
-  if (process.connected) process.disconnect()
+  // 不主动 disconnect：大产物帧尚未刷完管道时断开会让父进程只收到 disconnect。
+  // 正常完成由父进程 convert-worker 在 settle 后 kill；Host 崩溃时下方 disconnect 监听保证退出。
 }
 
 process.on('message', (raw: unknown) => {
