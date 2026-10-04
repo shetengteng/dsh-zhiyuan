@@ -34,7 +34,7 @@ export const PREVIEW_CSS = `
 .zy-preview-empty-title{color:var(--dsw-alias-label-secondary);font-size:13px;font-weight:500;line-height:20px}
 .zy-preview-empty p{margin:6px 0 0;font-size:12px;line-height:18px}
 .zy-preview-panel :focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.zy-preview-rail{border:1px solid var(--dsw-alias-border-l2);border-left:none;border-radius:0 12px 12px 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
+.zy-preview-rail{border:1px solid var(--dsw-alias-border-l2);margin-left:-8px;border-radius:0 12px 12px 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--dsw-alias-bg-layer-1)}
 .zy-preview-rail .zy-preview-head{padding:5px 12px}
 .zy-preview-rail .zy-preview-form{flex:1;min-height:0;display:flex;flex-direction:column}
 .zy-preview-rail .zy-preview-form .zy-md{flex:1;min-height:0;border:0;border-radius:0}

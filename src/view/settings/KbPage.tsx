@@ -5,7 +5,8 @@ import { EditIcon, ImportIcon, SearchIcon, TrashIcon, TwistIcon } from './Icons.
 import { KbResizer } from './KbResizer.tsx'
 
 // 三栏布局常量，与 workbench-styles 里 `.zy-kb-layout` 的默认列模板保持一致。
-// RESIZER_WIDTH 取 8px 并配合负边距骑线，对齐 DSH 壳侧栏手柄的热区手感。
+// RESIZER_WIDTH 取 8px 并配合负边距骑线，对齐 DSH 壳侧栏手柄的热区手感；
+// 相邻面板再以 -8px 负边距覆盖 resizer 轨道彼此贴合，保证接缝只有一条分隔线且上下封边连续。
 const KB_LIST_DEFAULT_WIDTH = 168
 const MIN_KB_LIST_WIDTH = 140
 const RESIZER_WIDTH = 8
