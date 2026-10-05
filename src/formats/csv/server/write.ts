@@ -13,14 +13,14 @@ import { validateUtf8CsvBytes } from './encoding.ts'
 
 type CsvWriteContext = Pick<EntryWriteContext, 'absolutePath' | 'kbBytesWithoutEntry' | 'maxKbBytes' | 'maxFileBytes'>
 
-/** CSV 写入唯一入口：整文件替换，或带 revision 校验的稀疏表格修改。 */
+/** CSV 写入唯一入口：整文件替换，或应用到当前文件内容的稀疏表格修改（后写覆盖）。 */
 export async function writeCsvContent(context: EntryWriteContext): Promise<void> {
   if (context.change.kind === 'text') {
     await writeCsvText(context, context.change.text)
     return
   }
-  const { document, revision } = await readCsvDocument(context.absolutePath, CSV_MAX_IMPORT_BYTES)
-  validatePatch(context.change.patch, document, revision)
+  const { document } = await readCsvDocument(context.absolutePath, CSV_MAX_IMPORT_BYTES)
+  validatePatch(context.change.patch, document)
   await writeCsvDocument(context, applyPatch(document, context.change.patch))
 }
 
@@ -54,9 +54,8 @@ async function writeCsvText(context: EntryWriteContext, text: string): Promise<v
   await writeCsvDocument(context, document)
 }
 
-function validatePatch(patch: TablePatch, document: CsvDocument, revision: string): void {
+function validatePatch(patch: TablePatch, document: CsvDocument): void {
   assertTablePatchShape(patch)
-  if (patch.revision !== revision) throw new KbError('csv_revision_conflict', '文件已被修改，请重新打开后再保存')
   for (const change of patch.headerChanges) validateHeaderChange(change, document.headers.length)
   for (const change of patch.cellChanges) validateCellChange(change, document)
 }

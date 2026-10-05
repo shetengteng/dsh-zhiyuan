@@ -177,11 +177,14 @@ test('CSV 编辑器按页返回数据、只提交 patch，并拒绝过期或越�
     assert.match(written, /^\uFEFF新名称,编号\n原始1,1/m)
     assert.match(written, /已修改201,201/)
 
-    await assert.rejects(() => writeEntryContent(root, kb.id, 'large.csv', { kind: 'table-patch', patch: {
+    // 过期 revision 不再拦截：稀疏补丁按行列直接应用到当前文件内容。
+    await writeEntryContent(root, kb.id, 'large.csv', { kind: 'table-patch', patch: {
       revision,
       headerChanges: [],
       cellChanges: [{ row: 1, column: 0, value: '过期' }],
-    } }), (error: unknown) => error instanceof KbError && error.code === 'csv_revision_conflict')
+    } })
+    const staleWritten = await readFile(join(root, 'kbs', kb.id, 'large.csv'), 'utf8')
+    assert.match(staleWritten, /^\uFEFF新名称,编号\n过期,1/m)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

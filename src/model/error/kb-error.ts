@@ -19,7 +19,6 @@ export type KbErrorCode =
   | 'csv_line_too_long'
   | 'csv_parse_invalid'
   | 'csv_patch_invalid'
-  | 'csv_revision_conflict'
   | 'encoding_unsupported'
   | 'xlsx_invalid'
   | 'not_found'
