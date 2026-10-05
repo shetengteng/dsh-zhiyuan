@@ -1,9 +1,9 @@
 export const WORKBENCH_CSS = `
-.zy{font:inherit;color:var(--dsw-alias-label-primary);height:100%;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px}
-.zy-head{display:flex;align-items:center;gap:16px;min-height:36px;flex:none}
+.zy{box-sizing:border-box;font:inherit;color:var(--dsw-alias-label-primary);height:100%;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:0 clamp(24px,4vw,48px) 48px}
+.zy-head{display:flex;align-items:center;gap:16px;min-height:36px;flex:none;padding-top:calc(28px + var(--dsh-frame-top-clearance,0px))}
 .zy-head-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
 .zy-head-title svg{flex:none}
-.zy-head-title h1{margin:0;font-size:18px;font-weight:600;line-height:24px}
+.zy-head-title h1{margin:0;font-size:20px;font-weight:500;line-height:28px}
 .zy-tabs{display:flex;gap:16px;align-items:center;flex:none}
 .zy-tab{border:0;background:transparent;color:var(--dsw-alias-label-tertiary);padding:6px 1px 8px;font:inherit;font-size:13px;line-height:20px;box-shadow:inset 0 -2px 0 transparent;cursor:pointer;white-space:nowrap}
 .zy-tab:hover,.zy-tab.is-on{color:var(--dsw-alias-label-primary)}
@@ -26,13 +26,14 @@ export const WORKBENCH_CSS = `
 .zy-kb-row{position:relative;margin:2px 0;border-radius:12px}
 .zy-kb-row:hover{background:var(--dsw-specific-sidebar-nav-item-hover)}
 .zy-kb-row.is-on,.zy-kb-row.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
-.zy-kb-select{display:flex;align-items:baseline;gap:4px;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-weight:500;overflow:hidden}
+/* 库名与目录树行同为 13px，列表列内部字号层级一致。 */
+.zy-kb-select{display:flex;align-items:baseline;gap:4px;width:100%;border:0;background:transparent;text-align:left;padding:8px 28px 8px 10px;border-radius:12px;color:inherit;font:inherit;font-size:13px;line-height:20px;font-weight:500;overflow:hidden}
 .zy-kb-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zy-del{width:22px;height:22px;border:none;background:transparent;border-radius:6px;padding:0;color:var(--dsw-alias-label-tertiary);display:inline-flex;align-items:center;justify-content:center;opacity:0;flex:none;cursor:pointer}
 .zy-kb-row .zy-del{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
 .zy-kb-row:hover .zy-del,.zy-file:hover .zy-del,.zy-tree summary:hover .zy-del,.zy-del:focus{opacity:1}
 .zy-del:hover{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover-danger)}
-.zy-ghost{margin-top:auto;border:1px dashed var(--dsw-alias-border-l2);background:transparent;border-radius:12px;padding:8px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}
+.zy-ghost{margin-top:auto;border:1px dashed var(--dsw-alias-border-l2);background:transparent;border-radius:12px;padding:8px;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;line-height:20px;cursor:pointer}
 .zy-ghost:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-kb-head{display:flex;align-items:center;gap:10px;padding:8px 12px 6px}
 .zy-kb-head .zy-sub{flex:1;min-width:0}

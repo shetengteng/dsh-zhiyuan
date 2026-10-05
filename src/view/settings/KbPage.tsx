@@ -5,6 +5,7 @@ import { EditIcon, FileIcon, FolderIcon, ImportIcon, SearchIcon, TrashIcon } fro
 import { KbResizer } from './KbResizer.tsx'
 
 // 三栏布局常量，与 workbench-styles 里 `.zy-kb-layout` 的默认列模板保持一致。
+// 工作台是主侧栏全局面板的主区内容，宽度随视口（减去侧栏 280px）。
 // RESIZER_WIDTH 取 8px 并配合负边距骑线，对齐 DSH 壳侧栏手柄的热区手感；
 // 相邻面板再以 -8px 负边距覆盖 resizer 轨道彼此贴合，保证接缝只有一条分隔线且上下封边连续。
 const KB_LIST_DEFAULT_WIDTH = 168

@@ -23,7 +23,7 @@ You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markd
 - **Select a base, then search.** If the user does not name a base, the model must list bases and pick one `kbId`. Scanning every base is forbidden.
 - **Offline.** Import and search do not use the network. A complete natural-language answer still depends on having a local model.
 
-The workbench mounts on the left of Settings as `settings.section` (`id: knowledge`, label「知源」). The narrow plugin config card is not a second workbench.
+The workbench mounts as a global panel row in the main sidebar, directly below Plugins (`sidebar.panellist` + `main`, `id: zhiyuan`, order 1); selecting it shows the workbench in the central area.
 
 ## Out of scope (this MVP)
 

@@ -81,3 +81,8 @@ export function SectionIcon(props: { size?: number; className?: string }) {
     </svg>
   )
 }
+
+/** 主侧栏全局面板行的图标：壳按 wide/rail 传 16/18px，active 仅作状态标记不改变外观。 */
+export function PanelIcon(props: { size?: number; active?: boolean }) {
+  return <SectionIcon size={props.size ?? 16} />
+}

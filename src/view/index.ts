@@ -4,11 +4,13 @@ import { createPreviewController, type PreviewLoader } from './toolview/preview/
 import { createPreviewTabDefinition, PREVIEW_TAB_KIND, type PreviewTabDefinition } from './toolview/preview/preview-tab.ts'
 import { createCitationTail } from './citation/CitationTail.tsx'
 import { createZhiyuanCitationsDefinition } from './citation/turn-citations.ts'
-import { FOOTER_ACTION_ID, FOOTER_ACTION_ORDER, PACKAGE_NAME, SECTION_LABEL, TURN_TAIL_ID } from '../model/package-info.ts'
-import { createFooterAction } from './FooterAction.tsx'
+import { PACKAGE_NAME, PANEL_ID, PANEL_ORDER, SECTION_LABEL, TURN_TAIL_ID } from '../model/package-info.ts'
 import { callKnowledgeHost, type KnowledgePrivateConnection } from './bridge.ts'
 import { parseReadEntry } from './payload/read-entry.ts'
 import { disposeSettingsStyles } from './settings/style-entry.ts'
+import { createSettingsSection } from './settings/SettingsSection.tsx'
+import { PanelIcon } from './settings/Icons.tsx'
+import { installDragBeacon } from './drag-beacon.ts'
 
 export const name = PACKAGE_NAME
 export const inject = ['slots', 'connection', 'sidebarRight', 'sidebarRightTabs', 'uiConversation']
@@ -55,7 +57,7 @@ export function apply(ctx: {
   })
   const KbSearchView = createKbSearchView(preview, ctx.connection)
   const KbPreviewPanel = createKbPreviewPanel(loadPreview, preview)
-  const FooterAction = createFooterAction(ctx.connection)
+  const Workbench = createSettingsSection(ctx.connection)
   const CitationTail = createCitationTail(preview)
 
   if (typeof ctx.effect === 'function') {
@@ -67,13 +69,21 @@ export function apply(ctx: {
     ctx.effect(() => ctx.uiConversation?.events?.register(createZhiyuanCitationsDefinition()))
   }
 
-  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-    name: 'sidebar.footer.action',
-    id: FOOTER_ACTION_ID,
-    order: FOOTER_ACTION_ORDER,
+  // 主侧栏全局面板行：图标即注册组件，点击后主区按 main 槽位的 key 装载工作台。
+  ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+    name: 'sidebar.panellist',
+    id: PANEL_ID,
+    order: PANEL_ORDER,
     label: () => SECTION_LABEL,
     registrant: PACKAGE_NAME,
-  }, FooterAction))
+  }, PanelIcon))
+
+  // 面板主区内容：key 必须与 panellist 条目 id 一致，selectPanel 按 id 装载。
+  ctx.slots.inject('main', () => ctx.slots.register({
+    name: 'main',
+    key: PANEL_ID,
+    registrant: PACKAGE_NAME,
+  }, Workbench))
 
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
     name: 'tool.call.toolview',
@@ -97,7 +107,10 @@ export function apply(ctx: {
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => {
+      // 临时拖拽诊断探针，定位 Safari 拖拽问题后随本行一并移除。
+      const disposeDragBeacon = installDragBeacon()
       return () => {
+        disposeDragBeacon()
         preview.dispose()
         disposeSettingsStyles()
       }

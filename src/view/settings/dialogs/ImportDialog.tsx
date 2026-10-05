@@ -37,7 +37,10 @@ export function ImportDialog(props: {
 
   const applyDroppedPath = (dataTransfer: DataTransfer | null) => {
     setDragging(false)
-    if (blockedRef.current) return
+    if (blockedRef.current) {
+      setSourceError('上一步操作还在进行中，请等它结束后再拖入')
+      return
+    }
     const dropped = resolveDroppedSource(dataTransfer)
     if (dropped.kind === 'path') {
       setDroppedFile(null)

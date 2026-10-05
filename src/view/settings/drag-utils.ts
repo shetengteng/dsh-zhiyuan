@@ -10,6 +10,9 @@ export type FileDragEvent = {
 
 const FILE_DRAG_TYPES = new Set(['Files', 'application/x-moz-file', 'public.file-url', 'text/uri-list'])
 
+/** 纯文本/链接类拖拽，不属于文件导入，交给浏览器默认行为。 */
+const TEXT_DRAG_TYPES = new Set(['text/plain', 'text/html', 'text/csv', 'application/json'])
+
 export function listDragTypes(dataTransfer: DataTransfer): string[] {
   const types = dataTransfer.types
   if (!types) return []
@@ -25,12 +28,15 @@ export function listDragTypes(dataTransfer: DataTransfer): string[] {
 
 export function isFileDrag(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false
-  if (listDragTypes(dataTransfer).some((type) => FILE_DRAG_TYPES.has(type))) return true
+  const types = listDragTypes(dataTransfer)
+  if (types.some((type) => FILE_DRAG_TYPES.has(type))) return true
   if (dataTransfer.files.length > 0) return true
   for (let index = 0; index < dataTransfer.items.length; index += 1) {
     if (dataTransfer.items[index]?.kind === 'file') return true
   }
-  return false
+  // 含未知类型（如 macOS 文件 promise、UTI 私有类型）时也按文件拖拽接管，
+  // 避免落点静默无反应；纯文本/链接拖拽仍交给浏览器默认行为。
+  return types.length > 0 && !types.every((type) => TEXT_DRAG_TYPES.has(type))
 }
 
 /** 拦截文件拖放，避免 DSH 对话附件在 document 上把 dropEffect 改成 none。 */

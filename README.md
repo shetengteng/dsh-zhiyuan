@@ -23,7 +23,7 @@ Zhiyuan is a local-first knowledge base plugin for DSH. It helps users organize 
 - **先选库再搜。** 未点名库时，模型必须先列库再选一个 `kbId`，禁止扫全部库。
 - **离线。** 导入和检索不访问外网。完整自然语言答案取决于本机是否有可用模型。
 
-工作台挂在设置左侧 `settings.section`（`id: knowledge`，标签「知源」）。插件配置窄卡不再做一份工作台。
+工作台挂在主界面左侧栏「插件」之下的全局面板行（`sidebar.panellist` + `main`，`id: zhiyuan`，order 1），点开后主区即工作台。
 
 ## 明确不做（本 MVP）
 
