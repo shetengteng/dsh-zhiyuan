@@ -52,23 +52,28 @@ export const WORKBENCH_CSS = `
 .zy-kb-ellipsis{flex:none}
 .zy-kb-description>summary::-webkit-details-marker,.zy-kb-description>summary::marker,.zy-tree summary::-webkit-details-marker,.zy-tree summary::marker{display:none;content:none}
 .zy-kb-description>summary:hover{color:var(--dsw-alias-label-primary)}
-.zy-twist{width:14px;height:14px;flex:none;color:var(--dsw-alias-label-tertiary);transition:transform .15s cubic-bezier(.4,0,.2,1)}
-details[open]>summary>.zy-twist{transform:rotate(90deg)}
+.zy-folder{width:16px;height:16px;flex:none;color:var(--dsw-alias-label-tertiary)}
+.zy-folder.is-open{display:none}
+details[open]>summary>.zy-folder.is-closed{display:none}
+details[open]>summary>.zy-folder.is-open{display:inline-flex}
 .zy-kb-description[open]>summary{display:block}
 .zy-kb-description[open] .zy-kb-summary{display:block;white-space:normal;overflow:visible}
 .zy-kb-description[open] .zy-kb-ellipsis{display:none}
 .zy-kb-description-body{padding:0 10px 8px}
 .zy-tree{flex:1;min-height:0;overflow:auto;padding:2px 8px 8px}
-.zy-tree details{padding-left:10px}
-.zy-tree>details{padding-left:0}
+/* 层级缩进加在 details 的子内容上而不是 details 自身，文件夹行才与直属子内容错开一层。
+   每层 22px = 节点图标 16px + 间距 6px，子节点图标对齐父节点名称起点。 */
+.zy-tree details>*:not(summary){margin-left:22px}
 .zy-tree summary{cursor:pointer;list-style:none;padding:3px 8px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:6px}
 .zy-tree summary:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-tree summary>span{flex:1;min-width:0}
-.zy-file{display:grid;grid-template-columns:minmax(0,1fr) auto auto 22px;gap:12px;padding:3px 8px 3px 22px;border-radius:8px;font-size:13px;align-items:center}
+.zy-file{display:grid;grid-template-columns:minmax(0,1fr) auto auto 22px;gap:12px;padding:3px 8px;border-radius:8px;font-size:13px;align-items:center}
 .zy-file:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-file.is-on,.zy-file.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
 .zy-file .meta,.zy-file .when{color:var(--dsw-alias-label-tertiary)}
-.zy-file-open{border:0;background:transparent;text-align:left;color:inherit;font:inherit;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zy-file-open{border:0;background:transparent;text-align:left;color:inherit;font:inherit;padding:0;min-width:0;display:flex;align-items:center;gap:6px;cursor:pointer}
+.zy-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zy-file-icon{flex:none}
 .zy-foot{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:12px}
 .zy-icon{width:32px;height:32px;border:none;background:transparent;border-radius:50%;color:var(--dsw-alias-label-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
 .zy-icon:hover{background:var(--dsw-alias-interactive-bg-hover)}

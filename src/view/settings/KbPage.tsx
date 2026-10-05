@@ -1,7 +1,7 @@
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useRef, useState, type ReactNode } from 'react'
 import type { KbSummaryResponse, JobStatusResponse, KbTreeNodeResponse } from '../view-models.ts'
-import { EditIcon, ImportIcon, SearchIcon, TrashIcon, TwistIcon } from './Icons.tsx'
+import { EditIcon, FileIcon, FolderIcon, ImportIcon, SearchIcon, TrashIcon } from './Icons.tsx'
 import { KbResizer } from './KbResizer.tsx'
 
 // 三栏布局常量，与 workbench-styles 里 `.zy-kb-layout` 的默认列模板保持一致。
@@ -196,7 +196,7 @@ function KbTreeItem(props: {
     return (
       <details open>
         <summary>
-          <TwistIcon />
+          <FolderIcon />
           <span>{props.node.name}</span>
           {deleteButton}
         </summary>
@@ -208,7 +208,10 @@ function KbTreeItem(props: {
   }
   return (
     <div className={`zy-file${props.node.path === props.selectedEntryPath ? ' is-on' : ''}`}>
-      <button type="button" className="zy-file-open" onClick={() => props.onOpenEntry(props.node.path)}>{props.node.name}</button>
+      <button type="button" className="zy-file-open" onClick={() => props.onOpenEntry(props.node.path)}>
+        <FileIcon path={props.node.path} />
+        <span className="zy-file-name">{props.node.name}</span>
+      </button>
       <span className="meta">{formatSize(props.node.size)}</span>
       <span className="when">{formatWhen(props.node.mtime)}</span>
       {deleteButton}

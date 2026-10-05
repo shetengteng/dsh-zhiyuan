@@ -1,7 +1,9 @@
 import {
-  IconChevronRightOutlineRegular,
+  FileTypeIcon,
   IconCloseOutlineRegular,
   IconEditOutlineRegular,
+  IconFolderCloseRegular,
+  IconFolderOpenOutlineRegular,
   IconProjectAddOutlineRegular,
   IconSearchOutlineRegular,
   IconTrashOutlineRegular,
@@ -33,9 +35,22 @@ export function ImportIcon() {
   return <IconProjectAddOutlineRegular />
 }
 
-/** 树节点展开箭头；开合旋转由 `.zy-twist` 的 details[open] 规则处理。 */
-export function TwistIcon() {
-  return <IconChevronRightOutlineRegular size={14} className="zy-twist" />
+/**
+ * 树节点文件夹图标：收起时显示合拢文件夹，展开时显示打开的文件夹。
+ * 两个状态图标都渲染，由 `.zy-folder` 的 details[open] CSS 规则切换可见性。
+ */
+export function FolderIcon() {
+  return (
+    <>
+      <IconFolderCloseRegular size={16} className="zy-folder is-closed" />
+      <IconFolderOpenOutlineRegular size={16} className="zy-folder is-open" />
+    </>
+  )
+}
+
+/** 树节点文件图标：按扩展名渲染官方文件类型图标，md/csv/xlsx 等各有形状与类别色。 */
+export function FileIcon(props: { path: string }) {
+  return <FileTypeIcon path={props.path} size={16} className="zy-file-icon" />
 }
 
 /** 关闭。 */
