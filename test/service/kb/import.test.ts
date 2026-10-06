@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { KbError } from '../../../src/model/error/kb-error.ts'
+import type { ImportProgress } from '../../../src/model/response/import-response.ts'
 import { FileCatalogRepository } from '../../../src/repository/kb/file-catalog-repository.ts'
 import { sanitizeDroppedFileName } from '../../../src/service/kb/import/dropped-bytes-import.ts'
 import { createKnowledgeServices } from '../../../src/service/kb/knowledge-services.ts'
@@ -49,6 +50,33 @@ test('指定 合同/2024 不存在则创建再拷；源文件不被改', async (
   assert.equal(await readFile(src, 'utf8'), body)
   assert.ok(result.createdDirs.includes('合同/2024'))
   assert.equal(await lastDestCategory(root, kbId), '合同/2024')
+  await rm(root, { recursive: true, force: true })
+})
+
+test('导入逐文件上报进度：每文件处理前后各一帧，末帧 processed=total', async () => {
+  const { root, kbId } = await ready()
+  const dir = join(root, 'batch')
+  await mkdir(dir)
+  await writeFile(join(dir, 'a.md'), '甲')
+  await writeFile(join(dir, 'b.md'), '乙')
+  const reports: ImportProgress[] = []
+  const result = await importFiles(root, { kbId, sourcePath: dir, destCategory: '' }, (progress) => {
+    reports.push({ ...progress, files: [...progress.files] })
+  })
+  assert.equal(result.copied.length, 2)
+  assert.equal(reports.length, 4)
+  assert.equal(reports[0].total, 2)
+  assert.equal(reports[0].processed, 0)
+  assert.equal(typeof reports[0].current, 'string')
+  assert.deepEqual(reports[0].files, [])
+  assert.equal(reports[1].processed, 1)
+  assert.equal(reports[1].files.length, 1)
+  assert.equal(reports[2].processed, 1)
+  assert.equal(typeof reports[2].current, 'string')
+  const last = reports[3]
+  assert.equal(last.processed, 2)
+  assert.equal(last.current, undefined)
+  assert.equal(last.files.length, 2)
   await rm(root, { recursive: true, force: true })
 })
 

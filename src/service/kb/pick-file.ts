@@ -21,10 +21,33 @@ export function normalizePickedPath(raw: string): string {
   return path
 }
 
+/**
+ * mac 选择器：JXA 直接建 NSOpenPanel，默认显示隐藏文件并前置激活。
+ * `choose file` 既不显示隐藏项也不保证前台，用户会以为按钮无响应。
+ */
 export function macArgs(kind: PickKind): string[] {
-  const prompt = kind === 'dir' ? '选择要导入的文件夹' : '选择要导入的文件'
-  const choose = kind === 'dir' ? 'choose folder' : 'choose file'
-  return ['-e', `try\nPOSIX path of (${choose} with prompt "${prompt}")\non error number -128\n""\nend try`]
+  const script = [
+    "ObjC.import('AppKit')",
+    'function run() {',
+    // osascript 进程默认无 GUI 资格，必须先声明为常规应用，runModal 才会真正模态运行
+    '  const app = $.NSApplication.sharedApplication',
+    '  app.setActivationPolicy(0)',
+    '  app.activateIgnoringOtherApps(true)',
+    '  const panel = $.NSOpenPanel.openPanel',
+    `  panel.setCanChooseFiles(${kind === 'file'})`,
+    `  panel.setCanChooseDirectories(${kind === 'dir'})`,
+    '  panel.setShowsHiddenFiles(true)',
+    '  panel.setAllowsMultipleSelection(false)',
+    `  panel.setTitle('选择要导入的${kind === 'file' ? '文件' : '文件夹'}')`,
+    "  panel.setPrompt('选择')",
+    // JXA 无参方法以属性访问形式调用；阻塞到用户操作，1 = NSModalResponseOK
+    "  if (Number(panel.runModal) != 1) return ''",
+    '  const chosen = panel.URLs.firstObject',
+    "  if (!chosen || chosen.isNil()) return ''",
+    '  return chosen.path.js',
+    '}',
+  ].join('\n')
+  return ['-l', 'JavaScript', '-e', script]
 }
 
 export function winArgs(kind: PickKind): string[] {

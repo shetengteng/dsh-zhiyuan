@@ -19,7 +19,7 @@ type Handler = (input: { rawInput: string }) => Promise<CmdResult>
 
 function instantJobs(): JobRunner {
   return {
-    enqueue: async (_op, work) => work(),
+    enqueue: async (_op, work) => work(() => {}),
     status: () => ({ running: false, failed: [] }),
   }
 }
@@ -77,7 +77,7 @@ describe('kb 斜杠命令', { concurrency: false }, () => {
 
   test('空输入与 status 返回队列状态', async () => {
     const jobs: JobRunner = {
-      enqueue: async (_op, work) => work(),
+      enqueue: async (_op, work) => work(() => {}),
       status: () => ({ running: true, op: 'import', failed: [{ op: 'import', message: 'x', at: 1 }] }),
     }
     const { handler } = capture(jobs)

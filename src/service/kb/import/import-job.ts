@@ -12,10 +12,10 @@ export function enqueueKnowledgeImport(
   jobs: JobRunner,
   requestFactory: () => ImportRequest,
 ): Promise<ImportResponse> {
-  return jobs.enqueue('import', () => {
+  return jobs.enqueue('import', (report) => {
     const request = requestFactory()
     return 'bytes' in request
-      ? importDroppedBytes(catalogRepository, dataRoot, request)
-      : importFiles(catalogRepository, dataRoot, request)
+      ? importDroppedBytes(catalogRepository, dataRoot, request, report)
+      : importFiles(catalogRepository, dataRoot, request, report)
   })
 }

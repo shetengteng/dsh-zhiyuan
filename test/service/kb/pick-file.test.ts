@@ -19,8 +19,11 @@ test('normalizePickedPath 去换行和尾斜杠', () => {
 })
 
 test('各平台参数：文件走选文件，目录走选目录', () => {
-  assert.match(macArgs('file').join('\n'), /choose file/)
-  assert.match(macArgs('dir').join('\n'), /choose folder/)
+  assert.ok(macArgs('file').includes('-l'), 'mac 参数应携带 JXA 语言标记')
+  assert.match(macArgs('file').join('\n'), /setCanChooseFiles\(true\)/)
+  assert.match(macArgs('file').join('\n'), /setCanChooseDirectories\(false\)/)
+  assert.match(macArgs('dir').join('\n'), /setCanChooseDirectories\(true\)/)
+  assert.match(macArgs('dir').join('\n'), /setShowsHiddenFiles\(true\)/)
   assert.match(winArgs('file').join('\n'), /OpenFileDialog/)
   assert.match(winArgs('dir').join('\n'), /FolderBrowserDialog/)
   assert.match(winArgs('dir').join('\n'), /OutputEncoding/)
@@ -34,7 +37,7 @@ test('pickSource：有路径返回 path；空输出视为取消', async () => {
     platform: 'darwin',
     exec: async (file, args) => {
       assert.equal(file, 'osascript')
-      assert.match(args.join('\n'), /choose file/)
+      assert.match(args.join('\n'), /setCanChooseFiles\(true\)/)
       return { stdout: '/Users/me/合同.md\n', stderr: '' }
     },
   })

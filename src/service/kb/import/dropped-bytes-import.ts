@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { KbError } from '../../../model/error/kb-error.ts'
 import { createImportFromPathRequest, type ImportDroppedBytesRequest } from '../../../model/request/import-request.ts'
-import type { ImportResponse } from '../../../model/response/import-response.ts'
+import type { ImportProgress, ImportResponse } from '../../../model/response/import-response.ts'
 import type { CatalogRepository } from '../../../repository/kb/catalog-repository.ts'
 import { importFiles } from './import-service.ts'
 
@@ -20,6 +20,7 @@ export async function importDroppedBytes(
   catalogRepository: CatalogRepository,
   dataRoot: string,
   input: ImportDroppedBytesRequest,
+  onProgress?: (progress: ImportProgress) => void,
 ): Promise<ImportResponse> {
   const fileName = sanitizeDroppedFileName(input.fileName)
   if (input.bytes.length === 0) throw new KbError('invalid_field', '拖入文件是空的')
@@ -33,7 +34,7 @@ export async function importDroppedBytes(
       destCategory: input.destCategory,
       preserveTree: input.preserveTree,
       createMissing: input.createMissing,
-    }))
+    }), onProgress)
   } finally {
     await rm(tempDir, { recursive: true, force: true })
   }

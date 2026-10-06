@@ -42,4 +42,29 @@ export const DIALOG_EDITOR_CSS = `
 .zy-md-doc hr{border:0;border-top:1px solid var(--dsw-alias-border-l2);margin:16px 0}
 .zy-md-doc .zy-hl{background:color-mix(in oklch,var(--dsw-alias-state-warn-primary) 28%,var(--dsw-alias-bg-layer-1));border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .zy-md-doc span.zy-hl{padding:1px 2px}
+.zy-catselect{position:relative}
+.zy-catselect-menu{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:240px;overflow:auto;padding:4px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-shadow-lv3)}
+.zy-catselect-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;box-sizing:border-box;border:0;border-radius:8px;padding:6px 10px;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer}
+.zy-catselect-item.is-hl{background:var(--dsw-alias-interactive-bg-hover)}
+.zy-catselect-item:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:-2px}
+.zy-catselect-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zy-catselect-hint{flex:none;color:var(--dsw-alias-label-tertiary);font-size:12px}
+.zy-import-progress{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.zy-import-progress-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}
+.zy-import-progress-count{flex:none;font-weight:600;color:var(--dsw-alias-label-primary)}
+.zy-import-progress-current{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zy-import-progress-counts{flex:none}
+.zy-import-progress-done-title{font-weight:600;color:var(--dsw-alias-label-primary)}
+.zy-import-progress.is-done .zy-import-progress-head{color:var(--dsw-alias-state-business-primary)}
+.zy-import-progress-bar{height:4px;border-radius:2px;background:var(--dsw-alias-interactive-bg-hover);overflow:hidden}
+.zy-import-progress-fill{height:100%;border-radius:2px;background:var(--dsw-alias-state-business-primary);transition:width .2s var(--ds-ease-in-out,ease)}
+.zy-import-progress-files{margin:0;padding:6px 10px;list-style:none;display:flex;flex-direction:column;gap:2px;max-height:168px;overflow:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
+.zy-import-progress-row{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:12px;line-height:20px}
+.zy-import-progress-name{flex:none;display:inline-flex;align-items:center;gap:4px;color:var(--dsw-alias-label-primary)}
+.zy-import-progress-name::before{flex:none;font-weight:600}
+.zy-import-progress-row.is-copied .zy-import-progress-name::before,.zy-import-progress-row.is-renamed .zy-import-progress-name::before{content:'✓';color:var(--dsw-alias-state-business-primary)}
+.zy-import-progress-row.is-skipped .zy-import-progress-name::before{content:'—';color:var(--dsw-alias-label-tertiary)}
+.zy-import-progress-row.is-failed .zy-import-progress-name{color:var(--dsw-alias-state-error-primary)}
+.zy-import-progress-row.is-failed .zy-import-progress-name::before{content:'！';color:var(--dsw-alias-state-error-primary)}
+.zy-import-progress-reason{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary)}
 `

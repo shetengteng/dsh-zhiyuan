@@ -68,11 +68,14 @@ details[open]>summary>.zy-folder.is-open{display:inline-flex}
 .zy-tree summary{cursor:pointer;list-style:none;padding:3px 8px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:6px}
 .zy-tree summary:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-tree summary>span{flex:1;min-width:0}
-.zy-file{display:grid;grid-template-columns:minmax(0,1fr) auto auto 22px;gap:12px;padding:3px 8px;border-radius:8px;font-size:13px;align-items:center}
+/* 文件行默认只显示名称；大小、时间、删除按钮都在 hover / 键盘聚焦时才出现，
+   所以用 flex 而不是 grid，隐藏的 meta/when 不会留下空轨道间隙。 */
+.zy-file{display:flex;gap:12px;padding:3px 8px;border-radius:8px;font-size:13px;align-items:center}
 .zy-file:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .zy-file.is-on,.zy-file.is-on:hover{background:var(--dsw-specific-sidebar-nav-item-active)}
-.zy-file .meta,.zy-file .when{color:var(--dsw-alias-label-tertiary)}
-.zy-file-open{border:0;background:transparent;text-align:left;color:inherit;font:inherit;padding:0;min-width:0;display:flex;align-items:center;gap:6px;cursor:pointer}
+.zy-file .meta,.zy-file .when{display:none;color:var(--dsw-alias-label-tertiary)}
+.zy-file:hover .meta,.zy-file:hover .when,.zy-file:focus-within .meta,.zy-file:focus-within .when{display:inline}
+.zy-file-open{border:0;background:transparent;text-align:left;color:inherit;font:inherit;padding:0;min-width:0;flex:1;display:flex;align-items:center;gap:6px;cursor:pointer}
 .zy-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zy-file-icon{flex:none}
 .zy-foot{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);font-size:12px}
@@ -106,7 +109,6 @@ details[open]>summary>.zy-folder.is-open{display:inline-flex}
 .zy-checks label{display:flex;align-items:center;gap:8px;cursor:pointer}
 .zy-source-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;min-height:108px;padding:14px 12px;border:1px dashed var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-module-platform);color:inherit;font:inherit;text-align:center;transition:background .15s,border-color .15s}
 .zy-source-drop:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.zy-source-drop.is-dragging{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary)}
 .zy-source-copy,.zy-source-hint{pointer-events:none}
 .zy-source-copy{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;font-weight:500}
 .zy-source-hint{margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}

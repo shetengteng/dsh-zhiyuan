@@ -216,10 +216,10 @@ test('工作簿结构与声明范围超过上限时整份失败', async () => {
 
     const tooManyRows = join(root, '超行.xlsx')
     await writeFile(tooManyRows, buildXlsxWorkbook([
-      { name: 'S', dimension: 'A1:A2001', rows: [rowXml(1, inlineTextCell('A1', 'x'))] },
+      { name: 'S', dimension: 'A1:A3001', rows: [rowXml(1, inlineTextCell('A1', 'x'))] },
     ]))
     const rowsResult = await importFiles(root, { kbId: kb.id, sourcePath: tooManyRows, destCategory: '' })
-    assert.match(rowsResult.files[0]?.reason ?? '', /2001 行 × 1 列超过上限/)
+    assert.match(rowsResult.files[0]?.reason ?? '', /3001 行 × 1 列超过上限/)
 
     const tooManyCols = join(root, '超列.xlsx')
     await writeFile(tooManyCols, buildXlsxWorkbook([

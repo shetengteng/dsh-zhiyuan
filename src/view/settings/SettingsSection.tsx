@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { SECTION_LABEL, VERSION_LABEL } from '../../model/package-info.ts'
 import type { KnowledgePrivateConnection } from '../bridge.ts'
-import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult } from '../view-models.ts'
+import { getKnowledgeJobStatus } from '../bridge.ts'
+import type { DialogKind, ImportResponse, SearchOverviewResult, SearchResult, KbTreeNodeResponse } from '../view-models.ts'
 import { parseImportResponse } from '../payload/import-result.ts'
 import { parseCatalogPrefs, parseOperationAck, parsePickSourceResult } from '../payload/settings-response.ts'
 import { parseTableEditorPage } from '../payload/table-page.ts'
@@ -41,6 +42,8 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     const [searchError, setSearchError] = useState('')
     const searchRequestVersion = useRef(0)
     const [confirm, setConfirm] = useState({ message: '', run: async () => undefined as void })
+    // 最近一次导入的最终结果：完成后弹框停留展示，用户点「关闭」确认才退出。
+    const [importResult, setImportResult] = useState(null as ImportResponse | null)
 
     const { kbs, currentKbId, setCurrentKbId, tree, prefs, job, pending, error, notice, setError, setNotice, call, refresh, run: runWork } = useWorkbenchData(connection)
     const { preview, previewFallback, previewOrigin, openTreeEntry, openSearchHit, closePreview } = useEntryPreview({
@@ -51,7 +54,9 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
     })
 
     const currentKb = kbs.find((item) => item.id === currentKbId)
-    const run = <T,>(work: () => Promise<T>, after?: (value: T) => void) => runWork(work, { onSuccess: () => setDialog(null), after })
+    const run = <T,>(work: () => Promise<T>, after?: (value: T) => void, options?: { keepOpen?: boolean }) => (
+      runWork(work, { onSuccess: () => { if (!options?.keepOpen) setDialog(null) }, after })
+    )
 
     useEffect(() => {
       void refresh()
@@ -114,7 +119,7 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
               onSelectKb={(kbId) => { closePreview(); setCurrentKbId(kbId); void refresh(kbId) }}
               onCreate={() => { setError(''); setDialog('create') }}
               onEdit={() => { setError(''); setDialog('edit') }}
-              onImport={() => { setError(''); setNotice(null); setDialog('import') }}
+              onImport={() => { setError(''); setNotice(null); setImportResult(null); setDialog('import') }}
               onSearch={() => { resetSearch(); setError(''); setDialog('search') }}
               onDeleteKb={(kb) => {
                 setConfirm({ message: `删除知识库「${kb.title}」及其中文件？`, run: () => run(() => call({ op: 'deleteKb', id: kb.id, confirm: true }).then(parseOperationAck).then(() => undefined), () => closePreview()) })
@@ -167,6 +172,9 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             kbTitle={currentKb.title}
             error={error}
             busy={pending}
+            categories={collectCategoryPaths(tree)}
+            result={importResult ?? undefined}
+            onPollJobStatus={connection ? () => getKnowledgeJobStatus(connection) : undefined}
             onClose={() => setDialog(null)}
             onPick={async (kind) => {
               setError('')
@@ -180,7 +188,8 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             }}
             onSubmit={(input) => void run(
               () => call({ op: 'import', ...input, kbId: currentKb.id }).then(parseImportResponse),
-              (result) => setNotice(formatImportNotice(result)),
+              (result) => { setImportResult(result); setNotice(formatImportNotice(result)) },
+              { keepOpen: true },
             )}
           />
         ) : null}
@@ -224,4 +233,15 @@ function formatImportNotice(result: ImportResponse): WorkbenchNotice {
   if (!result.failed) return { tone: 'success', text: summary }
   const details = result.files.filter((item) => item.status === 'failed').slice(0, 2).map((item) => `${item.sourceRelPath}：${item.reason ?? '处理失败'}`).join('；')
   return { tone: result.copied.length > 0 || result.skipped > 0 ? 'warning' : 'error', text: `${summary}，失败 ${result.failed}${details ? `。${details}` : ''}` }
+}
+
+/** 从目录树递归收集全部类目路径，供导入弹框下拉选择。 */
+function collectCategoryPaths(nodes: KbTreeNodeResponse[]): string[] {
+  const paths: string[] = []
+  for (const node of nodes) {
+    if (node.kind !== 'dir') continue
+    paths.push(node.path)
+    paths.push(...collectCategoryPaths(node.children ?? []))
+  }
+  return paths
 }

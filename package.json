@@ -1,6 +1,6 @@
 {
   "name": "dsh-zhiyuan",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "A local-first, source-grounded knowledge base plugin for DSH.",
   "type": "module",
   "main": "./lib/index.js",

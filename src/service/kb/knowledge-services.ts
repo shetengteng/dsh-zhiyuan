@@ -6,7 +6,7 @@ import type { UpdatePreferencesRequest } from '../../model/request/preferences-r
 import type { SearchRequest } from '../../model/request/search-request.ts'
 import type { KbSummaryResponse, KbTreeNodeResponse } from '../../model/response/kb-response.ts'
 import type { ReadEntryResponse, TableEditorPage } from '../../model/response/entry-response.ts'
-import type { ImportResponse } from '../../model/response/import-response.ts'
+import type { ImportProgress, ImportResponse } from '../../model/response/import-response.ts'
 import type { SearchResult } from '../../model/response/search-response.ts'
 import type { CatalogPrefs } from '../../model/value/catalog-prefs.ts'
 import type { JobRunner } from '../../platform/jobs.ts'
@@ -34,8 +34,8 @@ export type KnowledgeServices = {
   writeEntryContent(dataRoot: string, kbId: string, relativePath: string, change: EntryWriteChange): Promise<void>
   readEntryPage(dataRoot: string, kbId: string, relativePath: string, startRow: number, pageSize: number): Promise<TableEditorPage>
   deleteEntry(dataRoot: string, kbId: string, relativePath: string, confirm: boolean): Promise<void>
-  importFiles(dataRoot: string, input: ImportFromPathRequest): Promise<ImportResponse>
-  importDroppedBytes(dataRoot: string, input: ImportDroppedBytesRequest): Promise<ImportResponse>
+  importFiles(dataRoot: string, input: ImportFromPathRequest, onProgress?: (progress: ImportProgress) => void): Promise<ImportResponse>
+  importDroppedBytes(dataRoot: string, input: ImportDroppedBytesRequest, onProgress?: (progress: ImportProgress) => void): Promise<ImportResponse>
   enqueueKnowledgeImport(dataRoot: string, jobs: JobRunner, requestFactory: () => ImportRequest): Promise<ImportResponse>
   getLastDestinationCategory(dataRoot: string, kbId: string): Promise<string | undefined>
   resolveImportTo(dataRoot: string, kbId: string, destinationCategoryFlag: string | undefined, importToKbRoot: boolean): Promise<string>
@@ -65,8 +65,8 @@ export function createKnowledgeServices(catalogRepository: CatalogRepository): K
     writeEntryContent: (dataRoot, kbId, relativePath, change) => writeEntryContent(catalogRepository, dataRoot, kbId, relativePath, change),
     readEntryPage: (dataRoot, kbId, relativePath, startRow, pageSize) => readEntryPage(catalogRepository, dataRoot, kbId, relativePath, startRow, pageSize),
     deleteEntry: (dataRoot, kbId, relativePath, confirm) => deleteEntry(catalogRepository, dataRoot, kbId, relativePath, confirm),
-    importFiles: (dataRoot, input) => importFiles(catalogRepository, dataRoot, input),
-    importDroppedBytes: (dataRoot, input) => importDroppedBytes(catalogRepository, dataRoot, input),
+    importFiles: (dataRoot, input, onProgress) => importFiles(catalogRepository, dataRoot, input, onProgress),
+    importDroppedBytes: (dataRoot, input, onProgress) => importDroppedBytes(catalogRepository, dataRoot, input, onProgress),
     enqueueKnowledgeImport: (dataRoot, jobs, requestFactory) => enqueueKnowledgeImport(catalogRepository, dataRoot, jobs, requestFactory),
     getLastDestinationCategory: (dataRoot, kbId) => getLastDestinationCategory(catalogRepository, dataRoot, kbId),
     resolveImportTo: (dataRoot, kbId, destinationCategoryFlag, importToKbRoot) => (

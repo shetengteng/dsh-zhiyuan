@@ -10,7 +10,6 @@ import { parseReadEntry } from './payload/read-entry.ts'
 import { disposeSettingsStyles } from './settings/style-entry.ts'
 import { createSettingsSection } from './settings/SettingsSection.tsx'
 import { PanelIcon } from './settings/Icons.tsx'
-import { installDragBeacon } from './drag-beacon.ts'
 
 export const name = PACKAGE_NAME
 export const inject = ['slots', 'connection', 'sidebarRight', 'sidebarRightTabs', 'uiConversation']
@@ -107,13 +106,8 @@ export function apply(ctx: {
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(() => {
-      // 临时拖拽诊断探针，定位 Safari 拖拽问题后随本行一并移除。
-      const disposeDragBeacon = installDragBeacon()
-      return () => {
-        disposeDragBeacon()
-        preview.dispose()
-        disposeSettingsStyles()
-      }
+      preview.dispose()
+      disposeSettingsStyles()
     })
   }
 }

@@ -1,7 +1,9 @@
+import type { ImportProgress } from '../model/response/import-response.ts'
 import type { JobStatusResponse } from '../model/response/job-response.ts'
 
 export type JobRunner = {
-  enqueue<T>(op: string, work: () => Promise<T>): Promise<T>
+  /** work 收到 report 回调，可在执行中更新进度快照（仅导入等长任务使用）。 */
+  enqueue<T>(op: string, work: (report: (progress: ImportProgress) => void) => Promise<T>): Promise<T>
   status(): JobStatusResponse
 }
 
@@ -9,6 +11,7 @@ export function createJobRunner(): JobRunner {
   let chain = Promise.resolve()
   let running = false
   let currentOp: string | undefined
+  let currentProgress: ImportProgress | undefined
   const failed: JobStatusResponse['failed'] = []
 
   return {
@@ -16,8 +19,9 @@ export function createJobRunner(): JobRunner {
       const run = chain.then(async () => {
         running = true
         currentOp = op
+        currentProgress = undefined
         try {
-          return await work()
+          return await work((progress) => { currentProgress = progress })
         } catch (error) {
           failed.push({
             op,
@@ -35,7 +39,8 @@ export function createJobRunner(): JobRunner {
       return run
     },
     status() {
-      return { running, op: currentOp, failed: failed.slice(-20) }
+      // 进度快照保留到下个任务开始，便于客户端最后一次轮询拿到完整结果。
+      return { running, op: currentOp, failed: failed.slice(-20), progress: currentProgress }
     },
   }
 }

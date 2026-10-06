@@ -1,4 +1,4 @@
-import type { ImportResponse } from '../view-models.ts'
+import type { ImportProgress, ImportResponse } from '../view-models.ts'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
@@ -13,4 +13,21 @@ export function parseImportResponse(value: unknown): ImportResponse {
     throw new Error('Host 返回的导入结果无效')
   }
   return value as ImportResponse
+}
+
+/**
+ * 从任务状态投影里提取导入进度快照；非导入任务、无进度或字段不完整时返回 null，
+ * 进度展示是尽力而为的附加信息，收窄失败按没有进度处理。
+ */
+export function extractImportProgress(status: unknown): ImportProgress | null {
+  const record = asRecord(status)
+  if (!record || record.op !== 'import') return null
+  const progress = record.progress
+  const shape = asRecord(progress)
+  if (!shape || typeof shape.total !== 'number' || !Number.isFinite(shape.total)
+    || typeof shape.processed !== 'number' || !Number.isFinite(shape.processed)
+    || !Array.isArray(shape.files)) {
+    return null
+  }
+  return progress as ImportProgress
 }

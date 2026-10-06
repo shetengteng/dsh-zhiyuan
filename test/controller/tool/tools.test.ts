@@ -30,7 +30,7 @@ type ToolDef = {
 
 function instantJobs(): JobRunner {
   return {
-    enqueue: async (_op, work) => work(),
+    enqueue: async (_op, work) => work(() => {}),
     status: () => ({ running: false, failed: [] }),
   }
 }

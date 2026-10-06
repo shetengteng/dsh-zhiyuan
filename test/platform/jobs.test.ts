@@ -50,6 +50,22 @@ test('失败写入 failed 并继续抛出；后续任务仍能跑', async () => 
   assert.equal(await jobs.enqueue('other', async () => 7), 7)
 })
 
+test('report 更新进度快照；下个任务开始时清掉', async () => {
+  const jobs = createJobRunner()
+  let during: ReturnType<JobRunner['status']> | undefined
+  const run = jobs.enqueue('import', async (report) => {
+    report({ total: 2, processed: 1, files: [] })
+    during = jobs.status()
+    report({ total: 2, processed: 2, files: [] })
+    return 'done'
+  })
+  assert.equal(await run, 'done')
+  assert.equal(during?.progress?.processed, 1)
+  assert.equal(jobs.status().progress?.processed, 2)
+  await jobs.enqueue('other', async () => undefined)
+  assert.equal(jobs.status().progress, undefined)
+})
+
 test('非 Error 失败也记 message；failed 只留最近 20 条', async () => {
   const jobs = createJobRunner()
   await assert.rejects(() => jobs.enqueue('x', async () => {

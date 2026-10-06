@@ -5,7 +5,7 @@ import { contentRegistry } from '../../../formats/host-api.ts'
 import { CATEGORY_WARN_DEPTH } from '../../../model/kb-limits.ts'
 import { KbError } from '../../../model/error/kb-error.ts'
 import type { ImportFromPathRequest } from '../../../model/request/import-request.ts'
-import type { ImportFileResponse, ImportResponse } from '../../../model/response/import-response.ts'
+import type { ImportFileResponse, ImportProgress, ImportResponse } from '../../../model/response/import-response.ts'
 import { assertInside, kbDir, expandUserPath, resolveDest } from '../../../platform/paths.ts'
 import type { CatalogRepository } from '../../../repository/kb/catalog-repository.ts'
 import { requireKb } from '../kb-lifecycle.ts'
@@ -20,6 +20,7 @@ export async function importFiles(
   catalogRepository: CatalogRepository,
   dataRoot: string,
   input: ImportFromPathRequest,
+  onProgress?: (progress: ImportProgress) => void,
 ): Promise<ImportResponse> {
   await requireKb(catalogRepository, dataRoot, input.kbId)
   const catalog = await catalogRepository.read(dataRoot)
@@ -43,6 +44,10 @@ export async function importFiles(
   const sourceInfo = await stat(source)
   const sourceRoot = sourceInfo.isDirectory() ? source : dirname(source)
   const files = await walkSource(source)
+  // 每个源文件处理前后各上报一次快照，客户端轮询任务状态即可看到逐文件进展。
+  const reportProgress = (processed: number, current?: string) => {
+    onProgress?.({ total: files.length, processed, files: [...result.files], current })
+  }
   const result: ImportResponse = {
     kbId: input.kbId,
     copied: [],
@@ -55,7 +60,8 @@ export async function importFiles(
   }
 
   let addedBytes = 0
-  for (const file of files) {
+  for (const [index, file] of files.entries()) {
+    reportProgress(index, basename(file))
     const fileResults = await ingestOne({
       file,
       sourceRoot,
@@ -79,6 +85,7 @@ export async function importFiles(
         addedBytes += fileResult.writtenBytes ?? 0
       }
     }
+    reportProgress(index + 1)
   }
   result.createdDirs = [...createdDirs].filter(Boolean)
   await rememberLastDestinationCategory(catalogRepository, dataRoot, input.kbId, destination.relative)
