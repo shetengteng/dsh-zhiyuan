@@ -21,6 +21,7 @@ export type KbErrorCode =
   | 'csv_patch_invalid'
   | 'encoding_unsupported'
   | 'xlsx_invalid'
+  | 'pdf_invalid'
   | 'not_found'
 
 /** 知源领域层可预期的业务错误。 */

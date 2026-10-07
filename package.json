@@ -1,6 +1,6 @@
 {
   "name": "dsh-zhiyuan",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "A local-first, source-grounded knowledge base plugin for DSH.",
   "type": "module",
   "main": "./lib/index.js",
@@ -19,6 +19,8 @@
     "lib/client.js",
     "lib/convert-docx-worker.js",
     "lib/convert-xlsx-worker.js",
+    "lib/convert-pdf-worker.js",
+    "lib/convert-html-worker.js",
     "lib/skills/zhiyuan-kb/SKILL.md",
     "cordis.patch.yml",
     "README.md",
@@ -70,7 +72,8 @@
     "esbuild": "^0.25.0",
     "mammoth": "1.13.0",
     "papaparse": "5.7.0",
-    "react-data-grid": "^7.0.0-beta.45"
+    "react-data-grid": "^7.0.0-beta.45",
+    "unpdf": "1.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

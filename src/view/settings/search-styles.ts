@@ -8,10 +8,7 @@ export const SEARCH_CSS = `
 .zy-search-hits{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px 2px 8px}
 .zy-search-hits .zy-hit{margin:0}
 .zy-search-more{align-self:flex-start;flex:none;margin-top:4px}
-.zy-search-pagination{display:flex;align-items:center;justify-content:center;gap:20px;flex:none;margin-top:4px;padding:4px 0}
-.zy-search-page-button{appearance:none;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-state-business-primary);padding:4px 8px;font:inherit;font-size:13px;line-height:20px;cursor:pointer}
-.zy-search-page-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
-.zy-search-page-button:disabled{color:var(--dsw-alias-label-tertiary);cursor:not-allowed;opacity:.65}
+.zy-search-pagination{display:flex;align-items:center;justify-content:center;gap:8px;flex:none;margin-top:4px;padding:4px 0}
 .zy-search-card{min-height:0;display:flex;flex-direction:column;gap:6px}
 .zy-search-files{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;padding:2px}
 .zy-search-file-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}

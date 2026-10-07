@@ -104,7 +104,7 @@ export function ImportDialog(props: {
       >
         <Field
           label="源"
-          help="点击按钮从本机选择。支持 md / txt / markdown / csv / docx / xlsx；单文件上限默认 5 MiB（可在偏好调整）。csv 最大 20 MiB；docx 转 Markdown，图片会丢弃，GBK、UTF-16 会转成 UTF-8；xlsx 每个 sheet 转成一个 CSV，转出的表格可编辑，最多 128 个工作表、单表不超过 3000 行 × 40 列、转换产物合计不超过 20 MB。"
+          help="点击按钮从本机选择。支持 md / txt / markdown / csv / docx / xlsx / pdf / html；单文件上限默认 5 MiB（可在偏好调整）。csv 最大 20 MiB；docx 转 Markdown，图片会丢弃，GBK、UTF-16 会转成 UTF-8；xlsx 每个 sheet 转成一个 CSV，转出的表格可编辑，最多 128 个工作表、单表不超过 3000 行 × 40 列、转换产物合计不超过 20 MB；html / htm 转 Markdown，图片与脚本会丢弃，GBK 等编码自动转 UTF-8；pdf 转 Markdown，仅提取文本层，最多 512 页，加密或扫描件会拒绝。"
         >
           {sourceDropzone}
           <Note text={sourceError} />

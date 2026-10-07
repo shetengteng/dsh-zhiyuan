@@ -20,10 +20,7 @@ export const PREVIEW_CSS = `
 .zy-csv-page-tools{display:flex;align-items:center;gap:16px;min-width:0}
 .zy-preview-foot .zy-csv-page-tools{flex:1;margin-right:auto}
 .zy-csv-page-status{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}
-.zy-csv-page-actions{display:flex;align-items:center;gap:20px;flex:none}
-.zy-csv-page-button{appearance:none;border:0;border-radius:6px;background:transparent;color:var(--dsw-alias-state-business-primary);padding:4px 8px;font:inherit;font-size:13px;line-height:20px;cursor:pointer}
-.zy-csv-page-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
-.zy-csv-page-button:disabled{color:var(--dsw-alias-label-tertiary);cursor:not-allowed;opacity:.65}
+.zy-csv-page-actions{display:flex;align-items:center;gap:8px;flex:none}
 .zy-csv-page-error{margin-top:8px;color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px}
 .zy-csv-grid{box-sizing:border-box;width:100%;max-width:100%;min-width:0;height:min(72vh,720px);min-height:280px;margin-top:10px;overflow:hidden;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
 .zy-rdg-cell-editor{box-sizing:border-box;position:absolute;inset:0;width:100%;padding:0 6px;resize:none;border:2px solid var(--dsw-alias-state-business-primary);border-radius:0;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;line-height:calc(var(--rdg-row-height) - 5px);outline:none;appearance:none;white-space:nowrap;overflow-wrap:normal;overflow:auto;scrollbar-width:none;vertical-align:top}

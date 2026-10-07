@@ -5,6 +5,8 @@ export const SourceFormat = {
   Csv: 'csv',
   Xlsx: 'xlsx',
   Docx: 'docx',
+  Pdf: 'pdf',
+  Html: 'html',
 } as const
 
 export type SourceFormat = typeof SourceFormat[keyof typeof SourceFormat]

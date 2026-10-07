@@ -7,7 +7,7 @@ import { parseImportResponse } from '../payload/import-result.ts'
 import { parseCatalogPrefs, parseOperationAck, parsePickSourceResult } from '../payload/settings-response.ts'
 import { parseTableEditorPage } from '../payload/table-page.ts'
 import { canSearchNextPage, canSearchPreviousPage, type SearchPageHistory } from '../search/search-pages.ts'
-import { useWorkbenchData, splitAliases, type WorkbenchNotice } from './use-workbench-data.ts'
+import { useWorkbenchData, splitAliases } from './use-workbench-data.ts'
 import { useEntryPreview } from './use-entry-preview.ts'
 import { createSearchActions } from './search-actions.ts'
 import { AboutPage } from './AboutPage.tsx'
@@ -188,7 +188,8 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
             }}
             onSubmit={(input) => void run(
               () => call({ op: 'import', ...input, kbId: currentKb.id }).then(parseImportResponse),
-              (result) => { setImportResult(result); setNotice(formatImportNotice(result)) },
+              // 导入结果只在弹框内停留展示（ImportProgressPanel），不再重复投到页面头部 notice。
+              (result) => { setImportResult(result) },
               { keepOpen: true },
             )}
           />
@@ -226,13 +227,6 @@ export function createSettingsSection(connection?: KnowledgePrivateConnection) {
       </div>
     )
   }
-}
-
-function formatImportNotice(result: ImportResponse): WorkbenchNotice {
-  const summary = `导入完成：新增 ${result.copied.length}，跳过 ${result.skipped}`
-  if (!result.failed) return { tone: 'success', text: summary }
-  const details = result.files.filter((item) => item.status === 'failed').slice(0, 2).map((item) => `${item.sourceRelPath}：${item.reason ?? '处理失败'}`).join('；')
-  return { tone: result.copied.length > 0 || result.skipped > 0 ? 'warning' : 'error', text: `${summary}，失败 ${result.failed}${details ? `。${details}` : ''}` }
 }
 
 /** 从目录树递归收集全部类目路径，供导入弹框下拉选择。 */

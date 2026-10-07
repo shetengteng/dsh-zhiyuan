@@ -70,6 +70,36 @@ await esbuild.build({
   logLevel: 'info',
 })
 
+// PDF 转换子进程独立产物：unpdf（内含 PDF.js serverless 构建）只进这个 bundle，不进 lib/index.js。
+await esbuild.build({
+  absWorkingDir: root,
+  entryPoints: ['src/formats/pdf/worker.ts'],
+  outfile: 'lib/convert-pdf-worker.js',
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  banner: {
+    js: "import { createRequire as __zyCreateRequire } from 'node:module';\nvar require = __zyCreateRequire(import.meta.url);",
+  },
+  logLevel: 'info',
+})
+
+// HTML 转换子进程独立产物：@joplin/turndown（含 domino 解析器）只进这个 bundle，不进 lib/index.js。
+await esbuild.build({
+  absWorkingDir: root,
+  entryPoints: ['src/formats/html/worker.ts'],
+  outfile: 'lib/convert-html-worker.js',
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  target: 'node20',
+  banner: {
+    js: "import { createRequire as __zyCreateRequire } from 'node:module';\nvar require = __zyCreateRequire(import.meta.url);",
+  },
+  logLevel: 'info',
+})
+
 const innerPath = join(lib, '_client.cjs')
 await esbuild.build({
   absWorkingDir: root,

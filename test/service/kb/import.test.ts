@@ -22,6 +22,7 @@ import {
   textParagraph,
   type DocxPart,
 } from '../../formats/docx-fixtures.ts'
+import { buildSimplePdf } from '../../formats/pdf-fixtures.ts'
 
 const knowledgeServices = createKnowledgeServices(new FileCatalogRepository())
 const {
@@ -223,6 +224,26 @@ test('md 与 docx 混合批次：md 原样拷、docx 转 markdown，保留目录
   assert.ok(converted.includes('正文内容'))
   // 同指纹再导一次应跳过
   const again = await importFiles(root, { kbId, sourcePath: join(root, 'batch'), destCategory: '归档', preserveTree: true })
+  assert.equal(again.skipped, 2)
+  await rm(root, { recursive: true, force: true })
+})
+
+test('md 与 pdf 混合批次：md 原样拷、pdf 转 markdown，失败项不挡同批', async () => {
+  const { root, kbId } = await ready()
+  const dir = join(root, 'batch')
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, 'a.md'), '# 计划\n')
+  await writeFile(join(dir, 'b.pdf'), buildSimplePdf([['PDF 正文第一行', 'PDF 正文第二行']]))
+  await writeFile(join(dir, 'broken.pdf'), Buffer.from('这不是一个 PDF'))
+  const result = await importFiles(root, { kbId, sourcePath: dir, destCategory: '归档' })
+  assert.equal(result.failed, 1)
+  assert.ok(result.copied.includes('归档/a.md'))
+  assert.ok(result.copied.includes('归档/b.md'))
+  const converted = await readFile(join(root, 'kbs', kbId, '归档', 'b.md'), 'utf8')
+  assert.ok(converted.includes('PDF 正文第一行'))
+  assert.ok(converted.includes('PDF 正文第二行'))
+  // 同指纹再导一次：md 与转换产物都跳过
+  const again = await importFiles(root, { kbId, sourcePath: dir, destCategory: '归档' })
   assert.equal(again.skipped, 2)
   await rm(root, { recursive: true, force: true })
 })

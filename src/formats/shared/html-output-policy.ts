@@ -11,8 +11,8 @@ const ALLOWED_LINK_PROTOCOLS: readonly string[] = ['https:', 'mailto:']
 
 const SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 
-/** 不保留内容的危险与媒体标签：显式规则剔除（该 fork 的 remove 压不过内建 image 规则）。 */
-const STRIPPED_TAGS: readonly string[] = ['img', 'picture', 'figure', 'script', 'style', 'iframe', 'object', 'embed', 'video', 'audio']
+/** 不保留内容的危险、媒体与文档头标签：显式规则剔除（该 fork 的 remove 压不过内建 image 规则）。 */
+const STRIPPED_TAGS: readonly string[] = ['img', 'picture', 'figure', 'script', 'style', 'iframe', 'object', 'embed', 'video', 'audio', 'head', 'title', 'meta', 'link', 'base']
 
 export type HtmlMarkdownResult = {
   markdown: string

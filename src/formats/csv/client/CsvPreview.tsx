@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { RowsChangeData } from 'react-data-grid'
 import type { EntryWriteChange } from '../../../model/request/entry-request.ts'
 import type { TableEditorPage, TableEntryPreview, TableWindowData } from '../../../model/response/entry-response.ts'
@@ -86,8 +87,8 @@ export const CsvPreview = forwardRef<CsvEditorHandle, CsvPreviewProps>(function 
       <div className="zy-csv-page-tools" aria-label="表格分页工具" aria-busy={pageBusy || undefined}>
         <span className="zy-csv-page-status" aria-live="polite">第 {currentPage.windowStartRow || 0}–{currentPage.windowEndRow || 0} 行，共 {currentPage.totalRows} 行</span>
         <div className="zy-csv-page-actions">
-          <button className="zy-csv-page-button" type="button" disabled={pageBusy || currentPage.windowStartRow <= 1} onClick={() => void loadPageRef.current?.(previousStartRow)}>上一页</button>
-          <button className="zy-csv-page-button" type="button" disabled={pageBusy || currentPage.windowEndRow >= currentPage.totalRows} onClick={() => void loadPageRef.current?.(currentPage.windowEndRow + 1)}>下一页</button>
+          <Button variant="ghost" size="sm" type="button" disabled={pageBusy || currentPage.windowStartRow <= 1} onClick={() => void loadPageRef.current?.(previousStartRow)}>上一页</Button>
+          <Button variant="ghost" size="sm" type="button" disabled={pageBusy || currentPage.windowEndRow >= currentPage.totalRows} onClick={() => void loadPageRef.current?.(currentPage.windowEndRow + 1)}>下一页</Button>
         </div>
       </div>
     )
