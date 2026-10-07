@@ -16,7 +16,16 @@ One npm package, one install: Host (create / import / search) + Web workbench. T
 
 ## What it does
 
-You create a knowledge base explicitly, then copy local `.md` / `.txt` / `.markdown` files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and a numeric excerpt id, which the current chat model uses to write the answer.
+You create a knowledge base explicitly, then copy local files into a chosen base and category. Search always selects a base first, then greps once with 3–8 keywords. Hits include file path, line numbers, and a numeric excerpt id, which the current chat model uses to write the answer.
+
+| Format              | Ingestion                                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| md / markdown / txt | Stored as-is                                                                                                                            |
+| csv                 | Auto-decoded from GB18030 / UTF-16 / UTF-8 into UTF-8, editable as a table; max 20 MiB per file                                         |
+| docx                | Word converted to Markdown; images are dropped                                                                                          |
+| xlsx                | Each sheet becomes one CSV (table-editable); max 128 sheets, 3000 rows × 40 columns each, 20 MB total output; formulas must be pre-computed in Excel |
+| pdf                 | Text layer extracted to Markdown; max 512 pages; encrypted and scanned PDFs are rejected                                                |
+| html / htm          | Converted to Markdown; images and scripts are dropped; encodings like GBK are auto-converted to UTF-8                                   |
 
 - **Source text lives in folders only.** Import copies files. It does not store external links, and it does not write full text into a database.
 - **A category is a subdirectory.** Example: `kbs/<uuid>/合同/2024/供应商合同.md`.
@@ -31,7 +40,7 @@ The workbench mounts as a global panel row in the main sidebar, directly below P
 | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | SQLite FTS / chunked index                        | Personal scale greps in place; reopen around ~2000 docs or when ranking is required |
 | Auto-pick / auto-create / auto-classify on import | A wrong base means the funnel never finds the file                                  |
-| PDF / DOCX / watched source folders               | First version commits to md/txt only                                                |
+| Watched source folders / auto re-import           | Import is explicit; nothing watches folders in the background                       |
 | Remote embeddings / fake vectors / `kb_ask`       | Breaks offline; not this phase                                                      |
 | Top-level sidebar「知识库」, conversation chips   | No official seat, or it would grow a second admin UI                                |
 | Treating project `grep` as knowledge-base search  | Repo search ≠ imported documents                                                    |
@@ -78,7 +87,7 @@ The Host owns durable state. The data root uses the official DSH plugin data dir
 
 Bases can still be listed by scanning `kbs/` when `catalog.json` is missing. A missing card leaves the description empty and the model will often pick the wrong base, so the create flow requires a description.
 
-Workbench Preferences can change: default base, per-file cap (default 5 MB), per-base text cap (default 10 GB). Parsers: md/txt enabled; everything else disabled.
+Workbench Preferences can change: default base, per-file cap (default 5 MB), per-base text cap (default 10 GB).
 
 Base card fields: `id` / `title` / `description` / `aliases`. The system generates `id` as a UUID; it is immutable and hidden from the create/edit forms. `title` must be unique.
 
